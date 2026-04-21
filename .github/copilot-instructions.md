@@ -1,0 +1,5 @@
+- Use this workspace to build a salon scheduling application.
+- The project should include a Next.js frontend and a NestJS backend.
+- Use Tailwind CSS for styling and Zod for validation.
+- Keep the UI simple: form for booking and a timeline/list of appointments.
+- The backend should expose `GET /appointments` and `POST /appointments`.

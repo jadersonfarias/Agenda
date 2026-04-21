@@ -1,0 +1,134 @@
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+enum Role {
+    USER
+}
+
+model User {
+    id         String     @id @default(uuid())
+    name       String
+    email      String     @unique
+    password   String
+    role       Role       @default(USER)
+    businesses Business[]
+    accounts   Account[]
+    sessions   Session[]
+    createdAt  DateTime   @default(now())
+    updatedAt  DateTime   @updatedAt
+}
+
+model Business {
+    id           String        @id @default(uuid())
+    name         String
+    slug         String        @unique
+    timezone     String        @default("America/Sao_Paulo")
+    openTime     String        @default("09:00")
+    closeTime    String        @default("18:00")
+    owner        User          @relation(fields: [ownerId], references: [id])
+    ownerId      String
+    customers    Customer[]
+    services     Service[]
+    appointments Appointment[]
+    createdAt    DateTime      @default(now())
+    updatedAt    DateTime      @updatedAt
+
+    @@index([ownerId])
+    @@index([slug, timezone])
+}
+
+model Customer {
+    id           String        @id @default(uuid())
+    name         String
+    phone        String
+    lastVisitAt  DateTime?
+    business     Business      @relation(fields: [businessId], references: [id])
+    businessId   String
+    appointments Appointment[]
+    createdAt    DateTime      @default(now())
+    updatedAt    DateTime      @updatedAt
+
+    @@unique([businessId, phone])
+}
+
+model Service {
+    id              String        @id @default(uuid())
+    name            String
+    price           Decimal
+    durationMinutes Int
+    business        Business      @relation(fields: [businessId], references: [id])
+    businessId      String
+    appointments    Appointment[]
+    createdAt       DateTime      @default(now())
+    updatedAt       DateTime      @updatedAt
+
+    @@index([businessId, name])
+    @@index([businessId, createdAt])
+}
+
+enum AppointmentStatus {
+    SCHEDULED
+    COMPLETED
+    CANCELED
+}
+
+model Appointment {
+    id          String            @id @default(uuid())
+    scheduledAt DateTime
+    endsAt      DateTime
+    price       Decimal
+    status      AppointmentStatus @default(SCHEDULED)
+    completedAt DateTime?
+    business    Business          @relation(fields: [businessId], references: [id])
+    businessId  String
+    service     Service           @relation(fields: [serviceId], references: [id])
+    serviceId   String
+    customer    Customer          @relation(fields: [customerId], references: [id])
+    customerId  String
+    createdAt   DateTime          @default(now())
+    updatedAt   DateTime          @updatedAt
+
+    @@index([businessId, scheduledAt, endsAt, status])
+    @@index([businessId, serviceId, scheduledAt])
+    @@index([customerId, scheduledAt])
+}
+
+model Account {
+    id                String  @id @default(uuid())
+    user              User    @relation(fields: [userId], references: [id])
+    userId            String
+    type              String
+    provider          String
+    providerAccountId String
+    refresh_token     String?
+    access_token      String?
+    expires_at        Int?
+    token_type        String?
+    scope             String?
+    id_token          String?
+    session_state     String?
+
+    @@unique([provider, providerAccountId])
+}
+
+model Session {
+    id           String   @id @default(uuid())
+    sessionToken String   @unique
+    user         User     @relation(fields: [userId], references: [id])
+    userId       String
+    expires      DateTime
+}
+
+model VerificationToken {
+    identifier String
+    token      String   @unique
+    expires    DateTime
+
+    @@unique([identifier, token])
+}

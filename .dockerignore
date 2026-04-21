@@ -1,0 +1,17 @@
+node_modules
+npm-debug.log
+yarn.lock
+pnpm-lock.yaml
+.next
+dist
+.vscode
+.git
+.gitignore
+Dockerfile
+docker-compose.override.yml
+**/*.log
+.env
+.env.local
+.env.development
+.env.test
+.env.production
