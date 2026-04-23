@@ -8,3 +8,6 @@ dist
 npm-debug.log*
 package-lock.json
 yarn-error.log*
+# ngrok
+ngrok
+ngrok-v3-stable-linux-amd64.tgz

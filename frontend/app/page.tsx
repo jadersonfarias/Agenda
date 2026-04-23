@@ -24,7 +24,6 @@ const appointmentSchema = z.object({
     date: z.date({
         required_error: 'Selecione uma data',
     }),
-    // date: z.string().refine((value) => !Number.isNaN(Date.parse(value)), 'Data inválida'),
     time: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Horário inválido'),
 })
 
@@ -44,20 +43,12 @@ type AppointmentItem = {
     customer: { name: string; phone: string }
 }
 
-type AppointmentApi = { 
+type AppointmentApi = {
     serviceId: string;
     customerName: string;
     phone: string;
     date: string;
     time: string;
-}
-
-const testPayload1 = {
-  serviceId: '1a11bb85-2c84-4248-b4f1-b4734a426488',
-  customerName: 'João Silva',
-  phone: '(11) 91234-5678',
-  date: '2026-04-18',
-  time: '07:00',
 }
 
 export default function Home() {
@@ -127,7 +118,7 @@ export default function Home() {
         },
     })
 
-   {} const appointmentMutation = useMutation({
+    const appointmentMutation = useMutation({
         mutationFn: async (payload: AppointmentApi) => {
             const response = await fetch(`${apiBase}/appointments`, {
                 method: 'POST',
@@ -185,7 +176,7 @@ export default function Home() {
     }, [availableTimes, selectedTime, setValue])
 
     const onSubmit = (data: AppointmentForm) => {
-        
+
         const payload = {
             ...data,
             date: format(data.date, 'yyyy-MM-dd'),
@@ -198,18 +189,18 @@ export default function Home() {
     }
 
     return (
-        <main className="mx-auto flex min-h-screen max-w-7xl flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8">
+        <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-6 px-4 py-8 sm:gap-8 sm:px-6 sm:py-10 lg:px-8">
             <Card>
-                <div className="mb-6 space-y-2">
-                    <p className="text-sm uppercase tracking-[.3em] text-purple-700">Reserva de serviço</p>
-                    <h1 className="text-3xl font-semibold text-slate-900 sm:text-4xl">Agende seu atendimento com facilidade</h1>
-                    <p className="max-w-2xl text-slate-600">Selecione um serviço, escolha a data e veja apenas horários livres para o seu negócio.</p>
+                <div className="mb-4 space-y-2 sm:mb-6">
+                    <p className="text-xs uppercase tracking-[.3em] text-purple-700 sm:text-sm">Reserva de serviço</p>
+                    <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl lg:text-4xl">Agende seu atendimento com facilidade</h1>
+                    <p className="max-w-2xl text-sm text-slate-600 sm:text-base">Selecione um serviço, escolha a data e veja apenas horários livres para o seu negócio.</p>
                 </div>
 
                 <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 sm:grid-cols-2">
                     <Label className="space-y-2">
-                        <span>Serviço</span>
-                        <Select {...register('serviceId')}>
+                        <span className="text-sm font-medium sm:text-base">Serviço</span>
+                        <Select {...register('serviceId')} className="text-base">
                             <option value="">Selecione um serviço</option>
                             {serviceOptions.map((service) => (
                                 <option key={service.id} value={service.id}>
@@ -217,31 +208,30 @@ export default function Home() {
                                 </option>
                             ))}
                         </Select>
-                        {errors.serviceId ? <p className="text-sm text-red-600">{errors.serviceId.message}</p> : null}
+                        {errors.serviceId ? <p className="text-xs text-red-600 sm:text-sm">{errors.serviceId.message}</p> : null}
                     </Label>
 
                     <Label className="space-y-2">
-                        <span>Nome</span>
-                        <Input {...register('customerName')} placeholder="Nome completo" />
-                        {errors.customerName ? <p className="text-sm text-red-600">{errors.customerName.message}</p> : null}
+                        <span className="text-sm font-medium sm:text-base">Nome</span>
+                        <Input {...register('customerName')} placeholder="Nome completo" className="text-base" />
+                        {errors.customerName ? <p className="text-xs text-red-600 sm:text-sm">{errors.customerName.message}</p> : null}
                     </Label>
 
                     <Label className="space-y-2">
-                        <span>Telefone</span>
-                        <Input {...register('phone')} placeholder="(11) 91234-5678" />
-                        {errors.phone ? <p className="text-sm text-red-600">{errors.phone.message}</p> : null}
+                        <span className="text-sm font-medium sm:text-base">Telefone</span>
+                        <Input {...register('phone')} placeholder="(11) 91234-5678" className="text-base" />
+                        {errors.phone ? <p className="text-xs text-red-600 sm:text-sm">{errors.phone.message}</p> : null}
                     </Label>
 
                     <Label className="space-y-2">
-                        <span>Data</span>
+                        <span className="text-sm font-medium sm:text-base">Data</span>
                         <DatePicker control={control} name="date" />
-                        {/* <Input type="date" {...register('date')} /> */}
-                        {errors.date ? <p className="text-sm text-red-600">{errors.date.message}</p> : null}
+                        {errors.date ? <p className="text-xs text-red-600 sm:text-sm">{errors.date.message}</p> : null}
                     </Label>
 
                     <Label className="space-y-2 sm:col-span-2">
-                        <span>Horário disponível</span>
-                        <Select {...register('time')} disabled={!selectedServiceId || !selectedDate || availabilityQuery.isFetching}>
+                        <span className="text-sm font-medium sm:text-base">Horário disponível</span>
+                        <Select {...register('time')} disabled={!selectedServiceId || !selectedDate || availabilityQuery.isFetching} className="text-base">
                             <option value="">
                                 {!selectedServiceId
                                     ? 'Selecione primeiro um serviço'
@@ -255,19 +245,19 @@ export default function Home() {
                                 </option>
                             ))}
                         </Select>
-                        {!selectedServiceId ? <p className="text-sm text-slate-500">Escolha um serviço para liberar a consulta de horários.</p> : null}
+                        {!selectedServiceId ? <p className="text-xs text-slate-500 sm:text-sm">Escolha um serviço para liberar a consulta de horários.</p> : null}
                         {selectedServiceId && !selectedDate ? (
-                            <p className="text-sm text-slate-500">Agora escolha uma data para carregar os horários disponíveis.</p>
+                            <p className="text-xs text-slate-500 sm:text-sm">Agora escolha uma data para carregar os horários disponíveis.</p>
                         ) : null}
-                        {availabilityQuery.isFetching ? <p className="text-sm text-slate-500">Verificando disponibilidade...</p> : null}
+                        {availabilityQuery.isFetching ? <p className="text-xs text-slate-500 sm:text-sm">Verificando disponibilidade...</p> : null}
                         {!availabilityQuery.isFetching && selectedServiceId && selectedDate && availableTimes.length === 0 ? (
-                            <p className="text-sm text-slate-500">Sem horários livres para esta combinação.</p>
+                            <p className="text-xs text-slate-500 sm:text-sm">Sem horários livres para esta combinação.</p>
                         ) : null}
-                        {errors.time ? <p className="text-sm text-red-600">{errors.time.message}</p> : null}
+                        {errors.time ? <p className="text-xs text-red-600 sm:text-sm">{errors.time.message}</p> : null}
                     </Label>
 
                     <div className="sm:col-span-2">
-                        <Button type="submit" disabled={appointmentMutation.status === 'pending'}>
+                        <Button type="submit" disabled={appointmentMutation.status === 'pending'} className="w-full sm:w-auto">
                             {appointmentMutation.status === 'pending' ? 'Agendando...' : 'Confirmar reserva'}
                         </Button>
                     </div>
@@ -275,29 +265,29 @@ export default function Home() {
             </Card>
 
             <Card>
-                <div className="mb-6 flex items-center justify-between gap-4">
+                <div className="mb-4 flex flex-col gap-4 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <p className="text-sm uppercase tracking-[.3em] text-purple-700">Agenda pública</p>
-                        <h2 className="text-2xl font-semibold text-slate-900">Próximos agendamentos</h2>
+                        <p className="text-xs uppercase tracking-[.3em] text-purple-700 sm:text-sm">Agenda pública</p>
+                        <h2 className="text-xl font-semibold text-slate-900 sm:text-2xl">Próximos agendamentos</h2>
                     </div>
-                    <span className="rounded-full bg-purple-100 px-3 py-1 text-sm text-purple-700">{appointmentsQuery.data?.length ?? 0} agendamentos</span>
+                    <span className="w-fit rounded-full bg-purple-100 px-3 py-1 text-xs text-purple-700 sm:text-sm">{appointmentsQuery.data?.length ?? 0} agendamentos</span>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                     {appointmentsQuery.isLoading ? (
-                        <p className="text-slate-600">Carregando agendamentos...</p>
+                        <p className="text-sm text-slate-600 sm:text-base">Carregando agendamentos...</p>
                     ) : sortedAppointments.length === 0 ? (
-                        <p className="text-slate-600">Nenhum agendamento agendado para este negócio.</p>
+                        <p className="text-sm text-slate-600 sm:text-base">Nenhum agendamento agendado para este negócio.</p>
                     ) : (
                         sortedAppointments.map((appointment) => (
-                            <div key={appointment.id} className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+                            <div key={appointment.id} className="rounded-3xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
                                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                                     <div>
-                                        <p className="text-lg font-semibold text-slate-900">{appointment.customer.name}</p>
-                                        <p className="text-sm text-slate-600">{appointment.customer.phone}</p>
-                                        <p className="text-sm text-slate-500">{appointment.service?.name}</p>
+                                        <p className="text-base font-semibold text-slate-900 sm:text-lg">{appointment.customer.name}</p>
+                                        <p className="text-xs text-slate-600 sm:text-sm">{appointment.customer.phone}</p>
+                                        <p className="text-xs text-slate-500 sm:text-sm">{appointment.service?.name}</p>
                                     </div>
-                                    <div className="text-sm text-slate-500">
+                                    <div className="text-xs text-slate-500 sm:text-sm">
                                         {new Date(appointment.scheduledAt).toLocaleString('pt-BR', {
                                             dateStyle: 'short',
                                             timeStyle: 'short',

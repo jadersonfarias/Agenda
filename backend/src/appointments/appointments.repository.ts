@@ -17,13 +17,25 @@ type MonthlyRevenueRange = {
   rangeEnd: Date
 }
 
+type AppointmentStatusFilter = 'active' | 'completed' | 'all'
+
 @Injectable()
 export class AppointmentsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findMany(businessId: string) {
+  async findMany(businessId: string, statusFilter: AppointmentStatusFilter = 'all') {
+    const statusCondition =
+      statusFilter === 'active'
+        ? { in: ['SCHEDULED'] as AppointmentStatus[] }
+        : statusFilter === 'completed'
+        ? { in: ['COMPLETED', 'CANCELED'] as AppointmentStatus[] }
+        : undefined
+
     return this.prisma.appointment.findMany({
-      where: { businessId },
+      where: {
+        businessId,
+        ...(statusCondition ? { status: statusCondition } : {}),
+      },
       include: {
         service: true,
         customer: true,
@@ -63,8 +75,8 @@ export class AppointmentsRepository {
   }
 
   async updateStatus(id: string, businessId: string, status: AppointmentStatus) {
-    return this.prisma.appointment.updateMany({
-      where: { id, businessId },
+    return this.prisma.appointment.update({
+      where: { id },
       data: {
         status,
         completedAt: status === AppointmentStatus.COMPLETED ? new Date() : null,

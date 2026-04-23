@@ -23,11 +23,19 @@ export class AppointmentsController {
   constructor(private readonly appointmentsService: AppointmentsService) {}
 
   @Get()
-  getAll(@Query('businessId') businessId: string) {
+  getAll(@Query('businessId') businessId: string, @Query('statusFilter') statusFilter?: string) {
     if (!businessId) {
       throw new BadRequestException('businessId é obrigatório')
     }
-    return this.appointmentsService.getAll(businessId)
+
+    const allowedFilters = ['active', 'completed', 'all'] as const
+    const parsedFilter = statusFilter === undefined ? 'all' : (statusFilter as typeof allowedFilters[number])
+
+    if (statusFilter !== undefined && !allowedFilters.includes(parsedFilter)) {
+      throw new BadRequestException('statusFilter inválido')
+    }
+
+    return this.appointmentsService.getAll(businessId, parsedFilter)
   }
 
   @Get('financial/monthly')

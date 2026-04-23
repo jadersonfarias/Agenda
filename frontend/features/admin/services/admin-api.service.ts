@@ -1,4 +1,4 @@
-import { type AdminAppointmentItem, type AdminAppointmentStatus, type AdminMonthlySummary, type AdminServiceItem } from '../types'
+import { type AdminAppointmentItem, type AdminAppointmentStatus, type AdminAppointmentStatusFilter, type AdminMonthlySummary, type AdminServiceItem } from '../types'
 
 export async function fetchAdminServices() {
     const response = await fetch('/api/admin/services', {
@@ -44,8 +44,12 @@ export async function fetchAdminMonthlySummary(month: string) {
     return payload
 }
 
-export async function fetchAdminAppointments(businessId: string) {
-    const response = await fetch(`/api/admin/appointments?businessId=${encodeURIComponent(businessId)}`, {
+export async function fetchAdminAppointments(businessId: string, statusFilter: AdminAppointmentStatusFilter = 'active') {
+    const params = new URLSearchParams({
+        businessId,
+        statusFilter,
+    })
+    const response = await fetch(`/api/admin/appointments?${params.toString()}`, {
         method: 'GET',
         credentials: 'same-origin',
     })

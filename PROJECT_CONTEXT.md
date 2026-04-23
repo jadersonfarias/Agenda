@@ -1,7 +1,7 @@
 # Project Context
 
 ## Visao Geral
-Monorepo fullstack para agendamento de salao/servicos, com area publica de reservas e area administrativa autenticada. O projeto e multi-tenant por `Business`: servicos, clientes e agendamentos pertencem a um negocio.
+Monorepo fullstack para agendamento servicos, com area publica de reservas e area administrativa autenticada. O projeto e multi-tenant por `Business`: servicos, clientes e agendamentos pertencem a um negocio.
 
 ## Estrutura Resumida
 ```text

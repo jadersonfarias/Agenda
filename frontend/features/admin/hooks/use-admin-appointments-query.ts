@@ -2,11 +2,16 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { fetchAdminAppointments } from '../services/admin-api.service'
+import { type AdminAppointmentStatusFilter } from '../types'
 
-export function useAdminAppointmentsQuery(businessId?: string, enabled = true) {
+export function useAdminAppointmentsQuery(
+    businessId?: string,
+    statusFilter: AdminAppointmentStatusFilter = 'active',
+    enabled = true
+) {
     return useQuery({
-        queryKey: ['admin-appointments', businessId],
-        queryFn: () => fetchAdminAppointments(businessId!),
+        queryKey: ['admin-appointments', businessId, statusFilter],
+        queryFn: () => fetchAdminAppointments(businessId!, statusFilter),
         enabled: enabled && Boolean(businessId),
     })
 }

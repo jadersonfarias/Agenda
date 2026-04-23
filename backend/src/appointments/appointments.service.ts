@@ -45,13 +45,13 @@ export class AppointmentsService {
     )
   }
 
-  async getAll(businessId: string) {
+  async getAll(businessId: string, statusFilter: 'active' | 'completed' | 'all' = 'all') {
     const business = await this.businessesRepository.findBusinessById(businessId)
     if (!business) {
       throw new BadRequestException('Negócio inválido')
     }
 
-    return this.appointmentsRepository.findMany(business.id)
+    return this.appointmentsRepository.findMany(business.id, statusFilter)
   }
 
   async create(data: CreateAppointmentDto) {
@@ -159,7 +159,7 @@ export class AppointmentsService {
     }
 
     const result = await this.appointmentsRepository.updateStatus(id, business.id, statusDto.status)
-    if (result.count === 0) {
+    if (!result) {
       throw new NotFoundException('Agendamento não encontrado')
     }
 

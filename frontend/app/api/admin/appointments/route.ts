@@ -14,18 +14,27 @@ export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url)
         const businessId = searchParams.get('businessId')
+        const statusFilter = searchParams.get('statusFilter') ?? 'active'
 
         if (!businessId) {
             return NextResponse.json({ message: 'businessId é obrigatório' }, { status: 400 })
         }
 
-        const response = await fetch(`${apiBaseUrl}/appointments?businessId=${encodeURIComponent(businessId)}`, {
-            method: 'GET',
-            headers: {
-                Accept: 'application/json',
+        const allowedFilters = ['active', 'completed', 'all'] as const
+        if (!allowedFilters.includes(statusFilter as typeof allowedFilters[number])) {
+            return NextResponse.json({ message: 'statusFilter inválido' }, { status: 400 })
+        }
+
+        const response = await fetch(
+            `${apiBaseUrl}/appointments?businessId=${encodeURIComponent(businessId)}&statusFilter=${encodeURIComponent(statusFilter)}`,
+            {
+                method: 'GET',
+                headers: {
+                    Accept: 'application/json',
+                },
+                cache: 'no-store',
             },
-            cache: 'no-store',
-        })
+        )
 
         const payload = await response.json().catch(() => null)
 

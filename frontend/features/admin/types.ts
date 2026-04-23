@@ -31,6 +31,7 @@ export type AdminMonthlySummary = {
 }
 
 export type AdminAppointmentStatus = 'SCHEDULED' | 'COMPLETED' | 'CANCELED'
+export type AdminAppointmentStatusFilter = 'active' | 'completed' | 'all'
 
 export type AdminAppointmentItem = {
     id: string

@@ -7,7 +7,7 @@ import toast from 'react-hot-toast'
 import { signOut, useSession } from 'next-auth/react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { availabilityFormSchema, serviceFormSchema, type AvailabilityFormValues, type ServiceFormValues } from '../../features/admin/schemas'
-import { type AdminAppointmentItem, type AdminAppointmentStatus, type AdminDashboardData, type AdminServiceItem } from '../../features/admin/types'
+import { type AdminAppointmentItem, type AdminAppointmentStatus, type AdminAppointmentStatusFilter, type AdminDashboardData, type AdminServiceItem } from '../../features/admin/types'
 import { useAdminAppointmentsQuery } from '../../features/admin/hooks/use-admin-appointments-query'
 import { useAdminMonthlySummaryQuery } from '../../features/admin/hooks/use-admin-monthly-summary-query'
 import { updateAdminAppointmentStatus } from '../../features/admin/services/admin-api.service'
@@ -31,6 +31,18 @@ const appointmentStatusLabels: Record<AdminAppointmentStatus, string> = {
     COMPLETED: 'Concluído',
     CANCELED: 'Cancelado',
 }
+
+const appointmentStatusBadgeStyles: Record<AdminAppointmentStatus, string> = {
+    SCHEDULED: 'bg-amber-100 text-amber-700',
+    COMPLETED: 'bg-emerald-100 text-emerald-700',
+    CANCELED: 'bg-red-100 text-red-700',
+}
+
+const appointmentFilterOptions: { value: AdminAppointmentStatusFilter; label: string }[] = [
+    { value: 'active', label: 'Agenda' },
+    { value: 'completed', label: 'Histórico' },
+    { value: 'all', label: 'Todos' },
+]
 
 function getCurrentMonthValue() {
     const currentDate = new Date()
@@ -93,29 +105,29 @@ function AvailabilityForm({
 
     return (
         <Card className="border-slate-200 shadow-lg shadow-slate-200/60">
-            <div className="mb-6">
-                <p className="text-sm uppercase tracking-[.3em] text-purple-700">Disponibilidade</p>
-                <h2 className="mt-2 text-2xl font-semibold text-slate-900">Horários disponíveis</h2>
-                <p className="mt-2 max-w-2xl text-sm text-slate-600">
+            <div className="mb-4 sm:mb-6">
+                <p className="text-xs uppercase tracking-[.3em] text-purple-700 sm:text-sm">Disponibilidade</p>
+                <h2 className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">Horários disponíveis</h2>
+                <p className="mt-2 max-w-2xl text-xs text-slate-600 sm:text-sm">
                     Defina a faixa horária usada na agenda pública para calcular os horários livres do negócio.
                 </p>
             </div>
 
-            <form className="grid gap-4 md:grid-cols-2" onSubmit={onSubmit}>
+            <form className="grid gap-4 sm:grid-cols-2" onSubmit={onSubmit}>
                 <Label className="space-y-2">
-                    <span>Abertura</span>
+                    <span className="text-sm font-medium sm:text-base">Abertura</span>
                     <Input type="time" {...register('openTime')} />
-                    {errors.openTime ? <p className="text-sm text-red-600">{errors.openTime.message}</p> : null}
+                    {errors.openTime ? <p className="text-xs text-red-600 sm:text-sm">{errors.openTime.message}</p> : null}
                 </Label>
 
                 <Label className="space-y-2">
-                    <span>Encerramento</span>
+                    <span className="text-sm font-medium sm:text-base">Encerramento</span>
                     <Input type="time" {...register('closeTime')} />
-                    {errors.closeTime ? <p className="text-sm text-red-600">{errors.closeTime.message}</p> : null}
+                    {errors.closeTime ? <p className="text-xs text-red-600 sm:text-sm">{errors.closeTime.message}</p> : null}
                 </Label>
 
-                <div className="md:col-span-2 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="text-sm text-slate-600">
+                <div className="sm:col-span-2 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="text-xs text-slate-600 sm:text-sm">
                         Agenda atual: <span className="font-semibold text-slate-900">{business.openTime}</span> às{' '}
                         <span className="font-semibold text-slate-900">{business.closeTime}</span>
                     </div>
@@ -148,15 +160,15 @@ function ServiceForm({
         resolver: zodResolver(serviceFormSchema),
         defaultValues: initialValues
             ? {
-                  name: initialValues.name,
-                  price: Number(initialValues.price),
-                  durationMinutes: initialValues.durationMinutes,
-              }
+                name: initialValues.name,
+                price: Number(initialValues.price),
+                durationMinutes: initialValues.durationMinutes,
+            }
             : {
-                  name: '',
-                  price: 0,
-                  durationMinutes: 30,
-              },
+                name: '',
+                price: 0,
+                durationMinutes: 30,
+            },
     })
 
     const onSubmit = handleSubmit(async (values) => {
@@ -184,22 +196,22 @@ function ServiceForm({
     return (
         <form className="grid gap-4" onSubmit={onSubmit}>
             <Label className="space-y-2">
-                <span>Nome do serviço</span>
+                <span className="text-sm font-medium sm:text-base">Nome do serviço</span>
                 <Input placeholder="Ex: Corte feminino" {...register('name')} />
-                {errors.name ? <p className="text-sm text-red-600">{errors.name.message}</p> : null}
+                {errors.name ? <p className="text-xs text-red-600 sm:text-sm">{errors.name.message}</p> : null}
             </Label>
 
             <div className="grid gap-4 sm:grid-cols-2">
                 <Label className="space-y-2">
-                    <span>Preço</span>
+                    <span className="text-sm font-medium sm:text-base">Preço</span>
                     <Input type="number" step="0.01" min="0" {...register('price', { valueAsNumber: true })} />
-                    {errors.price ? <p className="text-sm text-red-600">{errors.price.message}</p> : null}
+                    {errors.price ? <p className="text-xs text-red-600 sm:text-sm">{errors.price.message}</p> : null}
                 </Label>
 
                 <Label className="space-y-2">
-                    <span>Duração (min)</span>
+                    <span className="text-sm font-medium sm:text-base">Duração (min)</span>
                     <Input type="number" min="5" step="5" {...register('durationMinutes', { valueAsNumber: true })} />
-                    {errors.durationMinutes ? <p className="text-sm text-red-600">{errors.durationMinutes.message}</p> : null}
+                    {errors.durationMinutes ? <p className="text-xs text-red-600 sm:text-sm">{errors.durationMinutes.message}</p> : null}
                 </Label>
             </div>
 
@@ -224,8 +236,9 @@ export default function AdminPanel({ initialData }: AdminPanelProps) {
     const [editingService, setEditingService] = useState<AdminServiceItem | null>(null)
     const [deletingServiceId, setDeletingServiceId] = useState<string | null>(null)
     const [appointmentStatusDrafts, setAppointmentStatusDrafts] = useState<Record<string, AdminAppointmentStatus>>({})
+    const [appointmentFilter, setAppointmentFilter] = useState<AdminAppointmentStatusFilter>('active')
     const servicesQuery = useAdminServicesQuery(session?.accessToken)
-    const appointmentsQuery = useAdminAppointmentsQuery(business.id, Boolean(session?.accessToken))
+    const appointmentsQuery = useAdminAppointmentsQuery(business.id, appointmentFilter, Boolean(session?.accessToken))
     const monthlySummaryQuery = useAdminMonthlySummaryQuery(selectedMonth, Boolean(session?.accessToken))
     const services = servicesQuery.data ?? initialData.services
 
@@ -296,13 +309,13 @@ export default function AdminPanel({ initialData }: AdminPanelProps) {
     }
 
     return (
-        <main className="mx-auto flex min-h-screen max-w-7xl flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8">
+        <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-6 px-4 py-8 sm:gap-8 sm:px-6 sm:py-10 lg:px-8">
             <Card className="border-purple-200 bg-gradient-to-br from-white via-white to-purple-50">
-                <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-                    <div className="space-y-3">
-                        <p className="text-sm uppercase tracking-[.35em] text-purple-700">Painel admin</p>
-                        <h1 className="text-3xl font-semibold text-slate-900 sm:text-4xl">Gestão do salão</h1>
-                        <p className="max-w-3xl text-slate-600">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                    <div className="space-y-2 sm:space-y-3">
+                        <p className="text-xs uppercase tracking-[.3em] text-purple-700 sm:text-sm">Painel admin</p>
+                        <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl lg:text-4xl">Gestão do salão</h1>
+                        <p className="max-w-3xl text-sm text-slate-600 sm:text-base">
                             Ajuste a vitrine de serviços e a janela de atendimento do negócio <span className="font-semibold">{business.name}</span>.
                         </p>
                     </div>
@@ -319,73 +332,78 @@ export default function AdminPanel({ initialData }: AdminPanelProps) {
                 </div>
             </Card>
 
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <Card className="border-slate-200 shadow-lg shadow-slate-200/60">
-                    <p className="text-sm uppercase tracking-[.25em] text-slate-500">Serviços</p>
-                    <p className="mt-3 text-3xl font-semibold text-slate-900">{services.length}</p>
-                    <p className="mt-2 text-sm text-slate-600">Itens ativos na agenda do salão.</p>
+                    <p className="text-xs uppercase tracking-[.25em] text-slate-500 sm:text-sm">Serviços</p>
+                    <p className="mt-3 text-2xl font-semibold text-slate-900 sm:text-3xl">{services.length}</p>
+                    <p className="mt-2 text-xs text-slate-600 sm:text-sm">Itens ativos na agenda do salão.</p>
                 </Card>
                 <Card className="border-slate-200 shadow-lg shadow-slate-200/60">
-                    <p className="text-sm uppercase tracking-[.25em] text-slate-500">Funcionamento</p>
-                    <p className="mt-3 text-3xl font-semibold text-slate-900">
+                    <p className="text-xs uppercase tracking-[.25em] text-slate-500 sm:text-sm">Funcionamento</p>
+                    <p className="mt-3 text-lg font-semibold text-slate-900 sm:text-3xl">
                         {business.openTime} - {business.closeTime}
                     </p>
-                    <p className="mt-2 text-sm text-slate-600">Faixa horária usada para calcular disponibilidade.</p>
+                    <p className="mt-2 text-xs text-slate-600 sm:text-sm">Faixa horária usada para calcular disponibilidade.</p>
                 </Card>
                 <Card className="border-slate-200 shadow-lg shadow-slate-200/60">
-                    <p className="text-sm uppercase tracking-[.25em] text-slate-500">Reserva pública</p>
-                    <p className="mt-3 text-3xl font-semibold text-slate-900">/</p>
-                    <p className="mt-2 text-sm text-slate-600">Mudanças aqui refletem na página de agendamento.</p>
+                    <p className="text-xs uppercase tracking-[.25em] text-slate-500 sm:text-sm">Reserva pública</p>
+                    <p className="mt-3 text-2xl font-semibold text-slate-900 sm:text-3xl">/</p>
+                    <p className="mt-2 text-xs text-slate-600 sm:text-sm">Mudanças aqui refletem na página de agendamento.</p>
+                </Card>
+                <Card className="border-slate-200 shadow-lg shadow-slate-200/60">
+                    <p className="text-xs uppercase tracking-[.25em] text-slate-500 sm:text-sm">Agendamentos</p>
+                    <p className="mt-3 text-2xl font-semibold text-slate-900 sm:text-3xl">{appointmentsQuery.data?.length ?? 0}</p>
+                    <p className="mt-2 text-xs text-slate-600 sm:text-sm">Total de agendamentos registrados.</p>
                 </Card>
             </div>
 
             <Card className="border-slate-200 shadow-lg shadow-slate-200/60">
                 <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div>
-                        <p className="text-sm uppercase tracking-[.3em] text-purple-700">Financeiro</p>
-                        <h2 className="mt-2 text-2xl font-semibold text-slate-900">Caixa mensal</h2>
-                        <p className="mt-2 max-w-2xl text-sm text-slate-600">
+                        <p className="text-xs uppercase tracking-[.3em] text-purple-700 sm:text-sm">Financeiro</p>
+                        <h2 className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">Caixa mensal</h2>
+                        <p className="mt-2 max-w-2xl text-xs text-slate-600 sm:text-sm">
                             Resumo simples do mês com base em agendamentos concluídos e atividade recente dos clientes.
                         </p>
                     </div>
 
                     <Label className="space-y-2">
-                        <span className="text-sm text-slate-600">Mês de referência</span>
+                        <span className="text-xs text-slate-600 sm:text-sm">Mês de referência</span>
                         <Input type="month" value={selectedMonth} onChange={(event) => setSelectedMonth(event.target.value)} />
                     </Label>
                 </div>
 
                 {monthlySummaryQuery.isLoading ? (
-                    <div className="rounded-3xl border border-slate-200 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500">
+                    <div className="rounded-3xl border border-slate-200 bg-slate-50 px-6 py-10 text-center text-xs text-slate-500 sm:text-sm">
                         Carregando resumo financeiro...
                     </div>
                 ) : monthlySummaryQuery.isError ? (
-                    <div className="rounded-3xl border border-red-200 bg-red-50 px-6 py-10 text-center text-sm text-red-600">
+                    <div className="rounded-3xl border border-red-200 bg-red-50 px-6 py-10 text-center text-xs text-red-600 sm:text-sm">
                         Não foi possível carregar o resumo financeiro.
                     </div>
                 ) : monthlySummaryQuery.data ? (
-                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                         <Card className="border-slate-200 bg-slate-50 shadow-none">
-                            <p className="text-sm uppercase tracking-[.25em] text-slate-500">Faturamento</p>
-                            <p className="mt-3 text-3xl font-semibold text-slate-900">R$ {monthlySummaryQuery.data.totalRevenue}</p>
-                            <p className="mt-2 text-sm text-slate-600">Somente agendamentos concluídos no mês.</p>
+                            <p className="text-xs uppercase tracking-[.25em] text-slate-500 sm:text-sm">Faturamento</p>
+                            <p className="mt-3 text-2xl font-semibold text-slate-900 sm:text-3xl">R$ {monthlySummaryQuery.data.totalRevenue}</p>
+                            <p className="mt-2 text-xs text-slate-600 sm:text-sm">Somente agendamentos concluídos no mês.</p>
                         </Card>
                         <Card className="border-slate-200 bg-slate-50 shadow-none">
-                            <p className="text-sm uppercase tracking-[.25em] text-slate-500">Concluídos</p>
-                            <p className="mt-3 text-3xl font-semibold text-slate-900">{monthlySummaryQuery.data.completedAppointments}</p>
-                            <p className="mt-2 text-sm text-slate-600">Atendimentos com status `COMPLETED`.</p>
+                            <p className="text-xs uppercase tracking-[.25em] text-slate-500 sm:text-sm">Concluídos</p>
+                            <p className="mt-3 text-2xl font-semibold text-slate-900 sm:text-3xl">{monthlySummaryQuery.data.completedAppointments}</p>
+                            <p className="mt-2 text-xs text-slate-600 sm:text-sm">Atendimentos com status `COMPLETED`.</p>
                         </Card>
                         <Card className="border-slate-200 bg-slate-50 shadow-none">
-                            <p className="text-sm uppercase tracking-[.25em] text-slate-500">Ticket médio</p>
-                            <p className="mt-3 text-3xl font-semibold text-slate-900">R$ {monthlySummaryQuery.data.averageTicket}</p>
-                            <p className="mt-2 text-sm text-slate-600">Valor médio por atendimento concluído.</p>
+                            <p className="text-xs uppercase tracking-[.25em] text-slate-500 sm:text-sm">Ticket médio</p>
+                            <p className="mt-3 text-2xl font-semibold text-slate-900 sm:text-3xl">R$ {monthlySummaryQuery.data.averageTicket}</p>
+                            <p className="mt-2 text-xs text-slate-600 sm:text-sm">Valor médio por atendimento concluído.</p>
                         </Card>
                         <Card className="border-slate-200 bg-slate-50 shadow-none">
-                            <p className="text-sm uppercase tracking-[.25em] text-slate-500">Clientes</p>
-                            <p className="mt-3 text-lg font-semibold text-slate-900">
+                            <p className="text-xs uppercase tracking-[.25em] text-slate-500 sm:text-sm">Clientes</p>
+                            <p className="mt-3 text-lg font-semibold text-slate-900 sm:text-xl">
                                 {monthlySummaryQuery.data.activeCustomers} ativos / {monthlySummaryQuery.data.inactiveCustomers} inativos
                             </p>
-                            <p className="mt-2 text-sm text-slate-600">
+                            <p className="mt-2 text-xs text-slate-600 sm:text-sm">
                                 Ativo = atendimento concluído nos últimos {monthlySummaryQuery.data.activeCustomerWindowDays} dias.
                             </p>
                         </Card>
@@ -401,102 +419,117 @@ export default function AdminPanel({ initialData }: AdminPanelProps) {
             />
 
             <Card className="border-slate-200 shadow-lg shadow-slate-200/60">
-                <div className="mb-6">
-                    <p className="text-sm uppercase tracking-[.3em] text-purple-700">Agenda</p>
-                    <h2 className="mt-2 text-2xl font-semibold text-slate-900">Agendamentos</h2>
-                    <p className="mt-2 max-w-2xl text-sm text-slate-600">
-                        Atualize o status de cada agendamento sem alterar as demais funcionalidades do sistema.
-                    </p>
+                <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <p className="text-xs uppercase tracking-[.3em] text-purple-700 sm:text-sm">Agenda</p>
+                        <h2 className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">Agendamentos</h2>
+                        <p className="mt-2 max-w-2xl text-xs text-slate-600 sm:text-sm">
+                            Atualize o status de cada agendamento sem alterar as demais funcionalidades do sistema.
+                        </p>
+                    </div>
+                    <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-3">
+                        {appointmentFilterOptions.map((option) => (
+                            <Button
+                                key={option.value}
+                                variant={appointmentFilter === option.value ? 'default' : 'secondary'}
+                                type="button"
+                                onClick={() => setAppointmentFilter(option.value)}
+                                className="rounded-full px-4 py-2 text-sm font-semibold"
+                            >
+                                {option.label}
+                            </Button>
+                        ))}
+                    </div>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                     {appointmentsQuery.isLoading ? (
-                        <div className="rounded-3xl border border-slate-200 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500">
+                        <div className="rounded-3xl border border-slate-200 bg-slate-50 px-6 py-10 text-center text-xs text-slate-500 sm:text-sm">
                             Carregando agendamentos...
                         </div>
                     ) : null}
 
                     {appointmentsQuery.isError ? (
-                        <div className="rounded-3xl border border-red-200 bg-red-50 px-6 py-10 text-center text-sm text-red-600">
+                        <div className="rounded-3xl border border-red-200 bg-red-50 px-6 py-10 text-center text-xs text-red-600 sm:text-sm">
                             Não foi possível carregar os agendamentos.
                         </div>
                     ) : null}
 
                     {!appointmentsQuery.isLoading && !appointmentsQuery.isError && (appointmentsQuery.data?.length ?? 0) === 0 ? (
-                        <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500">
-                            Nenhum agendamento encontrado para este negócio.
+                        <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center text-xs text-slate-500 sm:text-sm">
+                            Nenhum agendamento nesta categoria.
                         </div>
                     ) : null}
 
                     {!appointmentsQuery.isLoading && !appointmentsQuery.isError
                         ? appointmentsQuery.data?.map((appointment) => {
-                              const selectedStatus = appointmentStatusDrafts[appointment.id] ?? appointment.status
-                              const isSaving = updateAppointmentStatusMutation.isPending && updateAppointmentStatusMutation.variables?.appointmentId === appointment.id
-                              const hasStatusChanged = selectedStatus !== appointment.status
+                            const selectedStatus = appointmentStatusDrafts[appointment.id] ?? appointment.status
+                            const isSaving = updateAppointmentStatusMutation.isPending && updateAppointmentStatusMutation.variables?.appointmentId === appointment.id
+                            const hasStatusChanged = selectedStatus !== appointment.status
 
-                              return (
-                                  <div
-                                      key={appointment.id}
-                                      className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-5 xl:flex-row xl:items-center xl:justify-between"
-                                  >
-                                      <div className="space-y-1">
-                                          <div className="flex flex-wrap items-center gap-2">
-                                              <h3 className="text-lg font-semibold text-slate-900">{appointment.customer.name}</h3>
-                                              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[.2em] text-slate-700">
-                                                  {appointmentStatusLabels[appointment.status]}
-                                              </span>
-                                          </div>
-                                          <p className="text-sm text-slate-600">{appointment.customer.phone}</p>
-                                          <p className="text-sm text-slate-500">{appointment.service.name}</p>
-                                          <p className="text-sm text-slate-500">
-                                              {new Date(appointment.scheduledAt).toLocaleString('pt-BR', {
-                                                  dateStyle: 'short',
-                                                  timeStyle: 'short',
-                                              })}
-                                          </p>
-                                      </div>
+                            return (
+                                <div
+                                    key={appointment.id}
+                                    className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-4 sm:p-5 xl:flex-row xl:items-center xl:justify-between"
+                                >
+                                    <div className="space-y-1">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <h3 className="text-base font-semibold text-slate-900 sm:text-lg">{appointment.customer.name}</h3>
+                                            <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[.2em] ${appointmentStatusBadgeStyles[appointment.status]}`}>
+                                                {appointmentStatusLabels[appointment.status]}
+                                            </span>
+                                        </div>
+                                        <p className="text-sm text-slate-600">{appointment.customer.phone}</p>
+                                        <p className="text-sm text-slate-500">{appointment.service.name}</p>
+                                        <p className="text-sm text-slate-500">
+                                            {new Date(appointment.scheduledAt).toLocaleString('pt-BR', {
+                                                dateStyle: 'short',
+                                                timeStyle: 'short',
+                                            })}
+                                        </p>
+                                    </div>
 
-                                      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                                          <Label className="space-y-2">
-                                              <span>Status</span>
-                                              <Select
-                                                  value={selectedStatus}
-                                                  onChange={(event) =>
-                                                      handleAppointmentStatusChange(
-                                                          appointment.id,
-                                                          event.target.value as AdminAppointmentStatus
-                                                      )
-                                                  }
-                                                  disabled={isSaving}
-                                              >
-                                                  <option value="SCHEDULED">Agendado</option>
-                                                  <option value="COMPLETED">Concluído</option>
-                                                  <option value="CANCELED">Cancelado</option>
-                                              </Select>
-                                          </Label>
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                                        <Label className="space-y-2">
+                                            <span>Status</span>
+                                            <Select
+                                                value={selectedStatus}
+                                                onChange={(event) =>
+                                                    handleAppointmentStatusChange(
+                                                        appointment.id,
+                                                        event.target.value as AdminAppointmentStatus
+                                                    )
+                                                }
+                                                disabled={isSaving}
+                                            >
+                                                <option value="SCHEDULED">Agendado</option>
+                                                <option value="COMPLETED">Concluído</option>
+                                                <option value="CANCELED">Cancelado</option>
+                                            </Select>
+                                        </Label>
 
-                                          <Button
-                                              type="button"
-                                              onClick={() => handleAppointmentStatusSave(appointment)}
-                                              disabled={isSaving || !hasStatusChanged}
-                                              className="sm:w-auto"
-                                          >
-                                              {isSaving ? 'Salvando...' : 'Salvar status'}
-                                          </Button>
-                                      </div>
-                                  </div>
-                              )
-                          })
+                                        <Button
+                                            type="button"
+                                            onClick={() => handleAppointmentStatusSave(appointment)}
+                                            disabled={isSaving || !hasStatusChanged}
+                                            className="sm:w-auto"
+                                        >
+                                            {isSaving ? 'Salvando...' : 'Salvar status'}
+                                        </Button>
+                                    </div>
+                                </div>
+                            )
+                        })
                         : null}
                 </div>
             </Card>
 
             <Card className="border-slate-200 shadow-lg shadow-slate-200/60">
-                <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div className="mb-4 flex flex-col gap-4 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
                     <div>
-                        <p className="text-sm uppercase tracking-[.3em] text-purple-700">Catálogo</p>
-                        <h2 className="mt-2 text-2xl font-semibold text-slate-900">Serviços cadastrados</h2>
-                        <p className="mt-2 max-w-2xl text-sm text-slate-600">
+                        <p className="text-xs uppercase tracking-[.3em] text-purple-700 sm:text-sm">Catálogo</p>
+                        <h2 className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">Serviços cadastrados</h2>
+                        <p className="mt-2 max-w-2xl text-xs text-slate-600 sm:text-sm">
                             Crie, edite ou remova serviços. Serviços com agendamentos vinculados ficam protegidos contra exclusão.
                         </p>
                     </div>
@@ -506,9 +539,9 @@ export default function AdminPanel({ initialData }: AdminPanelProps) {
                     </Button>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                     {servicesQuery.isLoading ? (
-                        <div className="rounded-3xl border border-slate-200 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500">
+                        <div className="rounded-3xl border border-slate-200 bg-slate-50 px-6 py-10 text-center text-xs text-slate-500 sm:text-sm">
                             Carregando serviços...
                         </div>
                     ) : null}
@@ -529,17 +562,17 @@ export default function AdminPanel({ initialData }: AdminPanelProps) {
                         services.map((service) => (
                             <div
                                 key={service.id}
-                                className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-5 md:flex-row md:items-center md:justify-between"
+                                className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-4 sm:p-5 md:flex-row md:items-center md:justify-between"
                             >
                                 <div className="space-y-1">
                                     <div className="flex flex-wrap items-center gap-2">
-                                        <h3 className="text-lg font-semibold text-slate-900">{service.name}</h3>
+                                        <h3 className="text-base font-semibold text-slate-900 sm:text-lg">{service.name}</h3>
                                         <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold uppercase tracking-[.2em] text-purple-700">
                                             {service.durationMinutes} min
                                         </span>
                                     </div>
-                                    <p className="text-sm text-slate-600">R$ {Number(service.price).toFixed(2)}</p>
-                                    <p className="text-sm text-slate-500">
+                                    <p className="text-xs text-slate-600 sm:text-sm">R$ {Number(service.price).toFixed(2)}</p>
+                                    <p className="text-xs text-slate-500 sm:text-sm">
                                         {service.appointmentCount === 0
                                             ? 'Sem agendamentos vinculados'
                                             : `${service.appointmentCount} agendamento(s) vinculado(s)`}

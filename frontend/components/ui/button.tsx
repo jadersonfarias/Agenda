@@ -18,7 +18,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         <button
             ref={ref}
             className={cn(
-                'inline-flex w-full items-center justify-center rounded-2xl px-6 py-3 text-sm font-semibold transition focus:outline-none focus:ring-2 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:hover:bg-slate-200 disabled:focus:ring-slate-200',
+                'inline-flex w-full items-center justify-center rounded-2xl px-4 py-3 text-base font-semibold transition focus:outline-none focus:ring-2 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:hover:bg-slate-200 disabled:focus:ring-slate-200 sm:px-6 sm:text-sm md:w-auto',
                 variantClasses[variant],
                 className
             )}
