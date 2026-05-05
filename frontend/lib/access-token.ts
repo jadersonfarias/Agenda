@@ -1,44 +1,28 @@
-import { createHmac } from 'crypto'
+export type MembershipRole = 'OWNER' | 'ADMIN' | 'STAFF'
+
+export type AccessTokenMembership = {
+  businessId: string
+  role: MembershipRole
+}
 
 type AccessTokenPayload = {
   sub: string
   email?: string | null
   name?: string | null
-  exp: number
+  memberships?: AccessTokenMembership[]
+  exp?: number
 }
 
-const ACCESS_TOKEN_TTL_SECONDS = 60 * 60
+export function decodeAccessToken(token: string): AccessTokenPayload {
+  const [, encodedPayload] = token.split('.')
 
-function encodeBase64Url(value: string) {
-  return Buffer.from(value).toString('base64url')
-}
-
-function signSegment(value: string, secret: string) {
-  return createHmac('sha256', secret).update(value).digest('base64url')
-}
-
-export function createAccessToken(input: {
-  userId: string
-  email?: string | null
-  name?: string | null
-  secret: string
-}) {
-  const header = {
-    alg: 'HS256',
-    typ: 'JWT',
+  if (!encodedPayload) {
+    throw new Error('Token inválido')
   }
 
-  const payload: AccessTokenPayload = {
-    sub: input.userId,
-    email: input.email,
-    name: input.name,
-    exp: Math.floor(Date.now() / 1000) + ACCESS_TOKEN_TTL_SECONDS,
-  }
+  return JSON.parse(Buffer.from(encodedPayload, 'base64url').toString()) as AccessTokenPayload
+}
 
-  const encodedHeader = encodeBase64Url(JSON.stringify(header))
-  const encodedPayload = encodeBase64Url(JSON.stringify(payload))
-  const content = `${encodedHeader}.${encodedPayload}`
-  const signature = signSegment(content, input.secret)
-
-  return `${content}.${signature}`
+export function getPrimaryBusinessId(token: string) {
+  return decodeAccessToken(token).memberships?.[0]?.businessId
 }

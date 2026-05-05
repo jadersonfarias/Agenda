@@ -1,70 +1,133 @@
-import { type AdminAppointmentItem, type AdminAppointmentStatus, type AdminAppointmentStatusFilter, type AdminMonthlySummary, type AdminServiceItem } from '../types'
+import { api, getApiErrorMessage } from '../../../lib/api'
+import {
+    type AdminAppointmentItem,
+    type AdminAppointmentStatus,
+    type AdminAppointmentStatusFilter,
+    type AdminBusinessSettings,
+    type AdminMonthlySummary,
+    type AdminServiceItem,
+} from '../types'
 
-export async function fetchAdminServices() {
-    const response = await fetch('/api/admin/services', {
-        method: 'GET',
-        credentials: 'same-origin',
-    })
-
-    const payload = (await response.json().catch(() => null)) as
-        | AdminServiceItem[]
-        | { message?: string }
-        | null
-
-    if (!response.ok) {
-        const message =
-            payload && !Array.isArray(payload) ? payload.message : undefined
-
-        throw new Error(message || 'Não foi possível carregar os serviços')
-    }
-
-    return Array.isArray(payload) ? payload : []
+type PaginatedResponse<T> = {
+    data: T[]
 }
 
-export async function fetchAdminMonthlySummary(month: string) {
-    const response = await fetch(`/api/admin/financial-summary?month=${encodeURIComponent(month)}`, {
-        method: 'GET',
-        credentials: 'same-origin',
-    })
+function normalizeAdminServices(payload: AdminServiceItem[] | PaginatedResponse<AdminServiceItem>) {
+    return Array.isArray(payload) ? payload : payload.data
+}
 
-    const payload = (await response.json().catch(() => null)) as
-        | AdminMonthlySummary
-        | { message?: string }
-        | null
+function formatMoney(value: string | number) {
+    return typeof value === 'number' ? value.toFixed(2) : value
+}
 
-    if (!response.ok) {
-        const message = payload && !Array.isArray(payload) && 'message' in payload ? payload.message : undefined
-        throw new Error(message || 'Não foi possível carregar o resumo financeiro')
+function normalizeMonthlySummary(payload: Omit<AdminMonthlySummary, 'totalRevenue' | 'averageTicket'> & {
+    totalRevenue: string | number
+    averageTicket: string | number
+}) {
+    return {
+        ...payload,
+        totalRevenue: formatMoney(payload.totalRevenue),
+        averageTicket: formatMoney(payload.averageTicket),
     }
+}
 
-    if (!payload || Array.isArray(payload) || !('month' in payload)) {
-        throw new Error('Resposta inválida do resumo financeiro')
+export async function fetchAdminServices(businessId: string) {
+    try {
+        const response = await api.get<AdminServiceItem[] | PaginatedResponse<AdminServiceItem>>('/admin/services', {
+            params: { businessId },
+        })
+
+        return normalizeAdminServices(response.data)
+    } catch (error) {
+        throw new Error(getApiErrorMessage(error, 'Não foi possível carregar os serviços'))
     }
+}
 
-    return payload
+export async function createAdminService(input: {
+    businessId: string
+    name: string
+    price: number
+    durationMinutes: number
+}) {
+    try {
+        const response = await api.post<AdminServiceItem>('/admin/services', input)
+        return response.data
+    } catch (error) {
+        throw new Error(getApiErrorMessage(error, 'Não foi possível criar o serviço'))
+    }
+}
+
+export async function updateAdminService(input: {
+    businessId: string
+    serviceId: string
+    name: string
+    price: number
+    durationMinutes: number
+}) {
+    try {
+        const response = await api.patch<AdminServiceItem>(`/admin/services/${input.serviceId}`, {
+            businessId: input.businessId,
+            name: input.name,
+            price: input.price,
+            durationMinutes: input.durationMinutes,
+        })
+
+        return response.data
+    } catch (error) {
+        throw new Error(getApiErrorMessage(error, 'Não foi possível atualizar o serviço'))
+    }
+}
+
+export async function deleteAdminService(input: { businessId: string; serviceId: string }) {
+    try {
+        const response = await api.delete<{ success: boolean }>(`/admin/services/${input.serviceId}`, {
+            params: { businessId: input.businessId },
+        })
+
+        return response.data
+    } catch (error) {
+        throw new Error(getApiErrorMessage(error, 'Não foi possível remover o serviço'))
+    }
+}
+
+export async function updateAdminAvailability(input: {
+    businessId: string
+    openTime: string
+    closeTime: string
+}) {
+    try {
+        const response = await api.patch<AdminBusinessSettings>('/admin/business', input)
+        return response.data
+    } catch (error) {
+        throw new Error(getApiErrorMessage(error, 'Não foi possível atualizar os horários'))
+    }
+}
+
+export async function fetchAdminMonthlySummary(businessId: string, month: string) {
+    try {
+        const response = await api.get<AdminMonthlySummary>('/admin/financial-summary', {
+            params: { businessId, month },
+        })
+
+        return normalizeMonthlySummary(response.data)
+    } catch (error) {
+        throw new Error(getApiErrorMessage(error, 'Não foi possível carregar o resumo financeiro'))
+    }
 }
 
 export async function fetchAdminAppointments(businessId: string, statusFilter: AdminAppointmentStatusFilter = 'active') {
-    const params = new URLSearchParams({
-        businessId,
-        statusFilter,
-    })
-    const response = await fetch(`/api/admin/appointments?${params.toString()}`, {
-        method: 'GET',
-        credentials: 'same-origin',
-    })
+    try {
+        const response = await api.get<AdminAppointmentItem[] | PaginatedResponse<AdminAppointmentItem>>('/appointments', {
+            params: {
+                businessId,
+                statusFilter,
+            },
+        })
 
-    const payload = (await response.json().catch(() => null)) as
-        | AdminAppointmentItem[]
-        | { message?: string }
-        | null
-
-    if (!response.ok) {
-        const message = payload && !Array.isArray(payload) ? payload.message : undefined
-        throw new Error(message || 'Não foi possível carregar os agendamentos')
+        return Array.isArray(response.data) ? response.data : response.data.data
+    } catch (error) {
+        throw new Error(getApiErrorMessage(error, 'Não foi possível carregar os agendamentos'))
     }
-
-    return Array.isArray(payload) ? payload : []
 }
 
 export async function updateAdminAppointmentStatus(input: {
@@ -72,29 +135,17 @@ export async function updateAdminAppointmentStatus(input: {
     businessId: string
     status: AdminAppointmentStatus
 }) {
-    const response = await fetch(`/api/admin/appointments/${input.appointmentId}/status`, {
-        method: 'PATCH',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            businessId: input.businessId,
-            status: input.status,
-        }),
-    })
+    try {
+        const response = await api.patch<{ id: string; status: AdminAppointmentStatus }>(
+            `/appointments/${input.appointmentId}/status`,
+            { status: input.status },
+            {
+                params: { businessId: input.businessId },
+            }
+        )
 
-    const payload = (await response.json().catch(() => null)) as
-        | { id: string; status: AdminAppointmentStatus; message?: string }
-        | { message?: string }
-        | null
-
-    if (!response.ok) {
-        const message = payload && !Array.isArray(payload) && 'message' in payload ? payload.message : undefined
-        throw new Error(message || 'Não foi possível atualizar o status do agendamento')
+        return response.data
+    } catch (error) {
+        throw new Error(getApiErrorMessage(error, 'Não foi possível atualizar o status do agendamento'))
     }
-
-    if (!payload || Array.isArray(payload) || !('id' in payload) || !('status' in payload)) {
-        throw new Error('Resposta inválida ao atualizar status do agendamento')
-    }
-
-    return payload
 }

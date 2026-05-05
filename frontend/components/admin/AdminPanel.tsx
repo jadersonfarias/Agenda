@@ -10,7 +10,13 @@ import { availabilityFormSchema, serviceFormSchema, type AvailabilityFormValues,
 import { type AdminAppointmentItem, type AdminAppointmentStatus, type AdminAppointmentStatusFilter, type AdminDashboardData, type AdminServiceItem } from '../../features/admin/types'
 import { useAdminAppointmentsQuery } from '../../features/admin/hooks/use-admin-appointments-query'
 import { useAdminMonthlySummaryQuery } from '../../features/admin/hooks/use-admin-monthly-summary-query'
-import { updateAdminAppointmentStatus } from '../../features/admin/services/admin-api.service'
+import {
+    createAdminService,
+    deleteAdminService,
+    updateAdminAppointmentStatus,
+    updateAdminAvailability,
+    updateAdminService,
+} from '../../features/admin/services/admin-api.service'
 import { useAdminServicesQuery } from '../../features/admin/hooks/use-admin-services-query'
 import { Button } from '../ui/button'
 import { Card } from '../ui/card'
@@ -49,16 +55,6 @@ function getCurrentMonthValue() {
     return `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`
 }
 
-async function parseApiResponse(response: Response) {
-    const payload = (await response.json().catch(() => null)) as { message?: string } | null
-
-    if (!response.ok) {
-        throw new Error(payload?.message || 'Não foi possível concluir a operação')
-    }
-
-    return payload
-}
-
 function AvailabilityForm({
     business,
     onSaved,
@@ -84,12 +80,10 @@ function AvailabilityForm({
         setIsSaving(true)
 
         try {
-            const response = await fetch('/api/admin/availability', {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(values),
+            const data = await updateAdminAvailability({
+                businessId: business.id,
+                ...values,
             })
-            const data = (await parseApiResponse(response)) as AdminDashboardData['business']
             reset({
                 openTime: data.openTime,
                 closeTime: data.closeTime,
@@ -141,11 +135,13 @@ function AvailabilityForm({
 }
 
 function ServiceForm({
+    businessId,
     mode,
     initialValues,
     onCancel,
     onSaved,
 }: {
+    businessId: string
     mode: ServiceFormMode
     initialValues?: AdminServiceItem | null
     onCancel: () => void
@@ -175,15 +171,17 @@ function ServiceForm({
         setIsSaving(true)
 
         try {
-            const response = await fetch(
-                mode === 'create' ? '/api/admin/services' : `/api/admin/services/${initialValues?.id}`,
-                {
-                    method: mode === 'create' ? 'POST' : 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(values),
-                }
-            )
-            const data = (await parseApiResponse(response)) as AdminServiceItem
+            const data =
+                mode === 'create'
+                    ? await createAdminService({
+                        businessId,
+                        ...values,
+                    })
+                    : await updateAdminService({
+                        businessId,
+                        serviceId: initialValues!.id,
+                        ...values,
+                    })
             onSaved(data, mode)
             toast.success(mode === 'create' ? 'Serviço criado com sucesso' : 'Serviço atualizado com sucesso')
         } catch (error) {
@@ -237,9 +235,9 @@ export default function AdminPanel({ initialData }: AdminPanelProps) {
     const [deletingServiceId, setDeletingServiceId] = useState<string | null>(null)
     const [appointmentStatusDrafts, setAppointmentStatusDrafts] = useState<Record<string, AdminAppointmentStatus>>({})
     const [appointmentFilter, setAppointmentFilter] = useState<AdminAppointmentStatusFilter>('active')
-    const servicesQuery = useAdminServicesQuery(session?.accessToken)
+    const servicesQuery = useAdminServicesQuery(business.id, Boolean(session?.accessToken))
     const appointmentsQuery = useAdminAppointmentsQuery(business.id, appointmentFilter, Boolean(session?.accessToken))
-    const monthlySummaryQuery = useAdminMonthlySummaryQuery(selectedMonth, Boolean(session?.accessToken))
+    const monthlySummaryQuery = useAdminMonthlySummaryQuery(business.id, selectedMonth, Boolean(session?.accessToken))
     const services = servicesQuery.data ?? initialData.services
 
     const updateAppointmentStatusMutation = useMutation({
@@ -268,10 +266,10 @@ export default function AdminPanel({ initialData }: AdminPanelProps) {
         setDeletingServiceId(serviceId)
 
         try {
-            const response = await fetch(`/api/admin/services/${serviceId}`, {
-                method: 'DELETE',
+            await deleteAdminService({
+                businessId: business.id,
+                serviceId,
             })
-            await parseApiResponse(response)
             await queryClient.invalidateQueries({ queryKey: ['admin-services'] })
             toast.success('Serviço removido com sucesso')
         } catch (error) {
@@ -610,7 +608,7 @@ export default function AdminPanel({ initialData }: AdminPanelProps) {
                 open={isCreateOpen}
                 onClose={() => setIsCreateOpen(false)}
             >
-                <ServiceForm mode="create" onCancel={() => setIsCreateOpen(false)} onSaved={handleServiceSaved} />
+                <ServiceForm businessId={business.id} mode="create" onCancel={() => setIsCreateOpen(false)} onSaved={handleServiceSaved} />
             </Modal>
 
             <Modal
@@ -619,7 +617,7 @@ export default function AdminPanel({ initialData }: AdminPanelProps) {
                 open={Boolean(editingService)}
                 onClose={() => setEditingService(null)}
             >
-                <ServiceForm mode="edit" initialValues={editingService} onCancel={() => setEditingService(null)} onSaved={handleServiceSaved} />
+                <ServiceForm businessId={business.id} mode="edit" initialValues={editingService} onCancel={() => setEditingService(null)} onSaved={handleServiceSaved} />
             </Modal>
         </main>
     )

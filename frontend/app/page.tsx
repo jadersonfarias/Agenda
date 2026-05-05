@@ -51,6 +51,18 @@ type AppointmentApi = {
     time: string;
 }
 
+type PaginatedResponse<T> = {
+    data: T[]
+}
+
+function normalizeListResponse<T>(payload: T[] | PaginatedResponse<T>) {
+    return Array.isArray(payload) ? payload : payload.data
+}
+
+async function readJson<T>(response: Response): Promise<T | null> {
+    return (await response.json().catch(() => null)) as T | null
+}
+
 export default function Home() {
     const {
         register,
@@ -83,11 +95,16 @@ export default function Home() {
             if (!response.ok) {
                 throw new Error('Não foi possível carregar os serviços')
             }
-            return response.json()
+            const payload = await readJson<Service[] | PaginatedResponse<Service>>(response)
+
+            if (!payload) {
+                throw new Error('Resposta inválida ao carregar os serviços')
+            }
+
+            return normalizeListResponse(payload)
         },
         refetchOnMount: 'always',
         refetchOnWindowFocus: true,
-        refetchInterval: 5000,
     })
 
     const availabilityQuery = useQuery<string[]>({
@@ -98,13 +115,20 @@ export default function Home() {
                 `${apiBase}/businesses/${defaultBusinessId}/availability?serviceId=${selectedServiceId}&date=${formattedDate}`
             )
             if (!response.ok) {
-                throw new Error('Não foi possível carregar disponibilidade')
+                const payload = await readJson<{ message?: string }>(response)
+                throw new Error(payload?.message || 'Não foi possível carregar disponibilidade')
             }
-            return response.json()
+            const payload = await readJson<string[]>(response)
+
+            if (!payload || !Array.isArray(payload)) {
+                throw new Error('Resposta inválida ao carregar disponibilidade')
+            }
+
+            return payload
         },
         enabled: Boolean(selectedServiceId && formattedDate),
-        refetchOnWindowFocus: true,
-        refetchInterval: selectedServiceId && formattedDate ? 5000 : false,
+        refetchOnWindowFocus: false,
+        retry: false,
     })
 
     const appointmentsQuery = useQuery<AppointmentItem[]>({
@@ -114,7 +138,13 @@ export default function Home() {
             if (!response.ok) {
                 throw new Error('Não foi possível carregar os agendamentos')
             }
-            return response.json()
+            const payload = await readJson<AppointmentItem[] | PaginatedResponse<AppointmentItem>>(response)
+
+            if (!payload) {
+                throw new Error('Resposta inválida ao carregar os agendamentos')
+            }
+
+            return normalizeListResponse(payload)
         },
     })
 
@@ -231,12 +261,18 @@ export default function Home() {
 
                     <Label className="space-y-2 sm:col-span-2">
                         <span className="text-sm font-medium sm:text-base">Horário disponível</span>
-                        <Select {...register('time')} disabled={!selectedServiceId || !selectedDate || availabilityQuery.isFetching} className="text-base">
+                        <Select
+                            {...register('time')}
+                            disabled={!selectedServiceId || !selectedDate || availabilityQuery.isLoading}
+                            className="text-base"
+                        >
                             <option value="">
                                 {!selectedServiceId
                                     ? 'Selecione primeiro um serviço'
                                     : !selectedDate
                                         ? 'Selecione uma data para ver os horários'
+                                        : availabilityQuery.isLoading
+                                            ? 'Verificando disponibilidade...'
                                         : 'Selecione um horário'}
                             </option>
                             {availableTimes.map((time) => (
@@ -249,8 +285,15 @@ export default function Home() {
                         {selectedServiceId && !selectedDate ? (
                             <p className="text-xs text-slate-500 sm:text-sm">Agora escolha uma data para carregar os horários disponíveis.</p>
                         ) : null}
-                        {availabilityQuery.isFetching ? <p className="text-xs text-slate-500 sm:text-sm">Verificando disponibilidade...</p> : null}
-                        {!availabilityQuery.isFetching && selectedServiceId && selectedDate && availableTimes.length === 0 ? (
+                        {availabilityQuery.isLoading ? <p className="text-xs text-slate-500 sm:text-sm">Verificando disponibilidade...</p> : null}
+                        {availabilityQuery.isError ? (
+                            <p className="text-xs text-red-600 sm:text-sm">
+                                {availabilityQuery.error instanceof Error
+                                    ? availabilityQuery.error.message
+                                    : 'Não foi possível carregar a disponibilidade'}
+                            </p>
+                        ) : null}
+                        {!availabilityQuery.isLoading && !availabilityQuery.isError && selectedServiceId && selectedDate && availableTimes.length === 0 ? (
                             <p className="text-xs text-slate-500 sm:text-sm">Sem horários livres para esta combinação.</p>
                         ) : null}
                         {errors.time ? <p className="text-xs text-red-600 sm:text-sm">{errors.time.message}</p> : null}

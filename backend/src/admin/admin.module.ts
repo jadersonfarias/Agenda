@@ -4,9 +4,10 @@ import { AdminService } from './admin.service'
 import { AdminRepository } from './admin.repository'
 import { AuthModule } from '../auth/auth.module'
 import { AuthMiddleware } from '../auth/auth.middleware'
+import { BusinessesModule } from '../businesses/businesses.module'
 
 @Module({
-  imports: [AuthModule], //autenticação é necessária para acessar as rotas de admin
+  imports: [AuthModule, BusinessesModule],
   controllers: [AdminController],// controlador para lidar com as rotas de admin
   providers: [AdminService, AdminRepository], // serviço para lógica de negócios e repositório para acesso ao banco de dados
 })

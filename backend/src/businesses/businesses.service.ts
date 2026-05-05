@@ -109,6 +109,34 @@ export class BusinessesService {
     }
   }
 
+  private async findManualBlocksInRange(businessId: string, openDateUtc: Date, closeDateUtc: Date) {
+    try {
+      return await this.prisma.manualBlock.findMany({
+        where: {
+          businessId,
+          startsAt: { lt: closeDateUtc },
+          endsAt: { gt: openDateUtc },
+        },
+        select: {
+          startsAt: true,
+          endsAt: true,
+        },
+        orderBy: { startsAt: 'asc' },
+      })
+    } catch (error) {
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        error.code === 'P2021'
+      ) {
+        return []
+      }
+
+      throw error
+    }
+  }
+
   private async calculateAvailability(input: {
     business: BusinessAvailabilityContext
     service: ServiceAvailabilityContext
@@ -126,18 +154,7 @@ export class BusinessesService {
       rangeStart: openDateUtc,
       rangeEnd: closeDateUtc,
     })
-    const manualBlocks = await this.prisma.manualBlock.findMany({
-      where: {
-        businessId: business.id,
-        startsAt: { lt: closeDateUtc },
-        endsAt: { gt: openDateUtc },
-      },
-      select: {
-        startsAt: true,
-        endsAt: true,
-      },
-      orderBy: { startsAt: 'asc' },
-    })
+    const manualBlocks = await this.findManualBlocksInRange(business.id, openDateUtc, closeDateUtc)
     const blockedRanges: TimeRange[] = [
       ...appointments.map((appointment: { scheduledAt: Date; endsAt: Date }) => ({
         startsAt: new Date(appointment.scheduledAt),
