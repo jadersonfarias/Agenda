@@ -4,6 +4,36 @@ import { authOptions } from '../../../../../../lib/auth'
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333'
 
+type MembershipRole = 'OWNER' | 'ADMIN' | 'STAFF'
+
+type AccessTokenPayload = {
+    memberships?: Array<{
+        businessId: string
+        role: MembershipRole
+    }>
+}
+
+function getAccessTokenPayload(accessToken: string): AccessTokenPayload {
+    const [, encodedPayload] = accessToken.split('.')
+
+    if (!encodedPayload) {
+        throw new Error('Token inválido')
+    }
+
+    return JSON.parse(Buffer.from(encodedPayload, 'base64url').toString()) as AccessTokenPayload
+}
+
+function hasBusinessRole(accessToken: string, businessId: string, allowedRoles: MembershipRole[]) {
+    const payload = getAccessTokenPayload(accessToken)
+
+    return (
+        payload.memberships?.some(
+            (membership) =>
+                membership.businessId === businessId && allowedRoles.includes(membership.role),
+        ) ?? false
+    )
+}
+
 type RouteContext = {
     params: Promise<{
         appointmentId: string
@@ -23,6 +53,10 @@ export async function PATCH(request: Request, context: RouteContext) {
 
         if (!businessId || !body?.status) {
             return NextResponse.json({ message: 'businessId e status são obrigatórios' }, { status: 400 })
+        }
+
+        if (!hasBusinessRole(session.accessToken, businessId, ['OWNER', 'ADMIN', 'STAFF'])) {
+            return NextResponse.json({ message: 'Sem permissão para atualizar status' }, { status: 403 })
         }
 
         const { appointmentId } = await context.params

@@ -12,3 +12,8 @@ export type AuthUserResponse = {
   name: string | null
   email: string
 }
+
+export type LoginResponse = {
+  user: AuthUserResponse
+  accessToken: string
+}

@@ -1,6 +1,10 @@
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { NextAuthOptions } from 'next-auth'
-import { createAccessToken } from './access-token'
+
+const backendAuthBaseUrl =
+  process.env.API_URL ??
+  process.env.NEXT_PUBLIC_API_URL ??
+  'http://127.0.0.1:3333'
 
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
@@ -20,20 +24,27 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333'}/auth/login`,
-          {
+        let response: Response
+
+        try {
+          response = await fetch(`${backendAuthBaseUrl}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: credentials.email, password: credentials.password }),
-          }
-        )
-
-        if (!response.ok) {
-          return null
+          })
+        } catch {
+          throw new Error('Backend de autenticação indisponível')
         }
 
-        return await response.json()
+        if (!response.ok) {
+          throw new Error('Email ou senha incorretos')
+        }
+
+        const data = await response.json()
+        return {
+          ...data.user,
+          accessToken: data.accessToken,
+        }
       },
     }),
   ],
@@ -41,12 +52,7 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user?.id) {
         token.sub = user.id
-        token.accessToken = createAccessToken({
-          userId: user.id,
-          email: user.email,
-          name: user.name,
-          secret: process.env.NEXTAUTH_SECRET || '',
-        })
+        token.accessToken = (user as any).accessToken
       }
       return token
     },

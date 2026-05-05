@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { AppointmentStatus } from '@prisma/client'
 import { PrismaService } from '../prisma/prisma.service'
+import { PaginationParams, PaginatedResult, buildPaginationMeta } from '../common/pagination'
 
 type ConflictRangeInput = {
   businessId: string
@@ -20,17 +21,47 @@ export class BusinessesRepository {
     })
   }
 
-  async findServices(businessId: string) {
-    return this.prisma.service.findMany({
-      where: { businessId },
-      select: {
-        id: true,
-        name: true,
-        price: true,
-        durationMinutes: true,
-      },
-      orderBy: { name: 'asc' },
-    })
+  async findServices(businessId: string, pagination: PaginationParams | null = null) {
+    const where = { businessId }
+
+    if (!pagination) {
+      return this.prisma.service.findMany({
+        where,
+        select: {
+          id: true,
+          name: true,
+          price: true,
+          durationMinutes: true,
+        },
+        orderBy: { name: 'asc' },
+      })
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.service.findMany({
+        where,
+        select: {
+          id: true,
+          name: true,
+          price: true,
+          durationMinutes: true,
+        },
+        orderBy: { name: 'asc' },
+        skip: (pagination.page - 1) * pagination.perPage,
+        take: pagination.perPage,
+      }),
+      this.prisma.service.count({ where }),
+    ])
+
+    return {
+      data,
+      meta: buildPaginationMeta(total, pagination),
+    } as PaginatedResult<{
+      id: string
+      name: string
+      price: string
+      durationMinutes: number
+    }>
   }
 
   async findAppointmentsInRange({ businessId, rangeStart, rangeEnd }: ConflictRangeInput) {
@@ -83,6 +114,18 @@ export class BusinessesRepository {
     return this.prisma.customer.update({
       where: { id: customerId },
       data: { lastVisitAt },
+    })
+  }
+
+  async findActiveCustomersByBusinessId(businessId: string, activeSince: Date) {
+    return this.prisma.customer.findMany({
+      where: {
+        businessId,
+        lastVisitAt: {
+          gte: activeSince,
+        },
+      },
+      orderBy: [{ lastVisitAt: 'desc' }, { name: 'asc' }],
     })
   }
 

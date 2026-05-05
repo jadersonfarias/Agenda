@@ -22,8 +22,9 @@ function toAdminServiceItem(service: Awaited<ReturnType<AdminRepository['findSer
 }
 
 async function getManagedBusinessOrThrow(userId: string) {
+    console.log('Buscando negócio para o usuário:', userId)
     const business = await repository.findBusinessByOwnerId(userId)
-
+   console.log('Negócio encontrado para o usuário:', business)
     if (!business) {
         throw new Error('Nenhum negócio vinculado a este usuário')
     }

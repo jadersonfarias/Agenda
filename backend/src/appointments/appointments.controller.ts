@@ -10,6 +10,7 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common'
+import { parsePaginationParams } from '../common/pagination'
 import { AppointmentsService } from './appointments.service'
 import {
   createAppointmentSchema,
@@ -23,7 +24,12 @@ export class AppointmentsController {
   constructor(private readonly appointmentsService: AppointmentsService) {}
 
   @Get()
-  getAll(@Query('businessId') businessId: string, @Query('statusFilter') statusFilter?: string) {
+  getAll(
+    @Query('businessId') businessId: string,
+    @Query('statusFilter') statusFilter?: string,
+    @Query('page') page?: string,
+    @Query('perPage') perPage?: string
+  ) {
     if (!businessId) {
       throw new BadRequestException('businessId é obrigatório')
     }
@@ -35,7 +41,9 @@ export class AppointmentsController {
       throw new BadRequestException('statusFilter inválido')
     }
 
-    return this.appointmentsService.getAll(businessId, parsedFilter)
+    const pagination = parsePaginationParams(page, perPage)
+
+    return this.appointmentsService.getAll(businessId, parsedFilter, pagination)
   }
 
   @Get('financial/monthly')

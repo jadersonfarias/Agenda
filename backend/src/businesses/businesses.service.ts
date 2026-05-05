@@ -1,7 +1,10 @@
 import { BadRequestException, Injectable } from '@nestjs/common'
+import { DateTime } from 'luxon'
 import { BusinessesRepository } from './businesses.repository'
 import { AvailabilityCacheService } from '../scheduling/availability-cache.service'
 import { TimezoneService } from '../scheduling/timezone.service'
+import { PrismaService } from '../prisma/prisma.service'
+import { PaginationParams } from '../common/pagination'
 
 type BusinessAvailabilityContext = {
   id: string
@@ -16,21 +19,29 @@ type ServiceAvailabilityContext = {
   durationMinutes: number
 }
 
+type TimeRange = {
+  startsAt: Date
+  endsAt: Date
+}
+
 @Injectable()
 export class BusinessesService {
+  private static readonly ACTIVE_CUSTOMER_WINDOW_DAYS = 30
+
   constructor(
     private readonly businessesRepository: BusinessesRepository,
     private readonly timezoneService: TimezoneService,
-    private readonly availabilityCacheService: AvailabilityCacheService
+    private readonly availabilityCacheService: AvailabilityCacheService,
+    private readonly prisma: PrismaService
   ) {}
 
-  async getServices(businessId: string) {
+  async getServices(businessId: string, pagination: PaginationParams | null = null) {
     const business = await this.businessesRepository.findBusinessById(businessId)
     if (!business) {
       throw new BadRequestException('Negócio inválido')
     }
 
-    return this.businessesRepository.findServices(business.id)
+    return this.businessesRepository.findServices(business.id, pagination)
   }
 
   async getAvailability(businessId: string, serviceId: string, date: string) {
@@ -51,6 +62,18 @@ export class BusinessesService {
 
     this.availabilityCacheService.set(cacheKey, availability)
     return availability
+  }
+
+  async getActiveCustomers(businessId: string) {
+    const business = await this.businessesRepository.findBusinessById(businessId)
+    if (!business) {
+      throw new BadRequestException('Negócio inválido')
+    }
+
+    const activeSince = new Date()
+    activeSince.setDate(activeSince.getDate() - BusinessesService.ACTIVE_CUSTOMER_WINDOW_DAYS)
+
+    return this.businessesRepository.findActiveCustomersByBusinessId(business.id, activeSince)
   }
 
   invalidateBusinessAvailability(businessId: string) {
@@ -103,28 +126,56 @@ export class BusinessesService {
       rangeStart: openDateUtc,
       rangeEnd: closeDateUtc,
     })
+    const manualBlocks = await this.prisma.manualBlock.findMany({
+      where: {
+        businessId: business.id,
+        startsAt: { lt: closeDateUtc },
+        endsAt: { gt: openDateUtc },
+      },
+      select: {
+        startsAt: true,
+        endsAt: true,
+      },
+      orderBy: { startsAt: 'asc' },
+    })
+    const blockedRanges: TimeRange[] = [
+      ...appointments.map((appointment: { scheduledAt: Date; endsAt: Date }) => ({
+        startsAt: new Date(appointment.scheduledAt),
+        endsAt: new Date(appointment.endsAt),
+      })),
+      ...manualBlocks.map((manualBlock: { startsAt: Date; endsAt: Date }) => ({
+        startsAt: new Date(manualBlock.startsAt),
+        endsAt: new Date(manualBlock.endsAt),
+      })),
+    ].sort((left, right) => left.startsAt.getTime() - right.startsAt.getTime())
     const available: string[] = []
     const durationMs = service.durationMinutes * 60_000
     const slotStepMs = durationMs
+    const nowInBusinessTimezone = DateTime.utc().setZone(business.timezone)
 
-    let appointmentIndex = 0
+    let blockedRangeIndex = 0
 
     for (let currentTime = openDateUtc.getTime(); currentTime + durationMs <= closeDateUtc.getTime(); currentTime += slotStepMs) {
       const slotStart = new Date(currentTime)
       const slotEnd = new Date(slotStart.getTime() + durationMs)
+      const slotStartInBusinessTz = DateTime.fromJSDate(slotStart, { zone: 'utc' }).setZone(business.timezone)
 
-      while (
-        appointmentIndex < appointments.length &&
-        new Date(appointments[appointmentIndex].endsAt).getTime() <= slotStart.getTime()
-      ) {
-        appointmentIndex += 1
+      if (slotStartInBusinessTz < nowInBusinessTimezone) {
+        continue
       }
 
-      const nextAppointment = appointments[appointmentIndex]
+      while (
+        blockedRangeIndex < blockedRanges.length &&
+        blockedRanges[blockedRangeIndex].endsAt.getTime() <= slotStart.getTime()
+      ) {
+        blockedRangeIndex += 1
+      }
+
+      const nextBlockedRange = blockedRanges[blockedRangeIndex]
       const hasConflict =
-        Boolean(nextAppointment) &&
-        slotStart.getTime() < new Date(nextAppointment.endsAt).getTime() &&
-        slotEnd.getTime() > new Date(nextAppointment.scheduledAt).getTime()
+        Boolean(nextBlockedRange) &&
+        slotStart.getTime() < nextBlockedRange.endsAt.getTime() &&
+        slotEnd.getTime() > nextBlockedRange.startsAt.getTime()
 
       if (!hasConflict) {
         available.push(this.timezoneService.formatUtcTimeInTimezone(slotStart, business.timezone))

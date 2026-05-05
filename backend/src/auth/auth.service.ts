@@ -2,10 +2,14 @@ import { Injectable } from '@nestjs/common'
 import { compare } from 'bcryptjs'
 import { AuthRepository } from './auth.repository'
 import { AuthUserResponse } from './auth.schema'
+import { AccessTokenService } from './access-token.service'
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly authRepository: AuthRepository) {}
+  constructor(
+    private readonly authRepository: AuthRepository,
+    private readonly accessTokenService: AccessTokenService,
+  ) {}
 
   async validateUser(email: string, password: string): Promise<AuthUserResponse | null> {
     const user = await this.authRepository.findUserByEmail(email)
@@ -19,5 +23,9 @@ export class AuthService {
     }
 
     return { id: user.id, name: user.name, email: user.email }
+  }
+
+  async generateToken(userId: string, email: string): Promise<string> {
+    return this.accessTokenService.generateToken(userId, email)
   }
 }

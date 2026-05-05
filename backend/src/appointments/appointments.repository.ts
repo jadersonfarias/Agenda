@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { AppointmentStatus } from '@prisma/client'
 import { PrismaService } from '../prisma/prisma.service'
+import { PaginationParams, PaginatedResult, buildPaginationMeta } from '../common/pagination'
 
 type CreateAppointmentInput = {
   businessId: string
@@ -23,7 +24,11 @@ type AppointmentStatusFilter = 'active' | 'completed' | 'all'
 export class AppointmentsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findMany(businessId: string, statusFilter: AppointmentStatusFilter = 'all') {
+  async findMany(
+    businessId: string,
+    statusFilter: AppointmentStatusFilter = 'all',
+    pagination: PaginationParams | null = null
+  ) {
     const statusCondition =
       statusFilter === 'active'
         ? { in: ['SCHEDULED'] as AppointmentStatus[] }
@@ -31,17 +36,81 @@ export class AppointmentsRepository {
         ? { in: ['COMPLETED', 'CANCELED'] as AppointmentStatus[] }
         : undefined
 
-    return this.prisma.appointment.findMany({
-      where: {
-        businessId,
-        ...(statusCondition ? { status: statusCondition } : {}),
-      },
-      include: {
-        service: true,
-        customer: true,
-      },
-      orderBy: { scheduledAt: 'asc' },
-    })
+    const where = {
+      businessId,
+      ...(statusCondition ? { status: statusCondition } : {}),
+    }
+
+    if (!pagination) {
+      return this.prisma.appointment.findMany({
+        where,
+        select: {
+          id: true,
+          scheduledAt: true,
+          status: true,
+          service: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          customer: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+            },
+          },
+        },
+        orderBy: { scheduledAt: 'asc' },
+      })
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.appointment.findMany({
+        where,
+        select: {
+          id: true,
+          scheduledAt: true,
+          status: true,
+          service: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          customer: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+            },
+          },
+        },
+        orderBy: { scheduledAt: 'asc' },
+        skip: (pagination.page - 1) * pagination.perPage,
+        take: pagination.perPage,
+      }),
+      this.prisma.appointment.count({ where }),
+    ])
+
+    return {
+      data,
+      meta: buildPaginationMeta(total, pagination),
+    } as PaginatedResult<{
+      id: string
+      scheduledAt: Date
+      status: AppointmentStatus
+      service: {
+        id: string
+        name: string
+      }
+      customer: {
+        id: string
+        name: string
+        phone: string
+      }
+    }>
   }
 
   async findById(id: string, businessId: string) {

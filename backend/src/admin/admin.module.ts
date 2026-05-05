@@ -6,12 +6,12 @@ import { AuthModule } from '../auth/auth.module'
 import { AuthMiddleware } from '../auth/auth.middleware'
 
 @Module({
-  imports: [AuthModule],
-  controllers: [AdminController],
-  providers: [AdminService, AdminRepository],
+  imports: [AuthModule], //autenticação é necessária para acessar as rotas de admin
+  controllers: [AdminController],// controlador para lidar com as rotas de admin
+  providers: [AdminService, AdminRepository], // serviço para lógica de negócios e repositório para acesso ao banco de dados
 })
 export class AdminModule implements NestModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer.apply(AuthMiddleware).forRoutes(AdminController)
+  configure(consumer: MiddlewareConsumer) { // configura o middleware de autenticação para as rotas de admin
+    consumer.apply(AuthMiddleware).forRoutes(AdminController) // aplica o middleware de autenticação para todas as rotas definidas no AdminController
   }
 }

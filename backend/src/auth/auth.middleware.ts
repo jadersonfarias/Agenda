@@ -1,12 +1,23 @@
 import { Injectable, NestMiddleware, UnauthorizedException } from '@nestjs/common'
 import { AccessTokenService } from './access-token.service'
+import { MembershipRole } from './role.types'
+
+type Membership = {
+  businessId: string
+  role: MembershipRole
+}
 
 type AuthenticatedRequest = {
   headers: {
     authorization?: string
   }
+  params?: Record<string, unknown>
+  query?: Record<string, unknown>
+  body?: Record<string, unknown>
+  businessId?: string
   user?: {
     id: string
+    memberships: Membership[]
   }
 }
 
@@ -30,8 +41,20 @@ export class AuthMiddleware implements NestMiddleware {
     }
 
     const payload = this.accessTokenService.verifyToken(token)
-    request.user = { id: payload.sub }
+    const memberships = payload.memberships ?? []
+    const businessId =
+      this.asString(request.params?.businessId) ??
+      this.asString(request.query?.businessId) ??
+      this.asString(request.body?.businessId) ??
+      (memberships.length === 1 ? memberships[0].businessId : undefined)
+
+    request.user = { id: payload.sub, memberships }
+    request.businessId = businessId
 
     next()
+  }
+
+  private asString(value: unknown): string | undefined {
+    return typeof value === 'string' && value.trim().length > 0 ? value : undefined
   }
 }

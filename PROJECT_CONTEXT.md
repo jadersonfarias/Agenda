@@ -26,6 +26,7 @@ Monorepo fullstack para agendamento servicos, com area publica de reservas e are
 │  ├─ src/
 │  │  ├─ appointments/            # controller/service/repository/schema
 │  │  ├─ auth/                    # login via email+senha
+│  │  ├─ admin/                   # controller/service/repository
 │  │  ├─ businesses/              # servicos e disponibilidade
 │  │  ├─ scheduling/              # timezone + cache de disponibilidade
 │  │  ├─ prisma/                  # PrismaModule/Service
@@ -114,8 +115,8 @@ Monorepo fullstack para agendamento servicos, com area publica de reservas e are
 1. Pagina `/login` usa `signIn('credentials')`.
 2. NextAuth chama `authorize`.
 3. `authorize` faz `POST /auth/login` no backend.
-4. Backend valida email/senha com bcrypt.
-5. NextAuth salva sessao JWT e injeta `user.id` em token/session.
+4. Backend valida email/senha com bcrypt e retorna `accessToken` JWT.
+5. NextAuth salva sessao JWT e adiciona `accessToken` ao token/session.
 
 ### 4. Gestao admin de servicos
 1. Pagina `/admin` exige sessao.
@@ -131,7 +132,7 @@ Monorepo fullstack para agendamento servicos, com area publica de reservas e are
 - Provider: `CredentialsProvider`.
 - Fonte de verdade das credenciais: backend Nest (`/auth/login`).
 - Sessao protege `/admin` e rotas `app/api/admin/*`.
-- O backend principal nao expoe JWT proprio; ele apenas valida credenciais e retorna usuario basico.
+- O backend expõe JWT próprio via `/auth/login`; NextAuth integra com ele e armazena `accessToken` no token.
 
 ## Comunicacao Frontend x Backend
 ### Publico
@@ -143,9 +144,10 @@ Monorepo fullstack para agendamento servicos, com area publica de reservas e are
   - `POST /appointments`
 
 ### Admin
-- Nao depende do backend Nest para CRUD de servicos.
-- Fluxo: componente client -> `app/api/admin/*` -> service local -> repository local -> Prisma.
-- Excecao: autenticacao admin, que depende do backend `/auth/login`.
+- Usa backend Nest para autenticação e operações de agendamentos via proxy.
+- Fluxo: componente client -> `app/api/admin/*` -> service local -> repository local -> Prisma para serviços e financeiro.
+- `app/api/admin/appointments` e `app/api/admin/appointments/[appointmentId]/status` encaminham chamadas ao backend Nest.
+- Excecao: autenticação admin depende do backend `/auth/login`.
 
 ## Padroes e Convencoes
 - Backend:
@@ -184,3 +186,40 @@ Monorepo fullstack para agendamento servicos, com area publica de reservas e are
   - backend interno do Next/Prisma para admin.
 - Isso reduz round-trips no admin, mas duplica fronteiras de negocio/acesso a dados.
 - O `seed.js` cria dados iniciais para uso local.
+
+
+## AGENT CONTROL
+
+### MODO DE RESPOSTA
+- Prioridade absoluta: gerar código
+- Não gerar documentação (.md) sem solicitação explícita
+- Não explicar o sistema
+- Não criar resumos
+
+### OUTPUT
+- Responder apenas com código
+- Sempre informar:
+  - caminho do arquivo
+  - código final
+- Não adicionar textos longos
+- Explicações: máximo 2 linhas
+
+### FOCO
+- Alterar apenas o necessário
+- Reutilizar código existente
+- Evitar refatorações desnecessárias
+
+### BACKEND RULES
+- Sempre usar JWT_SECRET no backend
+- Nunca usar NEXTAUTH_SECRET no backend
+- Seguir padrão Controller -> Service -> Repository
+
+### FRONTEND RULES
+- Usar TanStack Query para chamadas
+- Usar Axios para comunicação com backend
+- Proteger rotas com session
+
+### PROIBIDO
+- Criar documentação automática
+- Reescrever código sem necessidade
+- Alterar arquitetura sem pedido explícito

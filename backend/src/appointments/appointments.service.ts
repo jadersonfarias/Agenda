@@ -4,6 +4,7 @@ import { AppointmentsRepository } from './appointments.repository'
 import { BusinessesRepository } from '../businesses/businesses.repository'
 import { BusinessesService } from '../businesses/businesses.service'
 import { TimezoneService } from '../scheduling/timezone.service'
+import { PaginationParams, PaginatedResult } from '../common/pagination'
 import {
   CreateAppointmentDto,
   UpdateAppointmentStatusDto,
@@ -45,13 +46,17 @@ export class AppointmentsService {
     )
   }
 
-  async getAll(businessId: string, statusFilter: 'active' | 'completed' | 'all' = 'all') {
+  async getAll(
+    businessId: string,
+    statusFilter: 'active' | 'completed' | 'all' = 'all',
+    pagination: PaginationParams | null = null
+  ) {
     const business = await this.businessesRepository.findBusinessById(businessId)
     if (!business) {
       throw new BadRequestException('Negócio inválido')
     }
 
-    return this.appointmentsRepository.findMany(business.id, statusFilter)
+    return this.appointmentsRepository.findMany(business.id, statusFilter, pagination)
   }
 
   async create(data: CreateAppointmentDto) {

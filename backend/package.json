@@ -9,11 +9,12 @@
     "prisma:generate": "PRISMA_GENERATE_SKIP_AUTOINSTALL=true node --env-file=../.env ../node_modules/prisma/build/index.js generate --schema ./prisma/schema.prisma",
     "prisma:migrate": "node --env-file=../.env ../node_modules/prisma/build/index.js migrate dev --schema ./prisma/schema.prisma",
     "prisma:push": "node --env-file=../.env ../node_modules/prisma/build/index.js db push --schema ./prisma/schema.prisma",
-    "seed": "npx ts-node --env-file=../.env prisma/seed.ts"
+    "seed": "npx tsx --env-file=../.env prisma/seed.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.3.2",
     "@nestjs/core": "^10.3.2",
+    "@nestjs/jwt": "^11.0.2",
     "@nestjs/platform-express": "^10.3.2",
     "@prisma/client": "^5.22.0",
     "bcryptjs": "^2.4.3",
