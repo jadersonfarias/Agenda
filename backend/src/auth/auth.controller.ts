@@ -18,10 +18,13 @@ export class AuthController {
       throw new UnauthorizedException('Email ou senha incorretos')
     }
 
+    const businesses = await this.authService.listBusinessesForUser(user.id)
     const accessToken = await this.authService.generateToken(user.id, user.email)
 
     return {
       user,
+      businesses,
+      currentBusinessId: businesses[0]?.id ?? null,
       accessToken,
     }
   }

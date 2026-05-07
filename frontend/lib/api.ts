@@ -2,8 +2,11 @@ import axios from 'axios'
 import { getSession } from 'next-auth/react'
 
 export const apiBaseUrl =
-    process.env.API_URL ??
     process.env.NEXT_PUBLIC_API_URL ??
+    '/backend'
+
+const serverApiBaseUrl =
+    process.env.API_URL ??
     'http://127.0.0.1:3333'
 
 export const api = axios.create({
@@ -27,7 +30,7 @@ api.interceptors.request.use(async (config) => {
 
 export function createServerApi(accessToken?: string) {
     return axios.create({
-        baseURL: apiBaseUrl,
+        baseURL: serverApiBaseUrl,
         headers: accessToken
             ? {
                 Authorization: `Bearer ${accessToken}`,

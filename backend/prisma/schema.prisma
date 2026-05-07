@@ -55,6 +55,7 @@ model Business {
     owner        User          @relation(fields: [ownerId], references: [id])
     ownerId      String
     memberships  Membership[]
+    invitations  Invitation[]
     customers    Customer[]
     services     Service[]
     appointments Appointment[]
@@ -77,6 +78,21 @@ model ManualBlock {
     updatedAt  DateTime @updatedAt
 
     @@index([businessId, startsAt, endsAt])
+}
+
+model Invitation {
+    id         String   @id @default(uuid())
+    business    Business @relation(fields: [businessId], references: [id])
+    businessId String
+    email      String
+    role       Role
+    token      String   @unique
+    expiresAt  DateTime
+    acceptedAt DateTime?
+    createdAt  DateTime @default(now())
+
+    @@index([businessId, email])
+    @@index([businessId, acceptedAt, expiresAt])
 }
 
 model Customer {

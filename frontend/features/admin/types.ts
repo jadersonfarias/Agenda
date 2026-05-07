@@ -15,6 +15,13 @@ export type AdminBusinessSettings = {
     closeTime: string
 }
 
+export type AdminBusinessOption = {
+    id: string
+    name: string
+    slug: string
+    role: 'OWNER' | 'ADMIN' | 'STAFF'
+}
+
 export type AdminDashboardData = {
     business: AdminBusinessSettings
     services: AdminServiceItem[]
@@ -48,4 +55,29 @@ export type AdminAppointmentItem = {
         name: string
         phone: string
     }
+}
+
+export type AdminMembershipRole = 'OWNER' | 'ADMIN' | 'STAFF'
+
+export type AdminMembershipItem = {
+    id: string
+    role: AdminMembershipRole
+    createdAt: string
+    updatedAt: string
+    user: {
+        id: string
+        name: string
+        email: string
+    }
+}
+
+export type AdminInvitationItem = {
+    id: string
+    email: string
+    role: AdminMembershipRole
+    token: string
+    expiresAt: string
+    acceptedAt: string | null
+    createdAt: string
+    isExpired: boolean
 }

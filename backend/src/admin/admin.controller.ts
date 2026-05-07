@@ -16,11 +16,17 @@ import { RoleGuard } from '../auth/role.guard'
 import { Roles } from '../auth/roles.decorator'
 import { parsePaginationParams } from '../common/pagination'
 import {
+  acceptInvitationSchema,
+  adminAppointmentsQuerySchema,
   adminBusinessAvailabilitySchema,
   adminBusinessIdSchema,
+  adminCreateInvitationSchema,
+  adminCreateMembershipSchema,
+  adminMembershipRoleSchema,
   adminMonthlySummaryQuerySchema,
   adminServiceSchema,
 } from './admin.schema'
+import { updateAppointmentStatusSchema } from '../appointments/appointment.schema'
 
 type AuthenticatedRequest = {
   businessId?: string
@@ -37,11 +43,15 @@ type AuthenticatedRequest = {
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
-  private getBusinessId(request: AuthenticatedRequest, value?: string) {
+  private async getBusinessId(request: AuthenticatedRequest, value?: string) {
     const businessId = value ?? request.businessId
 
     if (!businessId) {
-      throw new BadRequestException('businessId é obrigatório')
+      if (!request.user?.id) {
+        throw new BadRequestException('businessId é obrigatório')
+      }
+
+      return this.adminService.getDefaultBusinessIdForUser(request.user.id)
     }
 
     return businessId
@@ -50,7 +60,7 @@ export class AdminController {
   @Get('dashboard')
   @Roles('OWNER', 'ADMIN', 'STAFF')
   async getDashboard(@Req() request: AuthenticatedRequest, @Query('businessId') businessId?: string) {
-    return this.adminService.getDashboard(this.getBusinessId(request, businessId))
+    return this.adminService.getDashboard(await this.getBusinessId(request, businessId))
   }
 
   @Get('financial-summary')
@@ -61,7 +71,7 @@ export class AdminController {
     @Query('month') month?: string
   ) {
     const parseResult = adminMonthlySummaryQuerySchema.safeParse({
-      businessId: this.getBusinessId(request, businessId),
+      businessId: await this.getBusinessId(request, businessId),
       month,
     })
 
@@ -81,13 +91,144 @@ export class AdminController {
     @Query('perPage') perPage?: string
   ) {
     const pagination = parsePaginationParams(page, perPage)
-    return this.adminService.listServices(this.getBusinessId(request, businessId), pagination)
+    return this.adminService.listServices(await this.getBusinessId(request, businessId), pagination)
+  }
+
+  @Get('memberships')
+  @Roles('OWNER', 'ADMIN')
+  async listMemberships(
+    @Req() request: AuthenticatedRequest,
+    @Query('businessId') businessId?: string
+  ) {
+    return this.adminService.listMemberships(await this.getBusinessId(request, businessId))
+  }
+
+  @Get('invitations')
+  @Roles('OWNER', 'ADMIN')
+  async listInvitations(
+    @Req() request: AuthenticatedRequest,
+    @Query('businessId') businessId?: string
+  ) {
+    return this.adminService.listInvitations(await this.getBusinessId(request, businessId))
+  }
+
+  @Post('invitations')
+  @Roles('OWNER')
+  async createInvitation(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
+    const rawBody = typeof body === 'object' && body !== null ? body as Record<string, unknown> : {}
+    const parseResult = adminCreateInvitationSchema.safeParse({
+      ...rawBody,
+      businessId: await this.getBusinessId(
+        request,
+        typeof rawBody.businessId === 'string' ? rawBody.businessId : undefined
+      ),
+    })
+
+    if (!parseResult.success) {
+      throw new BadRequestException(parseResult.error.errors.map((error) => error.message).join(', '))
+    }
+
+    return this.adminService.createInvitation(parseResult.data)
+  }
+
+  @Post('memberships')
+  @Roles('OWNER')
+  async createMembership(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
+    const rawBody = typeof body === 'object' && body !== null ? body as Record<string, unknown> : {}
+    const parseResult = adminCreateMembershipSchema.safeParse({
+      ...rawBody,
+      businessId: await this.getBusinessId(
+        request,
+        typeof rawBody.businessId === 'string' ? rawBody.businessId : undefined
+      ),
+    })
+
+    if (!parseResult.success) {
+      throw new BadRequestException(parseResult.error.errors.map((error) => error.message).join(', '))
+    }
+
+    return this.adminService.createMembership(parseResult.data)
+  }
+
+  @Patch('memberships/:id')
+  @Roles('OWNER', 'ADMIN')
+  async updateMembershipRole(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') membershipId: string,
+    @Body() body: unknown
+  ) {
+    const rawBody = typeof body === 'object' && body !== null ? body as Record<string, unknown> : {}
+    const parseResult = adminMembershipRoleSchema.safeParse({
+      ...rawBody,
+      businessId: await this.getBusinessId(
+        request,
+        typeof rawBody.businessId === 'string' ? rawBody.businessId : undefined
+      ),
+    })
+
+    if (!parseResult.success) {
+      throw new BadRequestException(parseResult.error.errors.map((error) => error.message).join(', '))
+    }
+
+    return this.adminService.updateMembershipRole(membershipId, parseResult.data)
+  }
+
+  @Delete('memberships/:id')
+  @Roles('OWNER', 'ADMIN')
+  async deleteMembership(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') membershipId: string,
+    @Query('businessId') businessId?: string
+  ) {
+    const parseResult = adminBusinessIdSchema.safeParse({
+      businessId: await this.getBusinessId(request, businessId),
+    })
+
+    if (!parseResult.success) {
+      throw new BadRequestException(parseResult.error.errors.map((error) => error.message).join(', '))
+    }
+
+    return this.adminService.deleteMembership(membershipId, parseResult.data.businessId)
+  }
+
+  @Get('appointments')
+  @Roles('OWNER', 'ADMIN', 'STAFF')
+  async listAppointments(
+    @Req() request: AuthenticatedRequest,
+    @Query('businessId') businessId?: string,
+    @Query('statusFilter') statusFilter?: string,
+    @Query('page') page?: string,
+    @Query('perPage') perPage?: string
+  ) {
+    const parseResult = adminAppointmentsQuerySchema.safeParse({
+      businessId: await this.getBusinessId(request, businessId),
+      statusFilter,
+    })
+
+    if (!parseResult.success) {
+      throw new BadRequestException(parseResult.error.errors.map((error) => error.message).join(', '))
+    }
+
+    const pagination = parsePaginationParams(page, perPage)
+
+    return this.adminService.listAppointments(
+      parseResult.data.businessId,
+      parseResult.data.statusFilter ?? 'all',
+      pagination
+    )
   }
 
   @Post('services')
   @Roles('OWNER', 'ADMIN')
-  async createService(@Body() body: unknown) {
-    const parseResult = adminServiceSchema.safeParse(body)
+  async createService(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
+    const rawBody = typeof body === 'object' && body !== null ? body as Record<string, unknown> : {}
+    const parseResult = adminServiceSchema.safeParse({
+      ...rawBody,
+      businessId: await this.getBusinessId(
+        request,
+        typeof rawBody.businessId === 'string' ? rawBody.businessId : undefined
+      ),
+    })
 
     if (!parseResult.success) {
       throw new BadRequestException(parseResult.error.errors.map((error) => error.message).join(', '))
@@ -98,8 +239,19 @@ export class AdminController {
 
   @Patch('services/:serviceId')
   @Roles('OWNER', 'ADMIN')
-  async updateService(@Param('serviceId') serviceId: string, @Body() body: unknown) {
-    const parseResult = adminServiceSchema.safeParse(body)
+  async updateService(
+    @Req() request: AuthenticatedRequest,
+    @Param('serviceId') serviceId: string,
+    @Body() body: unknown
+  ) {
+    const rawBody = typeof body === 'object' && body !== null ? body as Record<string, unknown> : {}
+    const parseResult = adminServiceSchema.safeParse({
+      ...rawBody,
+      businessId: await this.getBusinessId(
+        request,
+        typeof rawBody.businessId === 'string' ? rawBody.businessId : undefined
+      ),
+    })
 
     if (!parseResult.success) {
       throw new BadRequestException(parseResult.error.errors.map((error) => error.message).join(', '))
@@ -116,7 +268,7 @@ export class AdminController {
     @Query('businessId') businessId?: string
   ) {
     const parseResult = adminBusinessIdSchema.safeParse({
-      businessId: this.getBusinessId(request, businessId),
+      businessId: await this.getBusinessId(request, businessId),
     })
 
     if (!parseResult.success) {
@@ -126,15 +278,72 @@ export class AdminController {
     return this.adminService.deleteService(serviceId, parseResult.data.businessId)
   }
 
-  @Patch('business')
+  @Patch('appointments/:id/status')
+  @Roles('OWNER', 'ADMIN', 'STAFF')
+  async updateAppointmentStatus(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') appointmentId: string,
+    @Query('businessId') businessId: string | undefined,
+    @Body() body: unknown
+  ) {
+    const businessParseResult = adminBusinessIdSchema.safeParse({
+      businessId: await this.getBusinessId(request, businessId),
+    })
+
+    if (!businessParseResult.success) {
+      throw new BadRequestException(businessParseResult.error.errors.map((error) => error.message).join(', '))
+    }
+
+    const statusParseResult = updateAppointmentStatusSchema.safeParse(body)
+
+    if (!statusParseResult.success) {
+      throw new BadRequestException(statusParseResult.error.errors.map((error) => error.message).join(', '))
+    }
+
+    return this.adminService.updateAppointmentStatus(
+      appointmentId,
+      businessParseResult.data.businessId,
+      statusParseResult.data
+    )
+  }
+
+  @Patch('business/availability')
   @Roles('OWNER', 'ADMIN')
-  async updateBusinessAvailability(@Body() body: unknown) {
-    const parseResult = adminBusinessAvailabilitySchema.safeParse(body)
+  async updateBusinessAvailability(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
+    const rawBody = typeof body === 'object' && body !== null ? body as Record<string, unknown> : {}
+    const parseResult = adminBusinessAvailabilitySchema.safeParse({
+      ...rawBody,
+      businessId: await this.getBusinessId(
+        request,
+        typeof rawBody.businessId === 'string' ? rawBody.businessId : undefined
+      ),
+    })
 
     if (!parseResult.success) {
       throw new BadRequestException(parseResult.error.errors.map((error) => error.message).join(', '))
     }
 
     return this.adminService.updateBusinessAvailability(parseResult.data)
+  }
+}
+
+@Controller('invitations')
+export class InvitationsController {
+  constructor(private readonly adminService: AdminService) {}
+
+  @Get(':token')
+  async getInvitation(@Param('token') token: string) {
+    return this.adminService.getInvitationDetails(token)
+  }
+
+  @Post(':token/accept')
+  async acceptInvitation(@Param('token') token: string, @Body() body: unknown) {
+    const parseResult = acceptInvitationSchema.safeParse(body)
+
+    if (!parseResult.success) {
+      throw new BadRequestException(parseResult.error.errors.map((error) => error.message).join(', '))
+    }
+
+    return this.adminService.acceptInvitation(token, parseResult.data)
   }
 }

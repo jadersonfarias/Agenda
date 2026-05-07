@@ -1,6 +1,8 @@
 -- Rename existing user enum and create membership enum without touching current data.
 ALTER TYPE "Role" RENAME TO "UserRole";
 
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
 -- CreateEnum
 CREATE TYPE "Role" AS ENUM ('OWNER', 'ADMIN', 'STAFF');
 

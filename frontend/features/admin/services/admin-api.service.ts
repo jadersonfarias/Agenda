@@ -4,6 +4,10 @@ import {
     type AdminAppointmentStatus,
     type AdminAppointmentStatusFilter,
     type AdminBusinessSettings,
+    type AdminDashboardData,
+    type AdminInvitationItem,
+    type AdminMembershipItem,
+    type AdminMembershipRole,
     type AdminMonthlySummary,
     type AdminServiceItem,
 } from '../types'
@@ -31,6 +35,18 @@ function normalizeMonthlySummary(payload: Omit<AdminMonthlySummary, 'totalRevenu
     }
 }
 
+export async function fetchAdminDashboard(businessId: string) {
+    try {
+        const response = await api.get<AdminDashboardData>('/admin/dashboard', {
+            params: { businessId },
+        })
+
+        return response.data
+    } catch (error) {
+        throw new Error(getApiErrorMessage(error, 'Não foi possível carregar o painel administrativo'))
+    }
+}
+
 export async function fetchAdminServices(businessId: string) {
     try {
         const response = await api.get<AdminServiceItem[] | PaginatedResponse<AdminServiceItem>>('/admin/services', {
@@ -40,6 +56,90 @@ export async function fetchAdminServices(businessId: string) {
         return normalizeAdminServices(response.data)
     } catch (error) {
         throw new Error(getApiErrorMessage(error, 'Não foi possível carregar os serviços'))
+    }
+}
+
+export async function fetchAdminMemberships(businessId: string) {
+    try {
+        const response = await api.get<AdminMembershipItem[]>('/admin/memberships', {
+            params: { businessId },
+        })
+
+        return response.data
+    } catch (error) {
+        throw new Error(getApiErrorMessage(error, 'Não foi possível carregar os membros'))
+    }
+}
+
+export async function fetchAdminInvitations(businessId: string) {
+    try {
+        const response = await api.get<AdminInvitationItem[]>('/admin/invitations', {
+            params: { businessId },
+        })
+
+        return response.data
+    } catch (error) {
+        throw new Error(getApiErrorMessage(error, 'Não foi possível carregar os convites'))
+    }
+}
+
+export async function createAdminInvitation(input: {
+    businessId: string
+    email: string
+    role: AdminMembershipRole
+}) {
+    try {
+        const response = await api.post<AdminInvitationItem>('/admin/invitations', input)
+
+        return response.data
+    } catch (error) {
+        throw new Error(getApiErrorMessage(error, 'Não foi possível criar o convite'))
+    }
+}
+
+export async function createAdminMembership(input: {
+    businessId: string
+    email: string
+    role: AdminMembershipRole
+}) {
+    try {
+        const response = await api.post<AdminMembershipItem>('/admin/memberships', input)
+
+        return response.data
+    } catch (error) {
+        throw new Error(getApiErrorMessage(error, 'Não foi possível adicionar o membro'))
+    }
+}
+
+export async function updateAdminMembershipRole(input: {
+    businessId: string
+    membershipId: string
+    role: AdminMembershipRole
+}) {
+    try {
+        const response = await api.patch<AdminMembershipItem>(`/admin/memberships/${input.membershipId}`, {
+            businessId: input.businessId,
+            role: input.role,
+        })
+
+        return response.data
+    } catch (error) {
+        throw new Error(getApiErrorMessage(error, 'Não foi possível atualizar a role do membro'))
+    }
+}
+
+export async function deleteAdminMembership(input: {
+    businessId: string
+    membershipId: string
+}) {
+    try {
+        const response = await api.delete<{ success: boolean }>(`/admin/memberships/${input.membershipId}`, {
+            params: { businessId: input.businessId },
+        })
+
+        return response.data
+    } catch (error) {
+        throw new Error(getApiErrorMessage(error, 'Não foi possível remover o membro'))
     }
 }
 
@@ -96,7 +196,7 @@ export async function updateAdminAvailability(input: {
     closeTime: string
 }) {
     try {
-        const response = await api.patch<AdminBusinessSettings>('/admin/business', input)
+        const response = await api.patch<AdminBusinessSettings>('/admin/business/availability', input)
         return response.data
     } catch (error) {
         throw new Error(getApiErrorMessage(error, 'Não foi possível atualizar os horários'))
@@ -117,7 +217,7 @@ export async function fetchAdminMonthlySummary(businessId: string, month: string
 
 export async function fetchAdminAppointments(businessId: string, statusFilter: AdminAppointmentStatusFilter = 'active') {
     try {
-        const response = await api.get<AdminAppointmentItem[] | PaginatedResponse<AdminAppointmentItem>>('/appointments', {
+        const response = await api.get<AdminAppointmentItem[] | PaginatedResponse<AdminAppointmentItem>>('/admin/appointments', {
             params: {
                 businessId,
                 statusFilter,
@@ -137,7 +237,7 @@ export async function updateAdminAppointmentStatus(input: {
 }) {
     try {
         const response = await api.patch<{ id: string; status: AdminAppointmentStatus }>(
-            `/appointments/${input.appointmentId}/status`,
+            `/admin/appointments/${input.appointmentId}/status`,
             { status: input.status },
             {
                 params: { businessId: input.businessId },

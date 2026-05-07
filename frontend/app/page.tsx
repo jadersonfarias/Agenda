@@ -15,7 +15,7 @@ import { DatePicker } from '../components/ui/calendar'
 import { format } from 'date-fns'
 
 const defaultBusinessId = process.env.NEXT_PUBLIC_DEFAULT_BUSINESS_ID || 'default-business'
-const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333'
+const apiBase = process.env.NEXT_PUBLIC_API_URL || '/backend'
 
 const appointmentSchema = z.object({
     serviceId: z.string().uuid('Selecione um serviço válido'),

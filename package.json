@@ -11,7 +11,8 @@
     "db:down": "docker compose down",
     "db:logs": "docker compose logs -f postgres",
     "dev:stop": "bash ./scripts/dev-stop.sh",
-    "dev": "npm run dev:stop && npm run db:up && node --env-file=.env ./node_modules/concurrently/dist/bin/concurrently.js \"npm --workspace=frontend run dev\" \"npm --workspace=backend run start:dev\"",
+    "dev": "bash ./scripts/dev-with-env.sh .env",
+    "dev:ngrok": "bash ./scripts/dev-with-env.sh .env.ngrok",
     "build": "npm --workspace=frontend run build && npm --workspace=backend run build",
     "start": "npm --workspace=backend run start:prod",
     "seed": "npm --workspace=backend run seed"

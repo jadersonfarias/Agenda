@@ -3,7 +3,6 @@ import { NextAuthOptions } from 'next-auth'
 
 const backendAuthBaseUrl =
   process.env.API_URL ??
-  process.env.NEXT_PUBLIC_API_URL ??
   'http://127.0.0.1:3333'
 
 export const authOptions: NextAuthOptions = {
@@ -44,6 +43,8 @@ export const authOptions: NextAuthOptions = {
         return {
           ...data.user,
           accessToken: data.accessToken,
+          businesses: data.businesses,
+          currentBusinessId: data.currentBusinessId,
         }
       },
     }),
@@ -53,6 +54,8 @@ export const authOptions: NextAuthOptions = {
       if (user?.id) {
         token.sub = user.id
         token.accessToken = (user as any).accessToken
+        token.businesses = (user as any).businesses
+        token.currentBusinessId = (user as any).currentBusinessId
       }
       return token
     },
@@ -63,6 +66,8 @@ export const authOptions: NextAuthOptions = {
       if (token.accessToken) {
         session.accessToken = token.accessToken as string
       }
+      session.businesses = token.businesses
+      session.currentBusinessId = token.currentBusinessId as string | null | undefined
       return session
     },
   },

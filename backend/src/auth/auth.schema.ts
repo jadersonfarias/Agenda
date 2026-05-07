@@ -13,7 +13,16 @@ export type AuthUserResponse = {
   email: string
 }
 
+export type AuthBusinessContext = {
+  id: string
+  name: string
+  slug: string
+  role: 'OWNER' | 'ADMIN' | 'STAFF'
+}
+
 export type LoginResponse = {
   user: AuthUserResponse
+  businesses: AuthBusinessContext[]
+  currentBusinessId: string | null
   accessToken: string
 }

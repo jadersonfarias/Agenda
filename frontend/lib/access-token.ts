@@ -5,12 +5,32 @@ export type AccessTokenMembership = {
   role: MembershipRole
 }
 
+export type AccessTokenBusinessContext = {
+  id: string
+  name: string
+  slug: string
+  role: MembershipRole
+}
+
 type AccessTokenPayload = {
   sub: string
   email?: string | null
   name?: string | null
   memberships?: AccessTokenMembership[]
+  businesses?: AccessTokenBusinessContext[]
+  currentBusinessId?: string | null
   exp?: number
+}
+
+function decodeBase64Url(value: string) {
+  const normalizedValue = value.replace(/-/g, '+').replace(/_/g, '/')
+  const paddedValue = normalizedValue.padEnd(normalizedValue.length + ((4 - (normalizedValue.length % 4)) % 4), '=')
+
+  if (typeof atob === 'function') {
+    return atob(paddedValue)
+  }
+
+  return Buffer.from(value, 'base64url').toString()
 }
 
 export function decodeAccessToken(token: string): AccessTokenPayload {
@@ -20,9 +40,15 @@ export function decodeAccessToken(token: string): AccessTokenPayload {
     throw new Error('Token inválido')
   }
 
-  return JSON.parse(Buffer.from(encodedPayload, 'base64url').toString()) as AccessTokenPayload
+  return JSON.parse(decodeBase64Url(encodedPayload)) as AccessTokenPayload
 }
 
 export function getPrimaryBusinessId(token: string) {
-  return decodeAccessToken(token).memberships?.[0]?.businessId
+  const payload = decodeAccessToken(token)
+
+  return payload.currentBusinessId ?? payload.businesses?.[0]?.id ?? payload.memberships?.[0]?.businessId
+}
+
+export function getTokenBusinesses(token: string) {
+  return decodeAccessToken(token).businesses ?? []
 }

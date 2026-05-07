@@ -136,11 +136,20 @@ type Membership = {
   role: MembershipRole
 }
 
+type BusinessContext = {
+  id: string
+  name: string
+  slug: string
+  role: MembershipRole
+}
+
 type AccessTokenPayload = {
   sub: string
   email?: string | null
   name?: string | null
   memberships?: Membership[]
+  businesses?: BusinessContext[]
+  currentBusinessId?: string | null
 }
 
 @Injectable()
@@ -153,40 +162,59 @@ export class AccessTokenService {
   async generateToken(userId: string, email: string, expiresInDays: number = 7): Promise<string> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: {
-        businesses: {
-          select: { id: true },
-        },
-      },
     })
 
     if (!user) {
       throw new UnauthorizedException('Usuário não encontrado')
     }
 
-    const membershipRows = await this.prisma.$queryRaw<Array<{ businessId: string; role: string }>>`
-      SELECT "businessId", "role"::text AS "role"
-      FROM "Membership"
-      WHERE "userId" = ${userId}
-    `
+    const membershipRows = await this.prisma.membership.findMany({
+      where: { userId },
+      select: {
+        businessId: true,
+        role: true,
+        business: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+      },
+      orderBy: [
+        { createdAt: 'asc' },
+        { business: { createdAt: 'asc' } },
+      ],
+    })
 
-    const membershipsFromTable = membershipRows.filter(
-      (membership: { role: string }): membership is Membership =>
-        membership.role === 'OWNER' || membership.role === 'ADMIN' || membership.role === 'STAFF',
-    )
+    const memberships: Membership[] = membershipRows.map((membership: {
+      businessId: string
+      role: MembershipRole
+    }) => ({
+      businessId: membership.businessId,
+      role: membership.role,
+    }))
 
-    const memberships =
-      membershipsFromTable.length > 0
-        ? membershipsFromTable
-        : user.businesses.map((business: { id: any }) => ({
-            businessId: business.id,
-            role: 'OWNER' as const,
-          }))
+    const businesses: BusinessContext[] = membershipRows.map((membership: {
+      role: MembershipRole
+      business: {
+        id: string
+        name: string
+        slug: string
+      }
+    }) => ({
+      id: membership.business.id,
+      name: membership.business.name,
+      slug: membership.business.slug,
+      role: membership.role,
+    }))
 
     const payload: AccessTokenPayload = {
       sub: userId,
       email,
       memberships,
+      businesses,
+      currentBusinessId: businesses[0]?.id ?? null,
     }
 
     return this.jwtService.sign(payload, {

@@ -6,6 +6,10 @@ export const adminBusinessIdSchema = z.object({
   businessId: z.string().trim().min(1, 'businessId é obrigatório'),
 })
 
+export const adminAppointmentsQuerySchema = adminBusinessIdSchema.extend({
+  statusFilter: z.enum(['active', 'completed', 'all']).optional(),
+})
+
 export const adminMonthlySummaryQuerySchema = adminBusinessIdSchema.extend({
   month: z
     .string()
@@ -33,5 +37,29 @@ export const adminBusinessAvailabilitySchema = adminBusinessIdSchema
     path: ['closeTime'],
   })
 
+export const adminMembershipRoleSchema = adminBusinessIdSchema.extend({
+  role: z.enum(['OWNER', 'ADMIN', 'STAFF']),
+})
+
+export const adminCreateMembershipSchema = adminBusinessIdSchema.extend({
+  email: z.string().trim().email('Informe um email válido'),
+  role: z.enum(['OWNER', 'ADMIN', 'STAFF']),
+})
+
+export const adminCreateInvitationSchema = adminBusinessIdSchema.extend({
+  email: z.string().trim().email('Informe um email válido'),
+  role: z.enum(['OWNER', 'ADMIN', 'STAFF']),
+})
+
+export const acceptInvitationSchema = z.object({
+  name: z.string().trim().min(2, 'Informe o nome completo').optional(),
+  password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres').optional(),
+})
+
 export type AdminServiceDto = z.infer<typeof adminServiceSchema>
 export type AdminBusinessAvailabilityDto = z.infer<typeof adminBusinessAvailabilitySchema>
+export type AdminAppointmentsQueryDto = z.infer<typeof adminAppointmentsQuerySchema>
+export type AdminMembershipRoleDto = z.infer<typeof adminMembershipRoleSchema>
+export type AdminCreateMembershipDto = z.infer<typeof adminCreateMembershipSchema>
+export type AdminCreateInvitationDto = z.infer<typeof adminCreateInvitationSchema>
+export type AcceptInvitationDto = z.infer<typeof acceptInvitationSchema>

@@ -4,6 +4,7 @@ dist
 .next
 .env
 .env.local
+.env.ngrok
 .DS_Store
 npm-debug.log*
 package-lock.json
