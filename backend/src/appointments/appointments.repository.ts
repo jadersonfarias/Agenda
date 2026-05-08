@@ -20,6 +20,26 @@ type MonthlyRevenueRange = {
 
 type AppointmentStatusFilter = 'active' | 'completed' | 'all'
 
+type PublicAppointmentRow = {
+  id: string
+  publicToken: string
+  scheduledAt: Date
+  price: unknown
+  status: AppointmentStatus
+  businessId: string
+  serviceName: string
+  customerName: string
+}
+
+type PublicCustomerAppointmentRow = {
+  id: string
+  publicToken: string
+  scheduledAt: Date
+  price: unknown
+  status: AppointmentStatus
+  serviceName: string
+}
+
 @Injectable()
 export class AppointmentsRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -137,6 +157,17 @@ export class AppointmentsRepository {
     })
   }
 
+  async ensurePublicToken(appointmentId: string) {
+    const [appointment] = await this.prisma.$queryRaw<Array<{ publicToken: string }>>`
+      UPDATE "Appointment"
+      SET "publicToken" = COALESCE("publicToken", gen_random_uuid()::text)
+      WHERE "id" = ${appointmentId}
+      RETURNING "publicToken"
+    `
+
+    return appointment?.publicToken ?? null
+  }
+
   async delete(id: string, businessId: string) {
     return this.prisma.appointment.deleteMany({
       where: { id, businessId },
@@ -151,6 +182,82 @@ export class AppointmentsRepository {
         completedAt: status === AppointmentStatus.COMPLETED ? new Date() : null,
       },
     })
+  }
+
+  async findPublicByToken(token: string) {
+    const [appointment] = await this.prisma.$queryRaw<PublicAppointmentRow[]>`
+      SELECT
+        a."id",
+        a."publicToken",
+        a."scheduledAt",
+        a."price",
+        a."status",
+        a."businessId",
+        s."name" AS "serviceName",
+        c."name" AS "customerName"
+      FROM "Appointment" a
+      INNER JOIN "Service" s ON s."id" = a."serviceId"
+      INNER JOIN "Customer" c ON c."id" = a."customerId"
+      WHERE a."publicToken" = ${token}
+      LIMIT 1
+    `
+
+    return appointment ?? null
+  }
+
+  async cancelByPublicToken(token: string) {
+    const [appointment] = await this.prisma.$queryRaw<Array<{ id: string; status: AppointmentStatus; businessId: string }>>`
+      UPDATE "Appointment"
+      SET
+        "status" = 'CANCELED'::"AppointmentStatus",
+        "completedAt" = NULL,
+        "updatedAt" = NOW()
+      WHERE "publicToken" = ${token}
+      RETURNING "id", "status", "businessId"
+    `
+
+    return appointment ?? null
+  }
+
+  async findPublicByCustomerPhone(phoneDigits: string, businessId?: string) {
+    if (businessId) {
+      return this.prisma.$queryRaw<PublicCustomerAppointmentRow[]>`
+        SELECT
+          a."id",
+          a."publicToken",
+          a."scheduledAt",
+          a."price",
+          a."status",
+          s."name" AS "serviceName"
+        FROM "Appointment" a
+        INNER JOIN "Service" s ON s."id" = a."serviceId"
+        INNER JOIN "Customer" c ON c."id" = a."customerId"
+        WHERE regexp_replace(c."phone", '[^0-9]', '', 'g') = ${phoneDigits}
+          AND a."status" = 'SCHEDULED'::"AppointmentStatus"
+          AND a."scheduledAt" >= NOW()
+          AND a."businessId" = ${businessId}
+        ORDER BY a."scheduledAt" ASC
+        LIMIT 50
+      `
+    }
+
+    return this.prisma.$queryRaw<PublicCustomerAppointmentRow[]>`
+      SELECT
+        a."id",
+        a."publicToken",
+        a."scheduledAt",
+        a."price",
+        a."status",
+        s."name" AS "serviceName"
+      FROM "Appointment" a
+      INNER JOIN "Service" s ON s."id" = a."serviceId"
+      INNER JOIN "Customer" c ON c."id" = a."customerId"
+      WHERE regexp_replace(c."phone", '[^0-9]', '', 'g') = ${phoneDigits}
+        AND a."status" = 'SCHEDULED'::"AppointmentStatus"
+        AND a."scheduledAt" >= NOW()
+      ORDER BY a."scheduledAt" ASC
+      LIMIT 50
+    `
   }
 
   async findLatestCompletedForCustomer(customerId: string) {

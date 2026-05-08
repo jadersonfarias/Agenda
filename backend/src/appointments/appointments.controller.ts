@@ -55,6 +55,23 @@ export class AppointmentsController {
     return this.appointmentsService.getMonthlyRevenue(businessId, month)
   }
 
+  @Get('public/:token')
+  getPublicByToken(@Param('token') token: string) {
+    return this.appointmentsService.getPublicByToken(token)
+  }
+
+  @Get('customer')
+  getPublicByCustomerPhone(
+    @Query('phone') phone: string,
+    @Query('businessId') businessId?: string
+  ) {
+    if (!phone) {
+      throw new BadRequestException('phone é obrigatório')
+    }
+
+    return this.appointmentsService.getPublicByCustomerPhone(phone, businessId)
+  }
+
   @Post()
   async create(@Body() body: unknown) {
     const parseResult = createAppointmentSchema.safeParse(body)
@@ -82,6 +99,11 @@ export class AppointmentsController {
       throw new BadRequestException(parseResult.error.errors.map((error) => error.message).join(', '))
     }
     return this.appointmentsService.updateStatus(id, businessId, parseResult.data)
+  }
+
+  @Patch('public/:token/cancel')
+  cancelPublic(@Param('token') token: string) {
+    return this.appointmentsService.cancelPublicByToken(token)
   }
 
   @Delete(':id')

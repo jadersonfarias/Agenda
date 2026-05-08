@@ -21,6 +21,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                                     <Link href="/" className="rounded-full px-3 py-2 transition hover:bg-purple-100 hover:text-purple-700">
                                         Reservar
                                     </Link>
+                                    <Link href="/meus-agendamentos" className="rounded-full px-3 py-2 transition hover:bg-purple-100 hover:text-purple-700">
+                                        Meus agendamentos
+                                    </Link>
                                     <Link href="/admin" className="rounded-full px-3 py-2 transition hover:bg-purple-100 hover:text-purple-700">
                                         Admin
                                     </Link>

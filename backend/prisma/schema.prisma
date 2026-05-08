@@ -132,6 +132,7 @@ enum AppointmentStatus {
 
 model Appointment {
     id          String            @id @default(uuid())
+    publicToken String            @unique @default(uuid())
     scheduledAt DateTime
     endsAt      DateTime
     price       Decimal
