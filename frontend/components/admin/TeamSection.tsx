@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form'
 import { useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { z } from 'zod'
-import { type AdminMembershipRole } from '../../features/admin/types'
+import { type AdminInvitationItem, type AdminMembershipRole } from '../../features/admin/types'
 import { useAdminCreateInvitationMutation } from '../../features/admin/hooks/use-admin-create-invitation-mutation'
 import { useAdminCreateMembershipMutation } from '../../features/admin/hooks/use-admin-create-membership-mutation'
 import { useAdminDeleteMembershipMutation } from '../../features/admin/hooks/use-admin-delete-membership-mutation'
@@ -46,6 +46,27 @@ const invitationFormSchema = z.object({
     email: z.string().trim().email('Informe um email válido'),
     role: z.enum(['OWNER', 'ADMIN', 'STAFF']),
 })
+
+async function copyInvitationLink(invitationLink: string) {
+    if (typeof navigator === 'undefined' || !navigator.clipboard) {
+        toast.error('Não foi possível copiar o link neste navegador')
+        return
+    }
+
+    await navigator.clipboard.writeText(invitationLink)
+    toast.success('Link do convite copiado')
+}
+
+function getInvitationStatus(invitation: AdminInvitationItem) {
+    if (invitation.acceptedAt) return 'Aceito'
+    if (invitation.isExpired) return 'Expirado'
+    return 'Pendente'
+}
+
+function getWhatsAppInvitationUrl(invitationLink: string) {
+    const message = `Olá! Você recebeu um convite para acessar a equipe. Use este link para aceitar: ${invitationLink}`
+    return `https://wa.me/?text=${encodeURIComponent(message)}`
+}
 
 function MembershipForm({
     businessId,
@@ -125,6 +146,7 @@ function InvitationForm({
     onSaved: () => void
 }) {
     const createInvitationMutation = useAdminCreateInvitationMutation()
+    const [createdInvitation, setCreatedInvitation] = useState<AdminInvitationItem | null>(null)
     const {
         register,
         handleSubmit,
@@ -140,14 +162,15 @@ function InvitationForm({
 
     const onSubmit = handleSubmit(async (values) => {
         try {
-            await createInvitationMutation.mutateAsync({
+            const invitation = await createInvitationMutation.mutateAsync({
                 businessId,
                 email: values.email,
                 role: values.role,
             })
+            setCreatedInvitation(invitation)
             reset()
-            onSaved()
-            toast.success('Convite enviado com sucesso')
+            await onSaved()
+            toast.success('Convite criado com sucesso')
         } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Erro ao enviar convite')
         }
@@ -179,6 +202,36 @@ function InvitationForm({
                     {createInvitationMutation.isPending ? 'Enviando...' : 'Enviar convite'}
                 </Button>
             </div>
+
+            {createdInvitation ? (
+                <div className="rounded-3xl border border-purple-200 bg-purple-50 p-4">
+                    <p className="text-sm font-semibold text-purple-900">Convite criado</p>
+                    <p className="mt-1 text-xs text-purple-800 sm:text-sm">
+                        Compartilhe este link com {createdInvitation.email}.
+                    </p>
+                    <div className="mt-3 break-all rounded-2xl bg-white px-4 py-3 text-sm text-slate-700">
+                        {createdInvitation.invitationLink}
+                    </div>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => copyInvitationLink(createdInvitation.invitationLink)}
+                            className="min-h-12 lg:min-h-0"
+                        >
+                            Copiar link
+                        </Button>
+                        <a
+                            href={getWhatsAppInvitationUrl(createdInvitation.invitationLink)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl bg-emerald-600 px-4 py-3 text-base font-semibold text-white transition hover:bg-emerald-700 sm:px-6 sm:text-sm md:w-auto lg:min-h-0"
+                        >
+                            Enviar pelo WhatsApp
+                        </a>
+                    </div>
+                </div>
+            ) : null}
         </form>
     )
 }
@@ -309,13 +362,16 @@ export function TeamSection({
                             ? invitationsQuery.data?.map((invitation) => (
                                   <div
                                       key={invitation.id}
-                                      className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between"
+                                      className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 lg:flex-row lg:items-center lg:justify-between"
                                   >
                                       <div className="min-w-0">
                                           <p className="break-all text-sm font-medium text-slate-900">{invitation.email}</p>
                                           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500 sm:text-sm">
                                               <span className={`rounded-full px-3 py-1 font-semibold uppercase tracking-[.2em] ${membershipRoleBadgeStyles[invitation.role]}`}>
                                                   {membershipRoleLabels[invitation.role]}
+                                              </span>
+                                              <span className="rounded-full bg-slate-100 px-3 py-1 font-semibold uppercase tracking-[.2em] text-slate-700">
+                                                  {getInvitationStatus(invitation)}
                                               </span>
                                               <span>
                                                   Expira em{' '}
@@ -329,6 +385,27 @@ export function TeamSection({
                                                   </span>
                                               ) : null}
                                           </div>
+                                          <p className="mt-2 break-all text-xs text-slate-500 sm:text-sm">
+                                              {invitation.invitationLink}
+                                          </p>
+                                      </div>
+                                      <div className="grid gap-2 sm:grid-cols-2 lg:w-[360px]">
+                                          <Button
+                                              type="button"
+                                              variant="secondary"
+                                              onClick={() => copyInvitationLink(invitation.invitationLink)}
+                                              className="min-h-12 lg:min-h-0"
+                                          >
+                                              Copiar link
+                                          </Button>
+                                          <a
+                                              href={getWhatsAppInvitationUrl(invitation.invitationLink)}
+                                              target="_blank"
+                                              rel="noreferrer"
+                                              className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl bg-emerald-600 px-4 py-3 text-base font-semibold text-white transition hover:bg-emerald-700 sm:px-6 sm:text-sm md:w-auto lg:min-h-0"
+                                          >
+                                              Enviar pelo WhatsApp
+                                          </a>
                                       </div>
                                   </div>
                               ))
@@ -442,7 +519,6 @@ export function TeamSection({
                         onCancel={() => setIsCreateInvitationOpen(false)}
                         onSaved={async () => {
                             await queryClient.invalidateQueries({ queryKey: ['admin-invitations', businessId] })
-                            setIsCreateInvitationOpen(false)
                         }}
                     />
                 </Modal>

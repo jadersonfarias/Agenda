@@ -37,6 +37,23 @@ export type AdminMonthlySummary = {
     activeCustomerWindowDays: number
 }
 
+export type AdminFinancialReportServiceItem = {
+    serviceId: string
+    serviceName: string
+    revenueTotal: string
+    appointmentsCompleted: number
+}
+
+export type AdminFinancialReport = {
+    month: string
+    revenueTotal: string
+    appointmentsCompleted: number
+    averageTicket: string
+    cancellationsCount: number
+    revenueByService: AdminFinancialReportServiceItem[]
+    topServices: AdminFinancialReportServiceItem[]
+}
+
 export type AdminAppointmentStatus = 'SCHEDULED' | 'COMPLETED' | 'CANCELED'
 export type AdminAppointmentStatusFilter = 'active' | 'completed' | 'all'
 
@@ -76,6 +93,7 @@ export type AdminInvitationItem = {
     email: string
     role: AdminMembershipRole
     token: string
+    invitationLink: string
     expiresAt: string
     acceptedAt: string | null
     createdAt: string

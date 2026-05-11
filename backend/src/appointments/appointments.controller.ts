@@ -13,8 +13,10 @@ import {
 import { parsePaginationParams } from '../common/pagination'
 import { AppointmentsService } from './appointments.service'
 import {
+  customerAppointmentsLookupSchema,
   createAppointmentSchema,
   CreateAppointmentDto,
+  publicAppointmentTokenSchema,
   updateAppointmentStatusSchema,
   UpdateAppointmentStatusDto,
 } from './appointment.schema'
@@ -22,6 +24,16 @@ import {
 @Controller('appointments')
 export class AppointmentsController {
   constructor(private readonly appointmentsService: AppointmentsService) {}
+
+  @Get('customer')
+  getByCustomerPhone(@Query('phone') phone: string) {
+    const parseResult = customerAppointmentsLookupSchema.safeParse({ phone })
+    if (!parseResult.success) {
+      throw new BadRequestException(parseResult.error.errors.map((error) => error.message).join(', '))
+    }
+
+    return this.appointmentsService.getByCustomerPhone(parseResult.data)
+  }
 
   @Get()
   getAll(
@@ -57,19 +69,12 @@ export class AppointmentsController {
 
   @Get('public/:token')
   getPublicByToken(@Param('token') token: string) {
-    return this.appointmentsService.getPublicByToken(token)
-  }
-
-  @Get('customer')
-  getPublicByCustomerPhone(
-    @Query('phone') phone: string,
-    @Query('businessId') businessId?: string
-  ) {
-    if (!phone) {
-      throw new BadRequestException('phone é obrigatório')
+    const parseResult = publicAppointmentTokenSchema.safeParse({ token })
+    if (!parseResult.success) {
+      throw new BadRequestException(parseResult.error.errors.map((error) => error.message).join(', '))
     }
 
-    return this.appointmentsService.getPublicByCustomerPhone(phone, businessId)
+    return this.appointmentsService.getPublicByToken(parseResult.data)
   }
 
   @Post()
@@ -89,6 +94,16 @@ export class AppointmentsController {
     }
   }
 
+  @Patch('public/:token/cancel')
+  cancelPublicAppointment(@Param('token') token: string) {
+    const parseResult = publicAppointmentTokenSchema.safeParse({ token })
+    if (!parseResult.success) {
+      throw new BadRequestException(parseResult.error.errors.map((error) => error.message).join(', '))
+    }
+
+    return this.appointmentsService.cancelPublicAppointment(parseResult.data)
+  }
+
   @Patch(':id/status')
   async updateStatus(@Param('id') id: string, @Body() body: unknown, @Query('businessId') businessId: string) {
     if (!businessId) {
@@ -99,11 +114,6 @@ export class AppointmentsController {
       throw new BadRequestException(parseResult.error.errors.map((error) => error.message).join(', '))
     }
     return this.appointmentsService.updateStatus(id, businessId, parseResult.data)
-  }
-
-  @Patch('public/:token/cancel')
-  cancelPublic(@Param('token') token: string) {
-    return this.appointmentsService.cancelPublicByToken(token)
   }
 
   @Delete(':id')

@@ -18,12 +18,10 @@ type AppointmentResponseItem = {
     }
 }
 
-function formatSlugLabel(slug: string) {
-    return slug
-        .split('-')
-        .filter(Boolean)
-        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-        .join(' ')
+type PublicBusinessResponse = {
+    id: string
+    name: string
+    slug: string
 }
 
 export default async function BusinessAgendaPage({ params }: BusinessAgendaPageProps) {
@@ -31,9 +29,10 @@ export default async function BusinessAgendaPage({ params }: BusinessAgendaPageP
     const api = createServerApi()
 
     try {
+        const businessResponse = await api.get<PublicBusinessResponse>(`/businesses/slug/${encodeURIComponent(slug)}`)
         const response = await api.get<AppointmentResponseItem[]>('/appointments', {
             params: {
-                businessId: slug,
+                businessId: businessResponse.data.id,
                 statusFilter: 'active',
             },
         })
@@ -41,7 +40,7 @@ export default async function BusinessAgendaPage({ params }: BusinessAgendaPageP
         return (
             <PublicAgendaPage
                 businessSlug={slug}
-                headline={formatSlugLabel(slug) || 'Agenda pública'}
+                headline={businessResponse.data.name || 'Agenda pública'}
                 appointments={response.data}
             />
         )
@@ -49,7 +48,7 @@ export default async function BusinessAgendaPage({ params }: BusinessAgendaPageP
         return (
             <PublicAgendaPage
                 businessSlug={slug}
-                headline={formatSlugLabel(slug) || 'Agenda pública'}
+                headline="Agenda pública"
                 appointments={[]}
                 errorMessage={getServerApiErrorMessage(error, 'Não foi possível carregar a agenda pública agora.')}
             />

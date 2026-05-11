@@ -2,7 +2,6 @@ export type InvitationDetails = {
     id: string
     email: string
     role: 'OWNER' | 'ADMIN' | 'STAFF'
-    token: string
     expiresAt: string
     acceptedAt: string | null
     createdAt: string

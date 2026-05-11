@@ -1,39 +1,36 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common'
 import { randomBytes } from 'crypto'
+import { hash } from 'bcryptjs'
 import { AdminRepository } from './admin.repository'
 import { PaginationParams } from '../common/pagination'
-import { BusinessesService } from '../businesses/businesses.service'
-import {
-  AcceptInvitationDto,
-  AdminBusinessAvailabilityDto,
-  AdminCreateInvitationDto,
-  AdminCreateMembershipDto,
-  AdminMembershipRoleDto,
-  AdminServiceDto,
-} from './admin.schema'
+import { BusinessesRepository } from '../businesses/businesses.repository'
+import { AppointmentsService } from '../appointments/appointments.service'
 import { UpdateAppointmentStatusDto } from '../appointments/appointment.schema'
+import { AcceptInvitationDto, AdminCreateInvitationDto, AdminCreateMembershipDto, AdminMembershipRoleDto } from './admin.schema'
+import { MembershipRole } from '../auth/role.types'
 
 type AdminServiceRecord = Awaited<ReturnType<AdminRepository['listServicesByBusinessId']>>[number]
-type AdminBusinessRecord = NonNullable<Awaited<ReturnType<AdminRepository['findBusinessById']>>>
-type AdminSingleServiceRecord = NonNullable<Awaited<ReturnType<AdminRepository['findServiceById']>>>
-type AdminMembershipRecord = Awaited<ReturnType<AdminRepository['listMembershipsByBusinessId']>>[number]
-type AdminInvitationRecord = Awaited<ReturnType<AdminRepository['listInvitationsByBusinessId']>>[number]
-type AdminInvitationByTokenRecord = NonNullable<Awaited<ReturnType<AdminRepository['findInvitationByToken']>>>
-type AdminAppointmentRecord = {
+
+type AdminMembershipRecord = {
   id: string
-  scheduledAt: Date
-  completedAt: Date | null
-  status: 'SCHEDULED' | 'COMPLETED' | 'CANCELED'
-  price: { toString(): string }
-  service: {
+  role: MembershipRole
+  createdAt: Date
+  updatedAt: Date
+  user: {
     id: string
     name: string
+    email: string
   }
-  customer: {
-    id: string
-    name: string
-    phone: string
-  }
+}
+
+type AdminInvitationRecord = {
+  id: string
+  email: string
+  role: MembershipRole
+  token: string
+  expiresAt: Date
+  acceptedAt: Date | null
+  createdAt: Date
 }
 
 @Injectable()
@@ -43,7 +40,8 @@ export class AdminService {
 
   constructor(
     private readonly adminRepository: AdminRepository,
-    private readonly businessesService: BusinessesService,
+    private readonly businessesRepository: BusinessesRepository,
+    private readonly appointmentsService: AppointmentsService
   ) {}
 
   private normalizeMonth(month?: string) {
@@ -64,195 +62,179 @@ export class AdminService {
     return value
   }
 
-  private async getBusinessOrThrow(businessId: string) {
-    const business = await this.adminRepository.findBusinessById(businessId)
+  async getDashboard(businessId: string) {
+    const [business, services] = await Promise.all([
+      this.businessesRepository.findBusinessById(businessId),
+      this.adminRepository.listServicesByBusinessId(businessId),
+    ])
 
     if (!business) {
       throw new BadRequestException('Negócio inválido')
     }
 
-    return business
-  }
-
-  private async syncCustomerLastVisitAt(customerId: string) {
-    const latestCompletedAppointment = await this.adminRepository.findLatestCompletedForCustomer(customerId)
-
-    await this.adminRepository.updateCustomerLastVisitAt(
-      customerId,
-      latestCompletedAppointment?.scheduledAt ?? null
-    )
-  }
-
-  private mapBusiness(business: AdminBusinessRecord) {
     return {
-      id: business.id,
-      name: business.name,
-      slug: business.slug,
-      openTime: business.openTime,
-      closeTime: business.closeTime,
+      business: {
+        id: business.id,
+        name: business.name,
+        slug: business.slug,
+        openTime: business.openTime,
+        closeTime: business.closeTime,
+      },
+      services: services.map((service: AdminServiceRecord) => ({
+        id: service.id,
+        name: service.name,
+        price: service.price.toString(),
+        durationMinutes: service.durationMinutes,
+        appointmentCount: service._count.appointments,
+        createdAt: service.createdAt.toISOString(),
+      })),
     }
   }
 
-  private mapService(service: AdminServiceRecord | AdminSingleServiceRecord) {
-    return {
-      id: service.id,
-      name: service.name,
-      price: service.price.toString(),
-      durationMinutes: service.durationMinutes,
-      appointmentCount: service._count.appointments,
-      createdAt: service.createdAt.toISOString(),
-    }
+  async listServices(businessId: string, pagination: PaginationParams | null = null) {
+    const services = await this.adminRepository.listServicesByBusinessId(businessId, pagination)
+
+    return pagination
+      ? {
+          data: services.data.map((service: AdminServiceRecord) => ({
+            id: service.id,
+            name: service.name,
+            price: service.price.toString(),
+            durationMinutes: service.durationMinutes,
+            appointmentCount: service._count.appointments,
+            createdAt: service.createdAt.toISOString(),
+          })),
+          meta: services.meta,
+        }
+      : services.map((service: AdminServiceRecord) => ({
+          id: service.id,
+          name: service.name,
+          price: service.price.toString(),
+          durationMinutes: service.durationMinutes,
+          appointmentCount: service._count.appointments,
+          createdAt: service.createdAt.toISOString(),
+        }))
   }
 
-  private mapMembership(membership: AdminMembershipRecord) {
+  async listMemberships(businessId: string) {
+    const memberships = await this.adminRepository.listMembershipsByBusinessId(businessId)
+
+    return memberships.map((membership: AdminMembershipRecord) => ({
+      id: membership.id,
+      role: membership.role,
+      createdAt: membership.createdAt.toISOString(),
+      updatedAt: membership.updatedAt.toISOString(),
+      user: membership.user,
+    }))
+  }
+
+  async createMembership(businessId: string, dto: AdminCreateMembershipDto) {
+    const email = dto.email.toLowerCase()
+    const user = await this.adminRepository.findUserByEmail(email)
+
+    if (!user) {
+      throw new NotFoundException('Usuário não encontrado')
+    }
+
+    const existingMembership = await this.adminRepository.findMembershipByUserAndBusinessId(user.id, businessId)
+
+    if (existingMembership) {
+      throw new ConflictException('Usuário já é membro deste negócio')
+    }
+
+    const membership = await this.adminRepository.createMembership({
+      userId: user.id,
+      businessId,
+      role: dto.role,
+    })
+
     return {
       id: membership.id,
       role: membership.role,
       createdAt: membership.createdAt.toISOString(),
       updatedAt: membership.updatedAt.toISOString(),
-      user: {
-        id: membership.user.id,
-        name: membership.user.name,
-        email: membership.user.email,
-      },
+      user: membership.user,
     }
   }
 
-  private mapInvitation(invitation: AdminInvitationRecord) {
-    return {
-      id: invitation.id,
-      email: invitation.email,
-      role: invitation.role,
-      token: invitation.token,
-      expiresAt: invitation.expiresAt.toISOString(),
-      acceptedAt: invitation.acceptedAt ? invitation.acceptedAt.toISOString() : null,
-      createdAt: invitation.createdAt.toISOString(),
-      isExpired: invitation.expiresAt.getTime() <= Date.now(),
-    }
-  }
+  async updateMembershipRole(id: string, businessId: string, dto: AdminMembershipRoleDto) {
+    const membership = await this.adminRepository.findMembershipByIdAndBusinessId(id, businessId)
 
-  private mapInvitationDetails(invitation: AdminInvitationByTokenRecord, userExists: boolean) {
-    return {
-      id: invitation.id,
-      email: invitation.email,
-      role: invitation.role,
-      token: invitation.token,
-      expiresAt: invitation.expiresAt.toISOString(),
-      acceptedAt: invitation.acceptedAt ? invitation.acceptedAt.toISOString() : null,
-      createdAt: invitation.createdAt.toISOString(),
-      isExpired: invitation.expiresAt.getTime() <= Date.now(),
-      userExists,
-      business: invitation.business,
-    }
-  }
-
-  private mapAppointment(appointment: AdminAppointmentRecord) {
-    return {
-      id: appointment.id,
-      scheduledAt: appointment.scheduledAt.toISOString(),
-      completedAt: appointment.completedAt ? appointment.completedAt.toISOString() : null,
-      status: appointment.status,
-      price: appointment.price.toString(),
-      service: appointment.service,
-      customer: appointment.customer,
-    }
-  }
-
-  async getDefaultBusinessIdForUser(userId: string) {
-    const businessId = await this.adminRepository.findFirstBusinessByUserId(userId)
-
-    if (!businessId) {
-      throw new NotFoundException('Nenhum negócio vinculado a este usuário')
+    if (!membership) {
+      throw new NotFoundException('Membro não encontrado')
     }
 
-    return businessId
-  }
+    if (membership.role === 'OWNER' && dto.role !== 'OWNER') {
+      await this.ensureBusinessKeepsOwner(businessId, 'Não é possível rebaixar o último OWNER')
+    }
 
-  async getDashboard(businessId: string) {
-    const business = await this.getBusinessOrThrow(businessId)
-    const services = await this.adminRepository.listServicesByBusinessId(business.id)
+    const updatedMembership = await this.adminRepository.updateMembershipRole(id, businessId, dto.role)
+
+    if (!updatedMembership) {
+      throw new NotFoundException('Membro não encontrado')
+    }
 
     return {
-      business: this.mapBusiness(business),
-      services: services.map((service: AdminServiceRecord) => this.mapService(service)),
+      id: updatedMembership.id,
+      role: updatedMembership.role,
+      createdAt: updatedMembership.createdAt.toISOString(),
+      updatedAt: updatedMembership.updatedAt.toISOString(),
+      user: updatedMembership.user,
     }
   }
 
-  async listServices(businessId: string, pagination: PaginationParams | null = null) {
-    const business = await this.getBusinessOrThrow(businessId)
-    const services = await this.adminRepository.listServicesByBusinessId(business.id, pagination)
+  async deleteMembership(id: string, businessId: string) {
+    const membership = await this.adminRepository.findMembershipByIdAndBusinessId(id, businessId)
 
-    return pagination
-      ? {
-          data: services.data.map((service: AdminServiceRecord) => this.mapService(service)),
-          meta: services.meta,
-        }
-      : services.map((service: AdminServiceRecord) => this.mapService(service))
-  }
+    if (!membership) {
+      throw new NotFoundException('Membro não encontrado')
+    }
 
-  async listMemberships(businessId: string) {
-    const business = await this.getBusinessOrThrow(businessId)
-    const memberships = await this.adminRepository.listMembershipsByBusinessId(business.id)
+    if (membership.role === 'OWNER') {
+      await this.ensureBusinessKeepsOwner(businessId, 'Não é possível remover o último OWNER')
+    }
 
-    return memberships.map((membership: AdminMembershipRecord) => this.mapMembership(membership))
+    await this.adminRepository.deleteMembership(id, businessId)
+
+    return { success: true }
   }
 
   async listInvitations(businessId: string) {
-    const business = await this.getBusinessOrThrow(businessId)
-    const invitations = await this.adminRepository.listInvitationsByBusinessId(business.id)
+    const invitations = await this.adminRepository.listInvitationsByBusinessId(businessId)
 
     return invitations.map((invitation: AdminInvitationRecord) => this.mapInvitation(invitation))
   }
 
-  async createMembership(input: AdminCreateMembershipDto) {
-    const business = await this.getBusinessOrThrow(input.businessId)
-    const user = await this.adminRepository.findUserByEmail(input.email)
-
-    if (!user) {
-      throw new NotFoundException('Usuário não encontrado para este email')
-    }
-
-    const existingMembership = await this.adminRepository.findMembershipByUserAndBusinessId(user.id, business.id)
-
-    if (existingMembership) {
-      throw new BadRequestException('Este usuário já faz parte deste negócio')
-    }
-
-    const membership = await this.adminRepository.createMembership({
-      businessId: business.id,
-      userId: user.id,
-      role: input.role,
-    })
-
-    return this.mapMembership(membership)
-  }
-
-  async createInvitation(input: AdminCreateInvitationDto) {
-    const business = await this.getBusinessOrThrow(input.businessId)
-    const existingUser = await this.adminRepository.findUserByEmail(input.email)
+  async createInvitation(businessId: string, dto: AdminCreateInvitationDto) {
+    const email = dto.email.toLowerCase()
+    const existingUser = await this.adminRepository.findUserByEmail(email)
 
     if (existingUser) {
-      const existingMembership = await this.adminRepository.findMembershipByUserAndBusinessId(existingUser.id, business.id)
+      const existingMembership = await this.adminRepository.findMembershipByUserAndBusinessId(existingUser.id, businessId)
 
       if (existingMembership) {
-        throw new BadRequestException('Este usuário já faz parte deste negócio')
+        throw new ConflictException('Usuário já é membro deste negócio')
       }
     }
 
-    const pendingInvitation = await this.adminRepository.findPendingInvitationByBusinessAndEmail(business.id, input.email)
+    const pendingInvitation = await this.adminRepository.findPendingInvitationByBusinessAndEmail(
+      businessId,
+      email,
+      new Date()
+    )
 
-    if (pendingInvitation && pendingInvitation.expiresAt.getTime() > Date.now()) {
-      throw new BadRequestException('Já existe um convite pendente para este email')
+    if (pendingInvitation) {
+      throw new ConflictException('Já existe um convite pendente para este email')
     }
 
-    const token = randomBytes(24).toString('hex')
+    const token = await this.generateUniqueInvitationToken()
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + AdminService.INVITATION_EXPIRATION_DAYS)
 
     const invitation = await this.adminRepository.createInvitation({
-      businessId: business.id,
-      email: input.email,
-      role: input.role,
+      businessId,
+      email,
+      role: dto.role,
       token,
       expiresAt,
     })
@@ -271,24 +253,33 @@ export class AdminService {
       throw new BadRequestException('Este convite já foi aceito')
     }
 
-    if (invitation.expiresAt.getTime() <= Date.now()) {
+    if (this.isExpired(invitation.expiresAt)) {
       throw new BadRequestException('Este convite expirou')
     }
 
     const existingUser = await this.adminRepository.findUserByEmail(invitation.email)
+    const existingMembership = existingUser
+      ? await this.adminRepository.findMembershipByUserAndBusinessId(existingUser.id, invitation.businessId)
+      : null
 
-    if (existingUser) {
-      const existingMembership = await this.adminRepository.findMembershipByUserAndBusinessId(existingUser.id, invitation.businessId)
-
-      if (existingMembership) {
-        throw new BadRequestException('Este usuário já faz parte deste negócio')
-      }
+    if (existingMembership) {
+      throw new ConflictException('Usuário já é membro deste negócio')
     }
 
-    return this.mapInvitationDetails(invitation, Boolean(existingUser))
+    return {
+      id: invitation.id,
+      email: invitation.email,
+      role: invitation.role,
+      expiresAt: invitation.expiresAt.toISOString(),
+      acceptedAt: invitation.acceptedAt ? invitation.acceptedAt.toISOString() : null,
+      createdAt: invitation.createdAt.toISOString(),
+      isExpired: false,
+      userExists: Boolean(existingUser),
+      business: invitation.business,
+    }
   }
 
-  async acceptInvitation(token: string, input: AcceptInvitationDto) {
+  async acceptInvitation(token: string, dto: AcceptInvitationDto) {
     const invitation = await this.adminRepository.findInvitationByToken(token)
 
     if (!invitation) {
@@ -299,7 +290,7 @@ export class AdminService {
       throw new BadRequestException('Este convite já foi aceito')
     }
 
-    if (invitation.expiresAt.getTime() <= Date.now()) {
+    if (this.isExpired(invitation.expiresAt)) {
       throw new BadRequestException('Este convite expirou')
     }
 
@@ -309,16 +300,16 @@ export class AdminService {
       const existingMembership = await this.adminRepository.findMembershipByUserAndBusinessId(existingUser.id, invitation.businessId)
 
       if (existingMembership) {
-        throw new BadRequestException('Este usuário já faz parte deste negócio')
+        throw new ConflictException('Usuário já é membro deste negócio')
       }
-    } else {
-      if (!input.name) {
-        throw new BadRequestException('Informe o nome para criar a conta do convidado')
-      }
+    }
 
-      if (!input.password) {
-        throw new BadRequestException('Informe uma senha para criar a conta do convidado')
-      }
+    if (!existingUser && !dto.name) {
+      throw new BadRequestException('Informe o nome para criar a conta do convidado')
+    }
+
+    if (!existingUser && !dto.password) {
+      throw new BadRequestException('Informe uma senha para criar a conta do convidado')
     }
 
     const result = await this.adminRepository.acceptInvitation({
@@ -326,8 +317,9 @@ export class AdminService {
       businessId: invitation.businessId,
       email: invitation.email,
       role: invitation.role,
-      name: input.name,
-      password: input.password,
+      existingUserId: existingUser?.id,
+      name: dto.name,
+      hashedPassword: dto.password ? await hash(dto.password, 10) : undefined,
     })
 
     return {
@@ -335,54 +327,58 @@ export class AdminService {
       userCreated: !existingUser,
       business: invitation.business,
       invitation: this.mapInvitation(result.invitation),
-      membership: this.mapMembership(result.membership),
+      membership: {
+        id: result.membership.id,
+        role: result.membership.role,
+        createdAt: result.membership.createdAt.toISOString(),
+        updatedAt: result.membership.updatedAt.toISOString(),
+        user: result.membership.user,
+      },
     }
   }
 
-  async updateMembershipRole(membershipId: string, input: AdminMembershipRoleDto) {
-    const business = await this.getBusinessOrThrow(input.businessId)
-    const membership = await this.adminRepository.findMembershipById(membershipId)
+  private async ensureBusinessKeepsOwner(businessId: string, message: string) {
+    const ownerCount = await this.adminRepository.countOwnersByBusinessId(businessId)
 
-    if (!membership || membership.businessId !== business.id) {
-      throw new NotFoundException('Membership não encontrada para este negócio')
+    if (ownerCount <= 1) {
+      throw new BadRequestException(message)
     }
-
-    if (membership.role === input.role) {
-      return this.mapMembership(membership)
-    }
-
-    if (membership.role === 'OWNER' && input.role !== 'OWNER') {
-      const ownersCount = await this.adminRepository.countOwnersByBusinessId(business.id)
-
-      if (ownersCount <= 1) {
-        throw new BadRequestException('Não é permitido remover o último OWNER')
-      }
-    }
-
-    const updatedMembership = await this.adminRepository.updateMembershipRole(membershipId, input.role)
-
-    return this.mapMembership(updatedMembership)
   }
 
-  async deleteMembership(membershipId: string, businessId: string) {
-    const business = await this.getBusinessOrThrow(businessId)
-    const membership = await this.adminRepository.findMembershipById(membershipId)
+  private async generateUniqueInvitationToken() {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const token = randomBytes(32).toString('hex')
+      const existingInvitation = await this.adminRepository.findInvitationByToken(token)
 
-    if (!membership || membership.businessId !== business.id) {
-      throw new NotFoundException('Membership não encontrada para este negócio')
-    }
-
-    if (membership.role === 'OWNER') {
-      const ownersCount = await this.adminRepository.countOwnersByBusinessId(business.id)
-
-      if (ownersCount <= 1) {
-        throw new BadRequestException('Não é permitido remover o último OWNER')
+      if (!existingInvitation) {
+        return token
       }
     }
 
-    await this.adminRepository.deleteMembership(membershipId)
+    throw new BadRequestException('Não foi possível gerar um token de convite')
+  }
 
-    return { success: true }
+  private mapInvitation(invitation: AdminInvitationRecord) {
+    return {
+      id: invitation.id,
+      email: invitation.email,
+      role: invitation.role,
+      token: invitation.token,
+      invitationLink: this.buildInvitationLink(invitation.token),
+      expiresAt: invitation.expiresAt.toISOString(),
+      acceptedAt: invitation.acceptedAt ? invitation.acceptedAt.toISOString() : null,
+      createdAt: invitation.createdAt.toISOString(),
+      isExpired: this.isExpired(invitation.expiresAt),
+    }
+  }
+
+  private buildInvitationLink(token: string) {
+    const baseUrl = process.env.FRONTEND_URL ?? process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
+    return `${baseUrl.replace(/\/$/, '')}/invite/${token}`
+  }
+
+  private isExpired(expiresAt: Date) {
+    return expiresAt.getTime() <= Date.now()
   }
 
   async listAppointments(
@@ -390,127 +386,91 @@ export class AdminService {
     statusFilter: 'active' | 'completed' | 'all' = 'all',
     pagination: PaginationParams | null = null
   ) {
-    const business = await this.getBusinessOrThrow(businessId)
-    const appointments = await this.adminRepository.listAppointmentsByBusinessId(business.id, statusFilter, pagination)
-
-    return pagination
-      ? {
-        data: appointments.data.map((appointment: AdminAppointmentRecord) => this.mapAppointment(appointment)),
-        meta: appointments.meta,
-      }
-      : appointments.map((appointment: AdminAppointmentRecord) => this.mapAppointment(appointment))
+    return this.appointmentsService.getAll(businessId, statusFilter, pagination)
   }
 
-  async createService(input: AdminServiceDto) {
-    const business = await this.getBusinessOrThrow(input.businessId)
-    const service = await this.adminRepository.createService({
-      businessId: business.id,
-      name: input.name,
-      price: input.price,
-      durationMinutes: input.durationMinutes,
-    })
-
-    return this.mapService(service)
-  }
-
-  async updateService(serviceId: string, input: AdminServiceDto) {
-    const business = await this.getBusinessOrThrow(input.businessId)
-    const currentService = await this.adminRepository.findServiceById(serviceId)
-
-    if (!currentService || currentService.businessId !== business.id) {
-      throw new NotFoundException('Serviço não encontrado para este negócio')
-    }
-
-    const service = await this.adminRepository.updateService({
-      serviceId,
-      name: input.name,
-      price: input.price,
-      durationMinutes: input.durationMinutes,
-    })
-
-    return this.mapService(service)
-  }
-
-  async deleteService(serviceId: string, businessId: string) {
-    const business = await this.getBusinessOrThrow(businessId)
-    const currentService = await this.adminRepository.findServiceById(serviceId)
-
-    if (!currentService || currentService.businessId !== business.id) {
-      throw new NotFoundException('Serviço não encontrado para este negócio')
-    }
-
-    if (currentService._count.appointments > 0) {
-      throw new BadRequestException('Este serviço possui agendamentos e não pode ser removido')
-    }
-
-    await this.adminRepository.deleteService(serviceId)
-
-    return { success: true }
-  }
-
-  async updateBusinessAvailability(input: AdminBusinessAvailabilityDto) {
-    const business = await this.getBusinessOrThrow(input.businessId)
-    const updatedBusiness = await this.adminRepository.updateBusinessAvailability({
-      businessId: business.id,
-      openTime: input.openTime,
-      closeTime: input.closeTime,
-    })
-
-    this.businessesService.invalidateBusinessAvailability(business.id)
-
-    return updatedBusiness
-  }
-
-  async updateAppointmentStatus(
-    appointmentId: string,
-    businessId: string,
-    statusDto: UpdateAppointmentStatusDto
-  ) {
-    const business = await this.getBusinessOrThrow(businessId)
-    const appointment = await this.adminRepository.findAppointmentById(appointmentId, business.id)
-
-    if (!appointment) {
-      throw new NotFoundException('Agendamento não encontrado')
-    }
-
-    const result = await this.adminRepository.updateAppointmentStatus(appointmentId, statusDto.status)
-
-    await this.syncCustomerLastVisitAt(appointment.customerId)
-    this.businessesService.invalidateBusinessAvailability(business.id)
-
-    return result
+  async updateAppointmentStatus(id: string, businessId: string, statusDto: UpdateAppointmentStatusDto) {
+    return this.appointmentsService.updateStatus(id, businessId, statusDto)
   }
 
   async getMonthlySummary(businessId: string, month?: string) {
-    const business = await this.getBusinessOrThrow(businessId)
     const normalizedMonth = this.normalizeMonth(month)
-    const [year, monthNumber] = normalizedMonth.split('-').map(Number)
-    const rangeStart = new Date(Date.UTC(year, monthNumber - 1, 1))
-    const rangeEnd = new Date(Date.UTC(year, monthNumber, 1))
+    const monthlyRevenue = await this.appointmentsService.getMonthlyRevenue(businessId, normalizedMonth)
     const activeSince = new Date()
     activeSince.setDate(activeSince.getDate() - AdminService.ACTIVE_CUSTOMER_WINDOW_DAYS)
 
-    const [monthlyRevenue, customerCounts] = await Promise.all([
-      this.adminRepository.aggregateMonthlyRevenue({
-        businessId: business.id,
-        rangeStart,
-        rangeEnd,
-      }),
-      this.adminRepository.countCustomersByBusinessId(business.id, activeSince),
+    const [totalCustomers, activeCustomers] = await Promise.all([
+      this.adminRepository.countCustomersByBusinessId(businessId),
+      this.adminRepository.countActiveCustomersByBusinessId(businessId, activeSince),
     ])
 
-    const totalRevenue = Number(monthlyRevenue._sum.price ?? 0)
-    const completedAppointments = monthlyRevenue._count._all
-    const averageTicket = completedAppointments > 0 ? totalRevenue / completedAppointments : 0
+    return {
+      month: monthlyRevenue.month,
+      totalRevenue: monthlyRevenue.totalRevenue,
+      completedAppointments: monthlyRevenue.completedAppointments,
+      averageTicket: monthlyRevenue.averageTicket,
+      activeCustomers,
+      inactiveCustomers: Math.max(0, totalCustomers - activeCustomers),
+      activeCustomerWindowDays: AdminService.ACTIVE_CUSTOMER_WINDOW_DAYS,
+    }
+  }
+
+  async getFinancialReport(businessId: string, month?: string) {
+    const normalizedMonth = this.normalizeMonth(month)
+    const monthlyRevenue = await this.appointmentsService.getMonthlyRevenue(businessId, normalizedMonth)
+    const [year, monthNumber] = normalizedMonth.split('-').map(Number)
+    const rangeStart = new Date(Date.UTC(year, monthNumber - 1, 1))
+    const rangeEnd = new Date(Date.UTC(year, monthNumber, 1))
+    const [cancellationsCount, completedAppointmentsByService] = await Promise.all([
+      this.adminRepository.countCanceledAppointmentsInRange(businessId, rangeStart, rangeEnd),
+      this.adminRepository.listCompletedAppointmentsInRangeByService(businessId, rangeStart, rangeEnd),
+    ])
+
+    const revenueByServiceMap = new Map<string, {
+      serviceId: string
+      serviceName: string
+      revenueTotal: number
+      appointmentsCompleted: number
+    }>()
+
+    for (const appointment of completedAppointmentsByService) {
+      const existing = revenueByServiceMap.get(appointment.serviceId)
+      const price = Number(appointment.price ?? 0)
+
+      if (existing) {
+        existing.revenueTotal += price
+        existing.appointmentsCompleted += 1
+        continue
+      }
+
+      revenueByServiceMap.set(appointment.serviceId, {
+        serviceId: appointment.serviceId,
+        serviceName: appointment.service.name,
+        revenueTotal: price,
+        appointmentsCompleted: 1,
+      })
+    }
+
+    const revenueByService = [...revenueByServiceMap.values()].sort((left, right) => {
+      if (right.revenueTotal !== left.revenueTotal) {
+        return right.revenueTotal - left.revenueTotal
+      }
+
+      if (right.appointmentsCompleted !== left.appointmentsCompleted) {
+        return right.appointmentsCompleted - left.appointmentsCompleted
+      }
+
+      return left.serviceName.localeCompare(right.serviceName)
+    })
 
     return {
-      month: normalizedMonth,
-      totalRevenue: totalRevenue.toFixed(2),
-      completedAppointments,
-      averageTicket: averageTicket.toFixed(2),
-      activeCustomers: customerCounts.activeCustomers,
-      inactiveCustomers: customerCounts.inactiveCustomers,
-      activeCustomerWindowDays: AdminService.ACTIVE_CUSTOMER_WINDOW_DAYS,
+      month: monthlyRevenue.month,
+      revenueTotal: monthlyRevenue.totalRevenue,
+      appointmentsCompleted: monthlyRevenue.completedAppointments,
+      averageTicket: monthlyRevenue.averageTicket,
+      cancellationsCount,
+      revenueByService,
+      topServices: revenueByService.slice(0, 3),
     }
   }
 }

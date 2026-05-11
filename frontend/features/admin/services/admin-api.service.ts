@@ -8,6 +8,7 @@ import {
     type AdminInvitationItem,
     type AdminMembershipItem,
     type AdminMembershipRole,
+    type AdminFinancialReport,
     type AdminMonthlySummary,
     type AdminServiceItem,
 } from '../types'
@@ -32,6 +33,37 @@ function normalizeMonthlySummary(payload: Omit<AdminMonthlySummary, 'totalRevenu
         ...payload,
         totalRevenue: formatMoney(payload.totalRevenue),
         averageTicket: formatMoney(payload.averageTicket),
+    }
+}
+
+function normalizeFinancialReport(payload: Omit<AdminFinancialReport, 'revenueTotal' | 'averageTicket' | 'revenueByService' | 'topServices'> & {
+    revenueTotal: string | number
+    averageTicket: string | number
+    revenueByService: Array<{
+        serviceId: string
+        serviceName: string
+        revenueTotal: string | number
+        appointmentsCompleted: number
+    }>
+    topServices: Array<{
+        serviceId: string
+        serviceName: string
+        revenueTotal: string | number
+        appointmentsCompleted: number
+    }>
+}) {
+    return {
+        ...payload,
+        revenueTotal: formatMoney(payload.revenueTotal),
+        averageTicket: formatMoney(payload.averageTicket),
+        revenueByService: payload.revenueByService.map((item) => ({
+            ...item,
+            revenueTotal: formatMoney(item.revenueTotal),
+        })),
+        topServices: payload.topServices.map((item) => ({
+            ...item,
+            revenueTotal: formatMoney(item.revenueTotal),
+        })),
     }
 }
 
@@ -212,6 +244,18 @@ export async function fetchAdminMonthlySummary(businessId: string, month: string
         return normalizeMonthlySummary(response.data)
     } catch (error) {
         throw new Error(getApiErrorMessage(error, 'Não foi possível carregar o resumo financeiro'))
+    }
+}
+
+export async function fetchAdminFinancialReport(businessId: string, month: string) {
+    try {
+        const response = await api.get<AdminFinancialReport>('/admin/reports/financial', {
+            params: { businessId, month },
+        })
+
+        return normalizeFinancialReport(response.data)
+    } catch (error) {
+        throw new Error(getApiErrorMessage(error, 'Não foi possível carregar o relatório financeiro'))
     }
 }
 

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common'
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
 import { DateTime } from 'luxon'
 import { BusinessesRepository } from './businesses.repository'
 import { AvailabilityCacheService } from '../scheduling/availability-cache.service'
@@ -42,6 +42,20 @@ export class BusinessesService {
     }
 
     return this.businessesRepository.findServices(business.id, pagination)
+  }
+
+  async getPublicBusinessBySlug(slug: string) {
+    const business = await this.businessesRepository.findBusinessById(slug)
+
+    if (!business || business.slug !== slug) {
+      throw new NotFoundException('Negócio não encontrado')
+    }
+
+    return {
+      id: business.id,
+      name: business.name,
+      slug: business.slug,
+    }
   }
 
   async getAvailability(businessId: string, serviceId: string, date: string) {

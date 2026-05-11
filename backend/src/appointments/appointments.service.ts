@@ -6,7 +6,9 @@ import { BusinessesService } from '../businesses/businesses.service'
 import { TimezoneService } from '../scheduling/timezone.service'
 import { PaginationParams, PaginatedResult } from '../common/pagination'
 import {
+  CustomerAppointmentsLookupDto,
   CreateAppointmentDto,
+  PublicAppointmentTokenDto,
   UpdateAppointmentStatusDto,
 } from './appointment.schema'
 
@@ -46,13 +48,36 @@ export class AppointmentsService {
     )
   }
 
-  private buildPublicAppointmentResponse(appointment: {
+  private buildPhoneVariants(phone: string) {
+    const normalized = phone.replace(/\D/g, '')
+    const variants = new Set<string>()
+
+    if (normalized.length > 0) {
+      variants.add(normalized)
+    }
+
+    if (normalized.length >= 11) {
+      variants.add(normalized.slice(-11))
+    }
+
+    if (normalized.length >= 10) {
+      variants.add(normalized.slice(-10))
+    }
+
+    return [...variants]
+  }
+
+  private toPublicAppointmentResponse(appointment: {
     publicToken: string
     scheduledAt: Date
-    price: unknown
     status: AppointmentStatus
-    serviceName: string
-    customerName: string
+    price: { toString(): string } | string | number
+    service: {
+      name: string
+    }
+    customer: {
+      name: string
+    }
   }) {
     const canCancel =
       appointment.status === AppointmentStatus.SCHEDULED &&
@@ -60,17 +85,13 @@ export class AppointmentsService {
 
     return {
       token: appointment.publicToken,
-      service: appointment.serviceName,
-      customerName: appointment.customerName,
+      service: appointment.service.name,
+      customerName: appointment.customer.name,
       scheduledAt: appointment.scheduledAt.toISOString(),
-      price: Number(appointment.price ?? 0).toFixed(2),
+      price: appointment.price.toString(),
       status: appointment.status,
       canCancel,
     }
-  }
-
-  private normalizePhone(phone: string) {
-    return phone.replace(/\D/g, '')
   }
 
   async getAll(
@@ -84,6 +105,39 @@ export class AppointmentsService {
     }
 
     return this.appointmentsRepository.findMany(business.id, statusFilter, pagination)
+  }
+
+  async getByCustomerPhone(query: CustomerAppointmentsLookupDto) {
+    const phoneVariants = this.buildPhoneVariants(query.phone.trim())
+    const appointments = await this.appointmentsRepository.findPublicByCustomerPhoneVariants(phoneVariants)
+
+    return appointments.map((appointment: {
+      id: string
+      publicToken: string
+      scheduledAt: Date
+      status: AppointmentStatus
+      price: { toString(): string } | string | number
+      service: {
+        name: string
+      }
+    }) => ({
+      id: appointment.id,
+      publicToken: appointment.publicToken,
+      serviceName: appointment.service.name,
+      scheduledAt: appointment.scheduledAt.toISOString(),
+      status: appointment.status,
+      price: appointment.price.toString(),
+    }))
+  }
+
+  async getPublicByToken(params: PublicAppointmentTokenDto) {
+    const appointment = await this.appointmentsRepository.findByPublicToken(params.token)
+
+    if (!appointment) {
+      throw new NotFoundException('Agendamento não encontrado')
+    }
+
+    return this.toPublicAppointmentResponse(appointment)
   }
 
   async create(data: CreateAppointmentDto) {
@@ -121,98 +175,10 @@ export class AppointmentsService {
       endsAt,
       price: service.price,
     })
-    const publicToken = await this.appointmentsRepository.ensurePublicToken(appointment.id)
 
     this.businessesService.invalidateBusinessAvailability(business.id)
 
-    return {
-      ...appointment,
-      publicToken,
-      publicUrl: publicToken ? `/appointments/${publicToken}` : null,
-    }
-  }
-
-  async getPublicByToken(token: string) {
-    const appointment = await this.appointmentsRepository.findPublicByToken(token)
-
-    if (!appointment) {
-      throw new NotFoundException('Agendamento não encontrado')
-    }
-
-    return this.buildPublicAppointmentResponse(appointment)
-  }
-
-  async getPublicByCustomerPhone(phone: string, businessId?: string) {
-    const normalizedPhone = this.normalizePhone(phone)
-
-    if (normalizedPhone.length < 8) {
-      throw new BadRequestException('Informe um telefone válido')
-    }
-
-    let resolvedBusinessId: string | undefined
-
-    if (businessId) {
-      const business = await this.businessesRepository.findBusinessById(businessId)
-
-      if (!business) {
-        throw new BadRequestException('Negócio inválido')
-      }
-
-      resolvedBusinessId = business.id
-    }
-
-    const appointments = await this.appointmentsRepository.findPublicByCustomerPhone(
-      normalizedPhone,
-      resolvedBusinessId
-    )
-
-    return appointments.map((appointment: {
-      id: string
-      publicToken: string
-      serviceName: string
-      scheduledAt: Date
-      status: AppointmentStatus
-      price: unknown
-    }) => ({
-      id: appointment.id,
-      publicToken: appointment.publicToken,
-      serviceName: appointment.serviceName,
-      scheduledAt: appointment.scheduledAt.toISOString(),
-      status: appointment.status,
-      price: Number(appointment.price ?? 0).toFixed(2),
-    }))
-  }
-
-  async cancelPublicByToken(token: string) {
-    const appointment = await this.appointmentsRepository.findPublicByToken(token)
-
-    if (!appointment) {
-      throw new NotFoundException('Agendamento não encontrado')
-    }
-
-    if (appointment.status !== AppointmentStatus.SCHEDULED) {
-      throw new BadRequestException('Este agendamento não pode mais ser cancelado')
-    }
-
-    if (appointment.scheduledAt.getTime() <= Date.now()) {
-      throw new BadRequestException('Este agendamento não pode mais ser cancelado')
-    }
-
-    const result = await this.appointmentsRepository.cancelByPublicToken(token)
-
-    if (!result) {
-      throw new NotFoundException('Agendamento não encontrado')
-    }
-
-    this.businessesService.invalidateBusinessAvailability(appointment.businessId)
-
-    return {
-      ...this.buildPublicAppointmentResponse({
-        ...appointment,
-        status: AppointmentStatus.CANCELED,
-      }),
-      canceled: true,
-    }
+    return appointment
   }
 
   async getMonthlyRevenue(businessId: string, month?: string) {
@@ -287,5 +253,39 @@ export class AppointmentsService {
     this.businessesService.invalidateBusinessAvailability(business.id)
 
     return { id, status: statusDto.status }
+  }
+
+  async cancelPublicAppointment(params: PublicAppointmentTokenDto) {
+    const appointment = await this.appointmentsRepository.findByPublicToken(params.token)
+
+    if (!appointment) {
+      throw new NotFoundException('Agendamento não encontrado')
+    }
+
+    const canCancel =
+      appointment.status === AppointmentStatus.SCHEDULED &&
+      appointment.scheduledAt.getTime() > Date.now()
+
+    if (!canCancel) {
+      throw new BadRequestException('Este agendamento não pode mais ser cancelado')
+    }
+
+    await this.appointmentsRepository.updateStatus(
+      appointment.id,
+      appointment.businessId,
+      AppointmentStatus.CANCELED
+    )
+    this.businessesService.invalidateBusinessAvailability(appointment.businessId)
+
+    const updatedAppointment = await this.appointmentsRepository.findByPublicToken(params.token)
+
+    if (!updatedAppointment) {
+      throw new NotFoundException('Agendamento não encontrado')
+    }
+
+    return {
+      ...this.toPublicAppointmentResponse(updatedAppointment),
+      canceled: true,
+    }
   }
 }

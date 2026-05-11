@@ -1,4 +1,5 @@
 import { PublicBookingPage } from '../../../components/public/PublicBookingPage'
+import { createServerApi } from '../../../lib/server-api'
 
 type BusinessSlugPageProps = {
     params: Promise<{
@@ -6,22 +7,33 @@ type BusinessSlugPageProps = {
     }>
 }
 
-function formatSlugLabel(slug: string) {
-    return slug
-        .split('-')
-        .filter(Boolean)
-        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-        .join(' ')
+type PublicBusinessResponse = {
+    id: string
+    name: string
+    slug: string
 }
 
 export default async function BusinessSlugPage({ params }: BusinessSlugPageProps) {
     const { slug } = await params
+    const api = createServerApi()
 
-    return (
-        <PublicBookingPage
-            businessId={slug}
-            headline={formatSlugLabel(slug) || 'Agenda pública'}
-            eyebrow="Reserva por negócio"
-        />
-    )
+    try {
+        const response = await api.get<PublicBusinessResponse>(`/businesses/slug/${encodeURIComponent(slug)}`)
+
+        return (
+            <PublicBookingPage
+                businessId={response.data.id}
+                headline={response.data.name || 'Agenda pública'}
+                eyebrow="Reserva por negócio"
+            />
+        )
+    } catch {
+        return (
+            <PublicBookingPage
+                businessId={slug}
+                headline="Agenda pública"
+                eyebrow="Reserva por negócio"
+            />
+        )
+    }
 }

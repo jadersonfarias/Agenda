@@ -8,5 +8,6 @@ import { BusinessesModule } from '../businesses/businesses.module'
   imports: [BusinessesModule],
   controllers: [AppointmentsController],
   providers: [AppointmentsService, AppointmentsRepository],
+  exports: [AppointmentsService],
 })
 export class AppointmentsModule {}
