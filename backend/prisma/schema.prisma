@@ -52,6 +52,7 @@ model Business {
     timezone     String        @default("America/Sao_Paulo")
     openTime     String        @default("09:00")
     closeTime    String        @default("18:00")
+    phone        String?
     owner        User          @relation(fields: [ownerId], references: [id])
     ownerId      String
     memberships  Membership[]

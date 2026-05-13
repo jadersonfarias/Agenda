@@ -1,6 +1,11 @@
-import { Body, Controller, Post, UnauthorizedException } from '@nestjs/common'
+import { BadRequestException, Body, Controller, Post, UnauthorizedException } from '@nestjs/common'
 import { AuthService } from './auth.service'
-import { LoginResponse, loginSchema } from './auth.schema'
+import {
+  LoginResponse,
+  RegisterBusinessOwnerResponse,
+  loginSchema,
+  registerBusinessOwnerSchema,
+} from './auth.schema'
 
 @Controller('auth')
 export class AuthController {
@@ -27,5 +32,16 @@ export class AuthController {
       currentBusinessId: businesses[0]?.id ?? null,
       accessToken,
     }
+  }
+
+  @Post('register-business-owner')
+  async registerBusinessOwner(@Body() body: unknown): Promise<RegisterBusinessOwnerResponse> {
+    const parseResult = registerBusinessOwnerSchema.safeParse(body)
+
+    if (!parseResult.success) {
+      throw new BadRequestException(parseResult.error.errors.map((error) => error.message).join(', '))
+    }
+
+    return this.authService.registerBusinessOwner(parseResult.data)
   }
 }

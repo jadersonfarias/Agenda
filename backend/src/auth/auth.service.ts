@@ -1,7 +1,12 @@
-import { Injectable } from '@nestjs/common'
-import { compare } from 'bcryptjs'
+import { ConflictException, Injectable } from '@nestjs/common'
+import { compare, hash } from 'bcryptjs'
 import { AuthRepository } from './auth.repository'
-import { AuthBusinessContext, AuthUserResponse } from './auth.schema'
+import {
+  AuthBusinessContext,
+  AuthUserResponse,
+  RegisterBusinessOwnerDto,
+  RegisterBusinessOwnerResponse,
+} from './auth.schema'
 import { AccessTokenService } from './access-token.service'
 
 @Injectable()
@@ -45,5 +50,35 @@ export class AuthService {
 
   async generateToken(userId: string, email: string): Promise<string> {
     return this.accessTokenService.generateToken(userId, email)
+  }
+
+  async registerBusinessOwner(input: RegisterBusinessOwnerDto): Promise<RegisterBusinessOwnerResponse> {
+    const email = input.email.trim().toLowerCase()
+    const businessSlug = input.businessSlug.trim().toLowerCase()
+    const phone = input.phone?.trim() ? input.phone.trim() : null
+
+    const [existingUser, existingBusiness] = await Promise.all([
+      this.authRepository.findUserByEmail(email),
+      this.authRepository.findBusinessBySlug(businessSlug),
+    ])
+
+    if (existingUser) {
+      throw new ConflictException('Email já cadastrado')
+    }
+
+    if (existingBusiness) {
+      throw new ConflictException('Slug já cadastrado')
+    }
+
+    const hashedPassword = await hash(input.password, 10)
+
+    return this.authRepository.createBusinessOwner({
+      ownerName: input.ownerName.trim(),
+      email,
+      hashedPassword,
+      businessName: input.businessName.trim(),
+      businessSlug,
+      phone,
+    })
   }
 }

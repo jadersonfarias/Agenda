@@ -87,6 +87,94 @@ export class AdminRepository {
     }>
   }
 
+  async findServiceByIdAndBusinessId(id: string, businessId: string) {
+    return this.prisma.service.findFirst({
+      where: { id, businessId },
+      select: {
+        id: true,
+        name: true,
+        price: true,
+        durationMinutes: true,
+        createdAt: true,
+        _count: {
+          select: {
+            appointments: true,
+          },
+        },
+      },
+    })
+  }
+
+  async createService(input: {
+    businessId: string
+    name: string
+    price: number
+    durationMinutes: number
+  }) {
+    return this.prisma.service.create({
+      data: input,
+      select: {
+        id: true,
+        name: true,
+        price: true,
+        durationMinutes: true,
+        createdAt: true,
+        _count: {
+          select: {
+            appointments: true,
+          },
+        },
+      },
+    })
+  }
+
+  async updateService(
+    id: string,
+    businessId: string,
+    input: {
+      name: string
+      price: number
+      durationMinutes: number
+    }
+  ) {
+    await this.prisma.service.updateMany({
+      where: { id, businessId },
+      data: input,
+    })
+
+    return this.findServiceByIdAndBusinessId(id, businessId)
+  }
+
+  async deleteService(id: string, businessId: string) {
+    return this.prisma.service.deleteMany({
+      where: { id, businessId },
+    })
+  }
+
+  async updateBusinessAvailability(
+    businessId: string,
+    input: {
+      openTime: string
+      closeTime: string
+    }
+  ) {
+    await this.prisma.business.updateMany({
+      where: { id: businessId },
+      data: input,
+    })
+
+    return this.prisma.business.findUnique({
+      where: { id: businessId },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        openTime: true,
+        closeTime: true,
+      },
+    })
+  }
+
   async listMembershipsByBusinessId(businessId: string) {
     return this.prisma.membership.findMany({
       where: { businessId },

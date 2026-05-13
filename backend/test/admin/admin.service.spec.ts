@@ -20,7 +20,8 @@ describe('AdminService financial data', () => {
     const service = new AdminService(
       adminRepository,
       businessesRepository,
-      appointmentsService
+      appointmentsService,
+      {} as any
     )
 
     await expect(service.getMonthlySummary('business-1', '2026-05')).resolves.toEqual({
@@ -68,7 +69,8 @@ describe('AdminService financial data', () => {
     const service = new AdminService(
       adminRepository,
       businessesRepository,
-      appointmentsService
+      appointmentsService,
+      {} as any
     )
 
     await expect(service.getFinancialReport('business-1', '2026-05')).resolves.toEqual({
@@ -106,5 +108,63 @@ describe('AdminService financial data', () => {
         },
       ],
     })
+  })
+
+  it('não exclui serviço com agendamentos vinculados', async () => {
+    const adminRepository = {
+      findServiceByIdAndBusinessId: vi.fn().mockResolvedValue({
+        id: 'service-1',
+        _count: {
+          appointments: 1,
+        },
+      }),
+    } as any
+
+    const service = new AdminService(
+      adminRepository,
+      {} as any,
+      {} as any,
+      {} as any
+    )
+
+    await expect(service.deleteService('service-1', 'business-1')).rejects.toThrow(
+      'Serviços com agendamentos vinculados não podem ser excluídos'
+    )
+  })
+
+  it('atualiza horários do negócio e limpa o cache de disponibilidade', async () => {
+    const deleteByPrefix = vi.fn()
+    const adminRepository = {
+      updateBusinessAvailability: vi.fn().mockResolvedValue({
+        id: 'business-1',
+        name: 'Negócio',
+        slug: 'negocio',
+        openTime: '08:00',
+        closeTime: '19:00',
+      }),
+    } as any
+
+    const service = new AdminService(
+      adminRepository,
+      {} as any,
+      {} as any,
+      { deleteByPrefix } as any
+    )
+
+    await expect(
+      service.updateBusinessAvailability('business-1', {
+        businessId: 'business-1',
+        openTime: '08:00',
+        closeTime: '19:00',
+      })
+    ).resolves.toEqual({
+      id: 'business-1',
+      name: 'Negócio',
+      slug: 'negocio',
+      openTime: '08:00',
+      closeTime: '19:00',
+    })
+
+    expect(deleteByPrefix).toHaveBeenCalledWith('availability:business-1:')
   })
 })

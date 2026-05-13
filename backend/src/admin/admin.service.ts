@@ -6,8 +6,16 @@ import { PaginationParams } from '../common/pagination'
 import { BusinessesRepository } from '../businesses/businesses.repository'
 import { AppointmentsService } from '../appointments/appointments.service'
 import { UpdateAppointmentStatusDto } from '../appointments/appointment.schema'
-import { AcceptInvitationDto, AdminCreateInvitationDto, AdminCreateMembershipDto, AdminMembershipRoleDto } from './admin.schema'
+import {
+  AcceptInvitationDto,
+  AdminBusinessAvailabilityDto,
+  AdminCreateInvitationDto,
+  AdminCreateMembershipDto,
+  AdminMembershipRoleDto,
+  AdminServiceDto,
+} from './admin.schema'
 import { MembershipRole } from '../auth/role.types'
+import { AvailabilityCacheService } from '../scheduling/availability-cache.service'
 
 type AdminServiceRecord = Awaited<ReturnType<AdminRepository['listServicesByBusinessId']>>[number]
 
@@ -41,7 +49,8 @@ export class AdminService {
   constructor(
     private readonly adminRepository: AdminRepository,
     private readonly businessesRepository: BusinessesRepository,
-    private readonly appointmentsService: AppointmentsService
+    private readonly appointmentsService: AppointmentsService,
+    private readonly availabilityCacheService: AvailabilityCacheService
   ) {}
 
   private normalizeMonth(month?: string) {
@@ -114,6 +123,88 @@ export class AdminService {
           appointmentCount: service._count.appointments,
           createdAt: service.createdAt.toISOString(),
         }))
+  }
+
+  async createService(businessId: string, dto: AdminServiceDto) {
+    const business = await this.businessesRepository.findBusinessById(businessId)
+
+    if (!business) {
+      throw new BadRequestException('Negócio inválido')
+    }
+
+    const service = await this.adminRepository.createService({
+      businessId,
+      name: dto.name,
+      price: dto.price,
+      durationMinutes: dto.durationMinutes,
+    })
+
+    return {
+      id: service.id,
+      name: service.name,
+      price: service.price.toString(),
+      durationMinutes: service.durationMinutes,
+      appointmentCount: service._count.appointments,
+      createdAt: service.createdAt.toISOString(),
+    }
+  }
+
+  async updateService(id: string, businessId: string, dto: AdminServiceDto) {
+    const service = await this.adminRepository.findServiceByIdAndBusinessId(id, businessId)
+
+    if (!service) {
+      throw new NotFoundException('Serviço não encontrado')
+    }
+
+    const updatedService = await this.adminRepository.updateService(id, businessId, {
+      name: dto.name,
+      price: dto.price,
+      durationMinutes: dto.durationMinutes,
+    })
+
+    if (!updatedService) {
+      throw new NotFoundException('Serviço não encontrado')
+    }
+
+    return {
+      id: updatedService.id,
+      name: updatedService.name,
+      price: updatedService.price.toString(),
+      durationMinutes: updatedService.durationMinutes,
+      appointmentCount: updatedService._count.appointments,
+      createdAt: updatedService.createdAt.toISOString(),
+    }
+  }
+
+  async deleteService(id: string, businessId: string) {
+    const service = await this.adminRepository.findServiceByIdAndBusinessId(id, businessId)
+
+    if (!service) {
+      throw new NotFoundException('Serviço não encontrado')
+    }
+
+    if (service._count.appointments > 0) {
+      throw new BadRequestException('Serviços com agendamentos vinculados não podem ser excluídos')
+    }
+
+    await this.adminRepository.deleteService(id, businessId)
+
+    return { success: true }
+  }
+
+  async updateBusinessAvailability(businessId: string, dto: AdminBusinessAvailabilityDto) {
+    const business = await this.adminRepository.updateBusinessAvailability(businessId, {
+      openTime: dto.openTime,
+      closeTime: dto.closeTime,
+    })
+
+    if (!business) {
+      throw new NotFoundException('Negócio não encontrado')
+    }
+
+    this.availabilityCacheService.deleteByPrefix(`availability:${businessId}:`)
+
+    return business
   }
 
   async listMemberships(businessId: string) {

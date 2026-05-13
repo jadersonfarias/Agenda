@@ -4,7 +4,14 @@ import { RoleGuard } from '../auth/role.guard'
 import { Roles } from '../auth/roles.decorator'
 import { parsePaginationParams } from '../common/pagination'
 import { updateAppointmentStatusSchema } from '../appointments/appointment.schema'
-import { acceptInvitationSchema, adminCreateInvitationSchema, adminCreateMembershipSchema, adminMembershipRoleSchema } from './admin.schema'
+import {
+  acceptInvitationSchema,
+  adminBusinessAvailabilitySchema,
+  adminCreateInvitationSchema,
+  adminCreateMembershipSchema,
+  adminMembershipRoleSchema,
+  adminServiceSchema,
+} from './admin.schema'
 
 type AuthenticatedRequest = {
   businessId?: string
@@ -33,6 +40,57 @@ export class AdminController {
   ) {
     const pagination = parsePaginationParams(page, perPage)
     return this.adminService.listServices(request.businessId!, pagination)
+  }
+
+  @Post('services')
+  @Roles('OWNER', 'ADMIN')
+  async createService(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
+    const parseResult = adminServiceSchema.safeParse({
+      ...(typeof body === 'object' && body !== null ? body : {}),
+      businessId: request.businessId,
+    })
+
+    if (!parseResult.success) {
+      throw new BadRequestException(parseResult.error.errors.map((error) => error.message).join(', '))
+    }
+
+    return this.adminService.createService(request.businessId!, parseResult.data)
+  }
+
+  @Patch('services/:id')
+  @Roles('OWNER', 'ADMIN')
+  async updateService(@Param('id') id: string, @Req() request: AuthenticatedRequest, @Body() body: unknown) {
+    const parseResult = adminServiceSchema.safeParse({
+      ...(typeof body === 'object' && body !== null ? body : {}),
+      businessId: request.businessId,
+    })
+
+    if (!parseResult.success) {
+      throw new BadRequestException(parseResult.error.errors.map((error) => error.message).join(', '))
+    }
+
+    return this.adminService.updateService(id, request.businessId!, parseResult.data)
+  }
+
+  @Delete('services/:id')
+  @Roles('OWNER', 'ADMIN')
+  async deleteService(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
+    return this.adminService.deleteService(id, request.businessId!)
+  }
+
+  @Patch('business/availability')
+  @Roles('OWNER', 'ADMIN')
+  async updateBusinessAvailability(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
+    const parseResult = adminBusinessAvailabilitySchema.safeParse({
+      ...(typeof body === 'object' && body !== null ? body : {}),
+      businessId: request.businessId,
+    })
+
+    if (!parseResult.success) {
+      throw new BadRequestException(parseResult.error.errors.map((error) => error.message).join(', '))
+    }
+
+    return this.adminService.updateBusinessAvailability(request.businessId!, parseResult.data)
   }
 
   @Get('memberships')

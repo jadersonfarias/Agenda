@@ -5,6 +5,8 @@ import { useSession } from 'next-auth/react'
 import { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import { useAdminAppointmentsQuery } from '../../features/admin/hooks/use-admin-appointments-query'
+import { useAdminInvitationsQuery } from '../../features/admin/hooks/use-admin-invitations-query'
+import { useAdminMembershipsQuery } from '../../features/admin/hooks/use-admin-memberships-query'
 import { useAdminServicesQuery } from '../../features/admin/hooks/use-admin-services-query'
 import { type AdminAppointmentStatusFilter, type AdminBusinessOption, type AdminDashboardData } from '../../features/admin/types'
 import { decodeAccessToken } from '../../lib/access-token'
@@ -15,6 +17,7 @@ import { AppointmentsSection } from './AppointmentsSection'
 import { AvailabilitySection } from './AvailabilitySection'
 import { AdminNavigation, type AdminSectionId } from './AdminNavigation'
 import { FinancialSummarySection } from './FinancialSummarySection'
+import { OnboardingChecklist } from './OnboardingChecklist'
 import { ServicesSection } from './ServicesSection'
 import { TeamSection } from './TeamSection'
 
@@ -111,6 +114,15 @@ export default function AdminPanel({ initialData, businesses, currentBusinessId 
         }
     })()
 
+    const onboardingMembershipsQuery = useAdminMembershipsQuery(
+        selectedBusinessId,
+        isAuthenticated && activeSection === 'overview' && canCreateMembership
+    )
+    const onboardingInvitationsQuery = useAdminInvitationsQuery(
+        selectedBusinessId,
+        isAuthenticated && activeSection === 'overview' && canCreateMembership
+    )
+
     const handleBusinessChange = async (nextBusinessId: string) => {
         if (!nextBusinessId || nextBusinessId === selectedBusinessId) {
             return
@@ -139,6 +151,7 @@ export default function AdminPanel({ initialData, businesses, currentBusinessId 
             await Promise.all([
                 queryClient.invalidateQueries({ queryKey: ['admin-services', nextBusinessId] }),
                 queryClient.invalidateQueries({ queryKey: ['admin-memberships', nextBusinessId] }),
+                queryClient.invalidateQueries({ queryKey: ['admin-invitations', nextBusinessId] }),
                 queryClient.invalidateQueries({ queryKey: ['admin-appointments', nextBusinessId] }),
                 queryClient.invalidateQueries({ queryKey: ['admin-monthly-summary', nextBusinessId] }),
             ])
@@ -173,31 +186,54 @@ export default function AdminPanel({ initialData, businesses, currentBusinessId 
             <AdminNavigation activeSection={activeSection} onChange={setActiveSection} />
 
             {activeSection === 'overview' ? (
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    <Card className="border-slate-200 shadow-lg shadow-slate-200/60">
-                        <p className="text-xs uppercase tracking-[.25em] text-slate-500 sm:text-sm">Serviços</p>
-                        <p className="mt-3 text-2xl font-semibold text-slate-900 sm:text-3xl">
-                            {servicesQuery.data?.length ?? servicesSnapshot.length}
-                        </p>
-                        <p className="mt-2 text-xs text-slate-600 sm:text-sm">Itens ativos na agenda do salão.</p>
-                    </Card>
-                    <Card className="border-slate-200 shadow-lg shadow-slate-200/60">
-                        <p className="text-xs uppercase tracking-[.25em] text-slate-500 sm:text-sm">Funcionamento</p>
-                        <p className="mt-3 text-lg font-semibold text-slate-900 sm:text-3xl">
-                            {business.openTime} - {business.closeTime}
-                        </p>
-                        <p className="mt-2 text-xs text-slate-600 sm:text-sm">Faixa horária usada para calcular disponibilidade.</p>
-                    </Card>
-                    <Card className="border-slate-200 shadow-lg shadow-slate-200/60">
-                        <p className="text-xs uppercase tracking-[.25em] text-slate-500 sm:text-sm">Reserva pública</p>
-                        <p className="mt-3 text-2xl font-semibold text-slate-900 sm:text-3xl">/</p>
-                        <p className="mt-2 text-xs text-slate-600 sm:text-sm">Mudanças aqui refletem na página de agendamento.</p>
-                    </Card>
-                    <Card className="border-slate-200 shadow-lg shadow-slate-200/60">
-                        <p className="text-xs uppercase tracking-[.25em] text-slate-500 sm:text-sm">Agendamentos</p>
-                        <p className="mt-3 text-2xl font-semibold text-slate-900 sm:text-3xl">{appointmentsQuery.data?.length ?? 0}</p>
-                        <p className="mt-2 text-xs text-slate-600 sm:text-sm">Total de agendamentos registrados.</p>
-                    </Card>
+                <div className="flex flex-col gap-4">
+                    {canCreateMembership ? (
+                        <OnboardingChecklist
+                            business={business}
+                            servicesCount={servicesQuery.data?.length ?? servicesSnapshot.length}
+                            membershipsCount={onboardingMembershipsQuery.data?.length ?? 1}
+                            pendingInvitationsCount={
+                                onboardingInvitationsQuery.data?.filter((invitation) => !invitation.acceptedAt && !invitation.isExpired)
+                                    .length ?? 0
+                            }
+                            onOpenServices={() => setActiveSection('services')}
+                            onOpenSettings={() => setActiveSection('settings')}
+                            onOpenTeam={() => setActiveSection('team')}
+                        />
+                    ) : null}
+
+                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                        <Card className="border-slate-200 shadow-lg shadow-slate-200/60">
+                            <p className="text-xs uppercase tracking-[.25em] text-slate-500 sm:text-sm">Serviços</p>
+                            <p className="mt-3 text-2xl font-semibold text-slate-900 sm:text-3xl">
+                                {servicesQuery.data?.length ?? servicesSnapshot.length}
+                            </p>
+                            <p className="mt-2 text-xs text-slate-600 sm:text-sm">Itens ativos na agenda do salão.</p>
+                        </Card>
+                        <Card className="border-slate-200 shadow-lg shadow-slate-200/60">
+                            <p className="text-xs uppercase tracking-[.25em] text-slate-500 sm:text-sm">Funcionamento</p>
+                            <p className="mt-3 text-lg font-semibold text-slate-900 sm:text-3xl">
+                                {business.openTime} - {business.closeTime}
+                            </p>
+                            <p className="mt-2 text-xs text-slate-600 sm:text-sm">
+                                Faixa horária usada para calcular disponibilidade.
+                            </p>
+                        </Card>
+                        <Card className="border-slate-200 shadow-lg shadow-slate-200/60">
+                            <p className="text-xs uppercase tracking-[.25em] text-slate-500 sm:text-sm">Reserva pública</p>
+                            <p className="mt-3 text-2xl font-semibold text-slate-900 sm:text-3xl">/b/{business.slug}</p>
+                            <p className="mt-2 text-xs text-slate-600 sm:text-sm">
+                                Mudanças aqui refletem na página de agendamento.
+                            </p>
+                        </Card>
+                        <Card className="border-slate-200 shadow-lg shadow-slate-200/60">
+                            <p className="text-xs uppercase tracking-[.25em] text-slate-500 sm:text-sm">Agendamentos</p>
+                            <p className="mt-3 text-2xl font-semibold text-slate-900 sm:text-3xl">
+                                {appointmentsQuery.data?.length ?? 0}
+                            </p>
+                            <p className="mt-2 text-xs text-slate-600 sm:text-sm">Total de agendamentos registrados.</p>
+                        </Card>
+                    </div>
                 </div>
             ) : null}
 
