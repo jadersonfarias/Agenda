@@ -57,6 +57,10 @@ type PaginatedResponse<T> = {
 
 type PublicBookingPageProps = {
     businessId: string
+    businessSlug?: string
+    businessName?: string
+    businessOpenTime?: string
+    businessCloseTime?: string
     eyebrow?: string
     headline?: string
 }
@@ -82,11 +86,16 @@ async function readJson<T>(response: Response): Promise<T | null> {
 
 export function PublicBookingPage({
     businessId,
+    businessSlug,
+    businessName,
+    businessOpenTime,
+    businessCloseTime,
     eyebrow = 'Reserva de serviço',
     headline = 'Agende seu atendimento com facilidade',
 }: PublicBookingPageProps) {
     const [currentStep, setCurrentStep] = useState<BookingStep>('service')
     const [createdAppointmentLink, setCreatedAppointmentLink] = useState<string | null>(null)
+    const [publicBookingUrl, setPublicBookingUrl] = useState('')
     const bookingFormTopRef = useRef<HTMLFormElement | null>(null)
     const {
         register,
@@ -198,6 +207,12 @@ export function PublicBookingPage({
     const availableTimes = availabilityQuery.data ?? []
     const selectedService = serviceOptions.find((service) => service.id === selectedServiceId) ?? null
     const selectedDateLabel = selectedDate ? format(selectedDate, 'dd/MM/yyyy') : ''
+    const publicBusinessSlug = businessSlug || businessId
+    const publicBookingHref = `/b/${encodeURIComponent(publicBusinessSlug)}`
+    const publicAgendaHref = `${publicBookingHref}/agenda`
+    const businessDisplayName = businessName || 'Agendamento online'
+    const hasBusinessHours = Boolean(businessOpenTime && businessCloseTime)
+    const businessHoursLabel = hasBusinessHours ? `${businessOpenTime} às ${businessCloseTime}` : 'Consulte os horários ao selecionar uma data'
 
     useEffect(() => {
         if (!selectedServiceId) {
@@ -232,6 +247,52 @@ export function PublicBookingPage({
             block: 'start',
         })
     }, [currentStep])
+
+    useEffect(() => {
+        if (typeof window === 'undefined') {
+            setPublicBookingUrl(publicBookingHref)
+            return
+        }
+
+        setPublicBookingUrl(`${window.location.origin}${publicBookingHref}`)
+    }, [publicBookingHref])
+
+    const handleSharePublicPage = async () => {
+        if (typeof navigator === 'undefined') {
+            toast.error('Não foi possível compartilhar agora')
+            return
+        }
+
+        try {
+            if (navigator.share) {
+                await navigator.share({
+                    title: businessDisplayName,
+                    text: `Confira a página de agendamento de ${businessDisplayName}.`,
+                    url: publicBookingUrl || publicBookingHref,
+                })
+                return
+            }
+
+            if (!navigator.clipboard) {
+                toast.error('Não foi possível compartilhar neste navegador')
+                return
+            }
+
+            await navigator.clipboard.writeText(publicBookingUrl || publicBookingHref)
+            toast.success('Link da página copiado')
+        } catch (error) {
+            if (
+                typeof error === 'object' &&
+                error !== null &&
+                'name' in error &&
+                error.name === 'AbortError'
+            ) {
+                return
+            }
+
+            toast.error('Não foi possível compartilhar agora')
+        }
+    }
 
     const onSubmit = (data: AppointmentForm) => {
         appointmentMutation.mutate({
@@ -310,6 +371,21 @@ export function PublicBookingPage({
                                 Fazer nova reserva
                             </Button>
                         </div>
+
+                        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                            <Link
+                                href="/meus-agendamentos"
+                                className="text-sm font-medium text-purple-700 transition hover:text-purple-800 focus:outline-none focus:ring-2 focus:ring-purple-200"
+                            >
+                                Ir para Meus agendamentos
+                            </Link>
+                            <Link
+                                href={publicAgendaHref}
+                                className="text-sm font-medium text-purple-700 transition hover:text-purple-800 focus:outline-none focus:ring-2 focus:ring-purple-200"
+                            >
+                                Ver Agenda pública
+                            </Link>
+                        </div>
                     </div>
                 </Card>
             </main>
@@ -319,12 +395,40 @@ export function PublicBookingPage({
     return (
         <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-5 overflow-x-hidden px-4 py-5 sm:gap-6 sm:px-6 sm:py-7 lg:px-8 lg:py-10">
             <Card className="border-purple-100 bg-white shadow-sm shadow-purple-100/40">
-                <div className="space-y-3">
+                <div className="space-y-4">
                     <div className="space-y-1.5 sm:space-y-2">
                         <p className="text-xs uppercase tracking-[.3em] text-violet-700 sm:text-sm">{eyebrow}</p>
                         <h1 className="text-[1.75rem] font-semibold leading-tight text-slate-900 sm:text-3xl lg:text-[2rem]">{headline}</h1>
                         <p className="max-w-2xl text-sm leading-6 text-slate-600 sm:text-[15px]">
                             Escolha um serviço, informe seus dados e confirme um horário livre sem sair do celular.
+                        </p>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                        <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4">
+                            <p className="text-[11px] uppercase tracking-[.2em] text-slate-500">Negócio</p>
+                            <p className="mt-2 text-base font-semibold text-slate-900">{businessDisplayName}</p>
+                        </div>
+                        <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4">
+                            <p className="text-[11px] uppercase tracking-[.2em] text-slate-500">Funcionamento</p>
+                            <p className="mt-2 text-base font-semibold text-slate-900">{businessHoursLabel}</p>
+                        </div>
+                        <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4">
+                            <p className="text-[11px] uppercase tracking-[.2em] text-slate-500">Serviços</p>
+                            <p className="mt-2 text-base font-semibold text-slate-900">
+                                {servicesQuery.isLoading ? 'Carregando...' : `${serviceOptions.length} opção(ões)`}
+                            </p>
+                        </div>
+                        <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4">
+                            <p className="text-[11px] uppercase tracking-[.2em] text-slate-500">Reserva</p>
+                            <p className="mt-2 text-base font-semibold text-slate-900">Escolha um serviço e avance pelo passo a passo.</p>
+                        </div>
+                    </div>
+
+                    <div className="rounded-3xl border border-dashed border-purple-200 bg-purple-50/60 px-4 py-4">
+                        <p className="text-[11px] uppercase tracking-[.2em] text-purple-700">Como funciona</p>
+                        <p className="mt-2 text-sm leading-6 text-slate-700">
+                            Escolha um serviço, preencha seus dados, selecione um horário livre e confirme a reserva.
                         </p>
                     </div>
 
@@ -400,7 +504,7 @@ export function PublicBookingPage({
                                                             </span>
                                                         ) : (
                                                             <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-500 transition group-hover:bg-purple-50 group-hover:text-purple-700">
-                                                                Toque para escolher
+                                                                Selecionar
                                                             </span>
                                                         )}
                                                     </div>
@@ -594,23 +698,94 @@ export function PublicBookingPage({
                             />
                         </div>
 
+                        {currentStep !== 'service' ? (
+                            <div className="mb-3 md:mb-4">
+                                <Card className="border-slate-200 shadow-lg shadow-slate-200/60">
+                                    <div className="space-y-3 sm:space-y-4">
+                                        <div>
+                                            <p className="text-xs uppercase tracking-[.3em] text-purple-700 sm:text-sm">Serviços</p>
+                                            <h2 className="mt-1.5 text-lg font-semibold text-slate-900 sm:mt-2 sm:text-2xl">
+                                                Lista de serviços
+                                            </h2>
+                                        </div>
+
+                                        {servicesQuery.isLoading ? (
+                                            <p className="text-sm text-slate-500">Carregando serviços...</p>
+                                        ) : servicesQuery.isError ? (
+                                            <p className="text-sm text-red-600">Não foi possível carregar os serviços.</p>
+                                        ) : (
+                                            <div className="space-y-2.5">
+                                                {serviceOptions.map((service) => {
+                                                    const isSelected = service.id === selectedServiceId
+
+                                                    return (
+                                                        <button
+                                                            key={service.id}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setValue('serviceId', service.id, { shouldValidate: true })
+                                                                setValue('time', '', { shouldValidate: true })
+                                                                setCurrentStep('service')
+                                                            }}
+                                                            className={[
+                                                                'w-full rounded-2xl border px-4 py-3 text-left transition focus:outline-none focus:ring-2 focus:ring-purple-200',
+                                                                isSelected
+                                                                    ? 'border-purple-300 bg-purple-50'
+                                                                    : 'border-slate-200 bg-slate-50 hover:border-purple-200 hover:bg-white',
+                                                            ].join(' ')}
+                                                        >
+                                                            <div className="flex items-start justify-between gap-3">
+                                                                <div className="min-w-0">
+                                                                    <p className="text-sm font-semibold text-slate-900">{service.name}</p>
+                                                                    <p className="mt-1 text-xs text-slate-500">
+                                                                        {service.durationMinutes} min
+                                                                    </p>
+                                                                </div>
+                                                                <span className="shrink-0 text-sm font-semibold text-purple-700">
+                                                                    R$ {Number(service.price).toFixed(2)}
+                                                                </span>
+                                                            </div>
+                                                        </button>
+                                                    )
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                </Card>
+                            </div>
+                        ) : null}
+
                         <Card className="border-slate-200 shadow-lg shadow-slate-200/60">
                             <div className="space-y-3 sm:space-y-4">
                                 <div>
-                                    <p className="text-xs uppercase tracking-[.3em] text-purple-700 sm:text-sm">Agenda pública</p>
-                                    <h2 className="mt-1.5 text-lg font-semibold text-slate-900 sm:mt-2 sm:text-2xl">Agenda pública</h2>
+                                    <p className="text-xs uppercase tracking-[.3em] text-purple-700 sm:text-sm">Links úteis</p>
+                                    <h2 className="mt-1.5 text-lg font-semibold text-slate-900 sm:mt-2 sm:text-2xl">Acompanhe sua reserva</h2>
                                 </div>
 
                                 <p className="text-sm leading-6 text-slate-600">
-                                    Veja os próximos horários já reservados.
+                                    Use estes atalhos para consultar a agenda pública ou acompanhar reservas já feitas.
                                 </p>
 
-                                <a
-                                    href={`/b/${encodeURIComponent(businessId)}/agenda`}
-                                    className="inline-flex w-full items-center justify-center rounded-2xl bg-slate-100 px-4 py-3 text-base font-semibold text-slate-900 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-200 sm:w-auto sm:px-6 sm:text-sm"
+                                <div className="grid gap-2">
+                                    <Link href="/meus-agendamentos" className="w-full">
+                                        <Button type="button" variant="secondary" className="w-full">
+                                            Meus agendamentos
+                                        </Button>
+                                    </Link>
+                                    <Link href={publicAgendaHref} className="w-full">
+                                        <Button type="button" variant="secondary" className="w-full">
+                                            Ver agenda pública
+                                        </Button>
+                                    </Link>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={handleSharePublicPage}
+                                    className="text-left text-sm font-medium text-purple-700 transition hover:text-purple-800 focus:outline-none focus:ring-2 focus:ring-purple-200"
                                 >
-                                    Ver agenda pública
-                                </a>
+                                    Compartilhar esta página
+                                </button>
                             </div>
                         </Card>
                     </div>

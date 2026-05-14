@@ -7,6 +7,17 @@ import { parsePaginationParams } from '../common/pagination'
 export class BusinessesController {
   constructor(private readonly businessesService: BusinessesService) {}
 
+  @Get(':businessId')
+  getPublicBusiness(@Param('businessId') businessId: string) {
+    const parsedBusinessId = businessLookupSchema.safeParse(businessId)
+
+    if (!parsedBusinessId.success) {
+      throw new BadRequestException(parsedBusinessId.error.errors.map((error) => error.message).join(', '))
+    }
+
+    return this.businessesService.getPublicBusiness(parsedBusinessId.data)
+  }
+
   @Get('slug/:slug')
   getBySlug(@Param('slug') slug: string) {
     const parsedSlug = businessLookupSchema.safeParse(slug)

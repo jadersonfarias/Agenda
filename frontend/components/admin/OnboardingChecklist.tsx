@@ -85,7 +85,7 @@ export function OnboardingChecklist({
                 title: 'Criar primeiro serviço',
                 description: hasCreatedFirstService
                     ? 'Seu catálogo inicial já está pronto para receber reservas.'
-                    : 'Cadastre pelo menos um serviço para liberar o fluxo público de agendamento.',
+                    : 'Cadastre pelo menos um serviço para que os clientes consigam reservar pelo link público.',
                 done: hasCreatedFirstService,
                 actionLabel: hasCreatedFirstService ? 'Ver serviços' : 'Criar serviço',
                 actionVariant: hasCreatedFirstService ? 'secondary' : 'default',
@@ -96,7 +96,7 @@ export function OnboardingChecklist({
                 title: 'Configurar horário de funcionamento',
                 description: hasConfiguredBusinessHours
                     ? `Funcionamento atual: ${business.openTime} às ${business.closeTime}.`
-                    : 'Defina o horário real do negócio para melhorar a disponibilidade exibida.',
+                    : 'Defina o horário real do negócio antes de divulgar a agenda para evitar horários errados.',
                 done: hasConfiguredBusinessHours,
                 actionLabel: hasConfiguredBusinessHours ? 'Editar horários' : 'Configurar horários',
                 actionVariant: hasConfiguredBusinessHours ? 'secondary' : 'default',
@@ -106,8 +106,8 @@ export function OnboardingChecklist({
                 id: 'public-link',
                 title: 'Copiar link público de agendamento',
                 description: hasCopiedPublicLink
-                    ? `Link público pronto para compartilhar: /b/${business.slug}.`
-                    : 'Copie o link público para divulgar a agenda do negócio por WhatsApp, Instagram ou site.',
+                    ? `Link público pronto para compartilhar com clientes: /b/${business.slug}.`
+                    : 'Copie o link público completo para divulgar a agenda no WhatsApp, Instagram ou site.',
                 done: hasCopiedPublicLink,
                 actionLabel: hasCopiedPublicLink ? 'Copiar novamente' : 'Copiar link',
                 actionVariant: hasCopiedPublicLink ? 'secondary' : 'default',
@@ -158,7 +158,7 @@ export function OnboardingChecklist({
                     <div>
                         <h2 className="text-xl font-semibold text-slate-900 sm:text-2xl">Configure seu negócio mais rápido</h2>
                         <p className="mt-1 text-sm text-slate-600 sm:text-base">
-                            O sistema já está liberado. Falta só ajustar alguns pontos para deixar a operação redonda.
+                            Sua conta já está pronta. Siga estas etapas para começar a receber reservas com mais segurança.
                         </p>
                     </div>
                 </div>

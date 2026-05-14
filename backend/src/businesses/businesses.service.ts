@@ -44,6 +44,16 @@ export class BusinessesService {
     return this.businessesRepository.findServices(business.id, pagination)
   }
 
+  async getPublicBusiness(businessId: string) {
+    const business = await this.businessesRepository.findBusinessById(businessId)
+
+    if (!business) {
+      throw new NotFoundException('Negócio não encontrado')
+    }
+
+    return this.mapPublicBusiness(business)
+  }
+
   async getPublicBusinessBySlug(slug: string) {
     const business = await this.businessesRepository.findBusinessById(slug)
 
@@ -51,11 +61,7 @@ export class BusinessesService {
       throw new NotFoundException('Negócio não encontrado')
     }
 
-    return {
-      id: business.id,
-      name: business.name,
-      slug: business.slug,
-    }
+    return this.mapPublicBusiness(business)
   }
 
   async getAvailability(businessId: string, serviceId: string, date: string) {
@@ -92,6 +98,22 @@ export class BusinessesService {
 
   invalidateBusinessAvailability(businessId: string) {
     this.availabilityCacheService.deleteByPrefix(`availability:${businessId}:`)
+  }
+
+  private mapPublicBusiness(business: {
+    id: string
+    name: string
+    slug: string
+    openTime: string
+    closeTime: string
+  }) {
+    return {
+      id: business.id,
+      name: business.name,
+      slug: business.slug,
+      openTime: business.openTime,
+      closeTime: business.closeTime,
+    }
   }
 
   private async getBusinessContextOrThrow(businessId: string): Promise<BusinessAvailabilityContext> {

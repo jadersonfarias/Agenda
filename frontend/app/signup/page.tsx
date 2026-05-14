@@ -63,7 +63,7 @@ export default function SignupPage() {
             })
 
             toast.success('Cadastro criado com sucesso')
-            router.push('/login')
+            router.push(`/login?welcome=1&email=${encodeURIComponent(data.email)}`)
         } catch (submitError) {
             setError(getApiErrorMessage(submitError, 'Não foi possível criar sua conta'))
         }
@@ -73,12 +73,15 @@ export default function SignupPage() {
         <main className="mx-auto flex min-h-screen max-w-3xl items-center px-4 py-10 sm:px-6 lg:px-8">
             <Card>
                 <div className="space-y-5">
-                    <div>
+                    <div className="space-y-3">
                         <p className="text-sm uppercase tracking-[.3em] text-purple-700">Cadastro público</p>
                         <h1 className="text-3xl font-semibold text-slate-900">Crie seu negócio</h1>
                         <p className="text-slate-600">
                             Cadastre o dono e o primeiro negócio para começar a usar o painel administrativo.
                         </p>
+                        <div className="rounded-2xl border border-purple-100 bg-purple-50 px-4 py-3 text-sm text-purple-900">
+                            Depois do cadastro, o próximo passo é fazer login e concluir a configuração inicial no painel.
+                        </div>
                     </div>
 
                     <form onSubmit={onSubmit} className="grid gap-4">
@@ -97,6 +100,7 @@ export default function SignupPage() {
                         <Label className="space-y-2">
                             <span>Senha</span>
                             <Input type="password" {...register('password')} placeholder="••••••••" />
+                            <p className="text-xs text-slate-500">Use pelo menos 6 caracteres para acessar o admin.</p>
                             {formState.errors.password ? <p className="text-sm text-red-600">{formState.errors.password.message}</p> : null}
                         </Label>
 
@@ -109,7 +113,7 @@ export default function SignupPage() {
                         <Label className="space-y-2">
                             <span>Slug do negócio</span>
                             <Input type="text" {...register('businessSlug')} placeholder="salao-da-maria" />
-                            <p className="text-xs text-slate-500">Use letras minúsculas, números e hífens.</p>
+                            <p className="text-xs text-slate-500">Esse slug vira o link público do negócio: `/b/seu-slug`.</p>
                             {formState.errors.businessSlug ? <p className="text-sm text-red-600">{formState.errors.businessSlug.message}</p> : null}
                         </Label>
 

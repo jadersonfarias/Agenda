@@ -18,6 +18,7 @@ import { AvailabilitySection } from './AvailabilitySection'
 import { AdminNavigation, type AdminSectionId } from './AdminNavigation'
 import { FinancialSummarySection } from './FinancialSummarySection'
 import { OnboardingChecklist } from './OnboardingChecklist'
+import { PublicBookingLinkCard } from './PublicBookingLinkCard'
 import { ServicesSection } from './ServicesSection'
 import { TeamSection } from './TeamSection'
 
@@ -219,13 +220,7 @@ export default function AdminPanel({ initialData, businesses, currentBusinessId 
                                 Faixa horária usada para calcular disponibilidade.
                             </p>
                         </Card>
-                        <Card className="border-slate-200 shadow-lg shadow-slate-200/60">
-                            <p className="text-xs uppercase tracking-[.25em] text-slate-500 sm:text-sm">Reserva pública</p>
-                            <p className="mt-3 text-2xl font-semibold text-slate-900 sm:text-3xl">/b/{business.slug}</p>
-                            <p className="mt-2 text-xs text-slate-600 sm:text-sm">
-                                Mudanças aqui refletem na página de agendamento.
-                            </p>
-                        </Card>
+                        <PublicBookingLinkCard business={business} />
                         <Card className="border-slate-200 shadow-lg shadow-slate-200/60">
                             <p className="text-xs uppercase tracking-[.25em] text-slate-500 sm:text-sm">Agendamentos</p>
                             <p className="mt-3 text-2xl font-semibold text-slate-900 sm:text-3xl">

@@ -11,6 +11,8 @@ type PublicBusinessResponse = {
     id: string
     name: string
     slug: string
+    openTime?: string
+    closeTime?: string
 }
 
 export default async function BusinessSlugPage({ params }: BusinessSlugPageProps) {
@@ -23,6 +25,10 @@ export default async function BusinessSlugPage({ params }: BusinessSlugPageProps
         return (
             <PublicBookingPage
                 businessId={response.data.id}
+                businessSlug={response.data.slug}
+                businessName={response.data.name}
+                businessOpenTime={response.data.openTime}
+                businessCloseTime={response.data.closeTime}
                 headline={response.data.name || 'Agenda pública'}
                 eyebrow="Reserva por negócio"
             />
@@ -31,6 +37,7 @@ export default async function BusinessSlugPage({ params }: BusinessSlugPageProps
         return (
             <PublicBookingPage
                 businessId={slug}
+                businessSlug={slug}
                 headline="Agenda pública"
                 eyebrow="Reserva por negócio"
             />
