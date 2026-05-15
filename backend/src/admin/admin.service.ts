@@ -88,6 +88,9 @@ export class AdminService {
         slug: business.slug,
         openTime: business.openTime,
         closeTime: business.closeTime,
+        plan: business.plan,
+        subscriptionStatus: business.subscriptionStatus,
+        trialEndsAt: business.trialEndsAt?.toISOString() ?? null,
       },
       services: services.map((service: AdminServiceRecord) => ({
         id: service.id,

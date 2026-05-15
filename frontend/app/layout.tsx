@@ -4,8 +4,13 @@ import { Providers } from '../components/providers'
 import { PublicSiteHeader } from '../components/public/PublicSiteHeader'
 
 export const metadata: Metadata = {
-    title: 'Scheduler SaaS',
-    description: 'Plataforma de agendamento multi-negócio com login, disponibilidade e gestão de serviços.',
+    title: 'MarcaCerta',
+    description: 'MarcaCerta é uma plataforma de agendamento com reservas online, disponibilidade e gestão de serviços.',
+    icons: {
+        icon: '/favicon.png',
+        shortcut: '/favicon.png',
+        apple: '/favicon.png',
+    },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

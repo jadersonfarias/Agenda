@@ -59,7 +59,7 @@ export function AvailabilitySection({ business, onSaved }: AvailabilitySectionPr
                 <p className="text-xs uppercase tracking-[.3em] text-purple-700 sm:text-sm">Disponibilidade</p>
                 <h2 className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">Horários disponíveis</h2>
                 <p className="mt-2 max-w-2xl text-xs text-slate-600 sm:text-sm">
-                    Defina a faixa horária usada na agenda pública para calcular os horários livres do negócio.
+                    Defina a faixa horária usada no link de agendamento para calcular os horários livres do negócio.
                 </p>
             </div>
 

@@ -28,6 +28,9 @@ export class AuthRepository {
     businessName: string
     businessSlug: string
     phone: string | null
+    plan: 'FREE' | 'BASIC' | 'PRO'
+    subscriptionStatus: 'TRIALING' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED'
+    trialEndsAt: Date
   }) {
     const userId = randomUUID()
     const businessId = randomUUID()
@@ -48,6 +51,9 @@ export class AuthRepository {
           name: input.businessName,
           slug: input.businessSlug,
           phone: input.phone,
+          plan: input.plan,
+          subscriptionStatus: input.subscriptionStatus,
+          trialEndsAt: input.trialEndsAt,
           ownerId: userId,
         },
       }),
@@ -72,6 +78,9 @@ export class AuthRepository {
         name: input.businessName,
         slug: input.businessSlug,
         phone: input.phone,
+        plan: input.plan,
+        subscriptionStatus: input.subscriptionStatus,
+        trialEndsAt: input.trialEndsAt.toISOString(),
       },
       membership: {
         id: membershipId,

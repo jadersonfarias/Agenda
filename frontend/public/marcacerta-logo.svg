@@ -1,0 +1,44 @@
+<svg width="1400" height="260" viewBox="0 0 1400 260" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="marcaGradient" x1="26" y1="30" x2="224" y2="224" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#C4B5FD"/>
+      <stop offset="0.45" stop-color="#9B6DFF"/>
+      <stop offset="1" stop-color="#6D28D9"/>
+    </linearGradient>
+    <filter id="softGlow" x="0" y="0" width="260" height="260" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 .14 0"/>
+      <feBlend in="SourceGraphic" mode="normal"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#softGlow)">
+    <path d="M72 70C72 50.1178 88.1178 34 108 34H188C207.882 34 224 50.1178 224 70V176" stroke="url(#marcaGradient)" stroke-width="14" stroke-linecap="round"/>
+    <path d="M104 18V52" stroke="url(#marcaGradient)" stroke-width="14" stroke-linecap="round"/>
+    <path d="M176 18V52" stroke="url(#marcaGradient)" stroke-width="14" stroke-linecap="round"/>
+    <path d="M72 88H224" stroke="url(#marcaGradient)" stroke-width="14" stroke-linecap="round"/>
+
+    <rect x="102" y="110" width="28" height="28" rx="6" fill="url(#marcaGradient)" opacity="0.34"/>
+    <rect x="150" y="110" width="28" height="28" rx="6" fill="url(#marcaGradient)" opacity="0.34"/>
+    <rect x="198" y="110" width="28" height="28" rx="6" fill="url(#marcaGradient)" opacity="0.34"/>
+    <rect x="102" y="154" width="28" height="28" rx="6" fill="url(#marcaGradient)" opacity="0.34"/>
+    <rect x="150" y="154" width="28" height="28" rx="6" fill="url(#marcaGradient)" opacity="0.34"/>
+    <rect x="198" y="154" width="28" height="28" rx="6" fill="url(#marcaGradient)" opacity="0.34"/>
+
+    <circle cx="194" cy="174" r="54" fill="white" fill-opacity="0.92" stroke="url(#marcaGradient)" stroke-width="14"/>
+    <path d="M194 146V174L212 156" stroke="url(#marcaGradient)" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" opacity="0"/>
+    <path d="M166 176L187 197L223 160" stroke="url(#marcaGradient)" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <text
+    x="292"
+    y="180"
+    fill="#111650"
+    font-family="Inter, Segoe UI, Arial, sans-serif"
+    font-size="150"
+    font-weight="700"
+    letter-spacing="-4"
+  >
+    MarcaCerta
+  </text>
+</svg>

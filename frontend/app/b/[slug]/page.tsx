@@ -29,7 +29,7 @@ export default async function BusinessSlugPage({ params }: BusinessSlugPageProps
                 businessName={response.data.name}
                 businessOpenTime={response.data.openTime}
                 businessCloseTime={response.data.closeTime}
-                headline={response.data.name || 'Agenda pública'}
+                headline={response.data.name || 'Agendamento online'}
                 eyebrow="Reserva por negócio"
             />
         )
@@ -38,7 +38,7 @@ export default async function BusinessSlugPage({ params }: BusinessSlugPageProps
             <PublicBookingPage
                 businessId={slug}
                 businessSlug={slug}
-                headline="Agenda pública"
+                headline="Agendamento online"
                 eyebrow="Reserva por negócio"
             />
         )

@@ -43,7 +43,7 @@ export function PublicBookingLinkCard({ business }: PublicBookingLinkCardProps) 
                     <p className="text-xs uppercase tracking-[.25em] text-slate-500 sm:text-sm">Link de agendamento</p>
                     <h2 className="text-lg font-semibold text-slate-900 sm:text-2xl">Página pública do negócio</h2>
                     <p className="text-xs text-slate-600 sm:text-sm">
-                        Compartilhe este link completo com clientes para receber reservas na agenda pública.
+                        Compartilhe este link completo com clientes para receber reservas online no seu negócio.
                     </p>
                 </div>
 

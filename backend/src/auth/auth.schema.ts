@@ -57,6 +57,9 @@ export type RegisterBusinessOwnerResponse = {
     name: string
     slug: string
     phone: string | null
+    plan: 'FREE' | 'BASIC' | 'PRO'
+    subscriptionStatus: 'TRIALING' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED'
+    trialEndsAt: string | null
   }
   membership: {
     id: string

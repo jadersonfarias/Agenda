@@ -209,7 +209,6 @@ export function PublicBookingPage({
     const selectedDateLabel = selectedDate ? format(selectedDate, 'dd/MM/yyyy') : ''
     const publicBusinessSlug = businessSlug || businessId
     const publicBookingHref = `/b/${encodeURIComponent(publicBusinessSlug)}`
-    const publicAgendaHref = `${publicBookingHref}/agenda`
     const businessDisplayName = businessName || 'Agendamento online'
     const hasBusinessHours = Boolean(businessOpenTime && businessCloseTime)
     const businessHoursLabel = hasBusinessHours ? `${businessOpenTime} às ${businessCloseTime}` : 'Consulte os horários ao selecionar uma data'
@@ -378,12 +377,6 @@ export function PublicBookingPage({
                                 className="text-sm font-medium text-purple-700 transition hover:text-purple-800 focus:outline-none focus:ring-2 focus:ring-purple-200"
                             >
                                 Ir para Meus agendamentos
-                            </Link>
-                            <Link
-                                href={publicAgendaHref}
-                                className="text-sm font-medium text-purple-700 transition hover:text-purple-800 focus:outline-none focus:ring-2 focus:ring-purple-200"
-                            >
-                                Ver Agenda pública
                             </Link>
                         </div>
                     </div>
@@ -763,18 +756,13 @@ export function PublicBookingPage({
                                 </div>
 
                                 <p className="text-sm leading-6 text-slate-600">
-                                    Use estes atalhos para consultar a agenda pública ou acompanhar reservas já feitas.
+                                    Use estes atalhos para acompanhar reservas já feitas ou compartilhar esta página com outras pessoas.
                                 </p>
 
                                 <div className="grid gap-2">
                                     <Link href="/meus-agendamentos" className="w-full">
                                         <Button type="button" variant="secondary" className="w-full">
                                             Meus agendamentos
-                                        </Button>
-                                    </Link>
-                                    <Link href={publicAgendaHref} className="w-full">
-                                        <Button type="button" variant="secondary" className="w-full">
-                                            Ver agenda pública
                                         </Button>
                                     </Link>
                                 </div>

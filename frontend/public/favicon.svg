@@ -1,0 +1,24 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="faviconGradient" x1="40" y1="34" x2="220" y2="220" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#C4B5FD"/>
+      <stop offset="0.45" stop-color="#9B6DFF"/>
+      <stop offset="1" stop-color="#6D28D9"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="22" y="22" width="212" height="212" rx="54" fill="white"/>
+  <path d="M64 78C64 58.1178 80.1178 42 100 42H156C175.882 42 192 58.1178 192 78V172" stroke="url(#faviconGradient)" stroke-width="14" stroke-linecap="round"/>
+  <path d="M96 28V60" stroke="url(#faviconGradient)" stroke-width="14" stroke-linecap="round"/>
+  <path d="M160 28V60" stroke="url(#faviconGradient)" stroke-width="14" stroke-linecap="round"/>
+  <path d="M64 94H192" stroke="url(#faviconGradient)" stroke-width="14" stroke-linecap="round"/>
+
+  <rect x="90" y="112" width="22" height="22" rx="5" fill="url(#faviconGradient)" opacity="0.35"/>
+  <rect x="126" y="112" width="22" height="22" rx="5" fill="url(#faviconGradient)" opacity="0.35"/>
+  <rect x="162" y="112" width="22" height="22" rx="5" fill="url(#faviconGradient)" opacity="0.35"/>
+  <rect x="90" y="148" width="22" height="22" rx="5" fill="url(#faviconGradient)" opacity="0.35"/>
+  <rect x="126" y="148" width="22" height="22" rx="5" fill="url(#faviconGradient)" opacity="0.35"/>
+
+  <circle cx="168" cy="170" r="44" fill="white" fill-opacity="0.95" stroke="url(#faviconGradient)" stroke-width="14"/>
+  <path d="M144 170L161 187L192 156" stroke="url(#faviconGradient)" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

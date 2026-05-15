@@ -13,6 +13,9 @@ export type AdminBusinessSettings = {
     slug: string
     openTime: string
     closeTime: string
+    plan: 'FREE' | 'BASIC' | 'PRO'
+    subscriptionStatus: 'TRIALING' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED'
+    trialEndsAt: string | null
 }
 
 export type AdminBusinessOption = {

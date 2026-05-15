@@ -83,6 +83,11 @@ Endpoints usados:
 - `GET /appointments`
 - `POST /appointments`
 
+Protecao basica contra abuso:
+- rate limit por rota em:
+  - `GET /businesses/:businessId/availability`
+  - `POST /appointments`
+
 ### Admin
 `AdminPanel -> Axios -> Backend Nest -> Prisma`
 
@@ -103,6 +108,8 @@ Endpoints principais:
 
 ## Auth
 - Login real acontece no backend: `POST /auth/login`
+- `POST /auth/login` tem rate limit por rota
+- `POST /auth/register-business-owner` tem rate limit por rota
 - Frontend usa NextAuth para sessao
 - Backend usa `JWT_SECRET`
 - Frontend usa `NEXTAUTH_SECRET`
@@ -137,6 +144,7 @@ Regras estruturais:
 - JWT
 - `AuthMiddleware`
 - `RoleGuard`
+- rate limit por decorator nas rotas sensiveis
 - resolve `request.user` e `request.businessId`
 
 ### `backend/src/admin`
@@ -156,6 +164,13 @@ Regras estruturais:
 - services publicos
 - disponibilidade
 - clientes ativos
+
+### `backend/src/common`
+- `RateLimit` decorator por rota
+- `SimpleRateLimitGuard`
+- `SimpleRateLimitService`
+- limite simples em memoria por IP
+- excesso retorna `429` com header `Retry-After`
 
 ### `backend/src/scheduling`
 - timezone

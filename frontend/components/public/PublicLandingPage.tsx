@@ -49,7 +49,7 @@ export function PublicLandingPage({
                 <Card className="border-purple-200 bg-gradient-to-br from-white via-white to-purple-50">
                     <div className="space-y-4 sm:space-y-6">
                         <div className="space-y-3">
-                            <p className="text-xs uppercase tracking-[.3em] text-purple-700 sm:text-sm">Scheduler SaaS</p>
+                            <p className="text-xs uppercase tracking-[.3em] text-purple-700 sm:text-sm">MarcaCerta</p>
                             <h1 className="max-w-3xl text-[1.95rem] font-semibold leading-tight text-slate-900 sm:text-4xl lg:text-[3.2rem]">
                                 Agenda online para salões, barbearias e pequenos negócios
                             </h1>
@@ -60,7 +60,7 @@ export function PublicLandingPage({
 
                         <div className="flex flex-wrap gap-2">
                             <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold uppercase tracking-[.18em] text-purple-700">
-                                Agenda pública
+                                Reservas online
                             </span>
                             <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[.18em] text-slate-700">
                                 Gestão simples
@@ -104,7 +104,7 @@ export function PublicLandingPage({
                             <p className="text-xs uppercase tracking-[.25em] text-purple-700 sm:text-sm">Demonstração ao vivo</p>
                             <h2 className="text-xl font-semibold text-slate-900 sm:text-2xl">{demoBusinessName}</h2>
                             <p className="text-sm leading-6 text-slate-600">
-                                Veja uma agenda pública funcionando antes de criar sua conta e entenda como o cliente reserva em poucos passos.
+                                Veja uma página de agendamento funcionando antes de criar sua conta e entenda como o cliente reserva em poucos passos.
                             </p>
                         </div>
 
@@ -201,7 +201,7 @@ export function PublicLandingPage({
                             <p className="text-xs uppercase tracking-[.25em] text-purple-100 sm:text-sm">Comece hoje</p>
                             <h2 className="text-2xl font-semibold sm:text-3xl">Coloque seu negócio para receber reservas online</h2>
                             <p className="max-w-2xl text-sm leading-6 text-purple-50 sm:text-base">
-                                Crie sua conta, publique sua agenda e compartilhe o link com seus clientes em poucos minutos.
+                                Crie sua conta, organize seus serviços e compartilhe o link com seus clientes em poucos minutos.
                             </p>
                         </div>
 

@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -30,17 +31,6 @@ function ClipboardIcon(className?: string) {
     )
 }
 
-function UsersIcon(className?: string) {
-    return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-            <path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" />
-            <circle cx="9.5" cy="8" r="3.5" />
-            <path d="M20 21v-2a4 4 0 0 0-3-3.87" />
-            <path d="M15 4.13a3.5 3.5 0 0 1 0 6.74" />
-        </svg>
-    )
-}
-
 function ShieldIcon(className?: string) {
     return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
@@ -54,16 +44,10 @@ export function PublicSiteHeader() {
     const pathname = usePathname()
     const menuRef = useRef<HTMLElement | null>(null)
     const isInvitePage = pathname.startsWith('/invite/')
-    const defaultBusinessId = process.env.NEXT_PUBLIC_DEFAULT_BUSINESS_ID || 'default-business'
-    const currentBusinessSlug = useMemo(() => {
-        const slugMatch = pathname.match(/^\/b\/([^/]+)/)
-        return slugMatch?.[1] ?? defaultBusinessId
-    }, [pathname, defaultBusinessId])
     const navigationItems: NavigationItem[] = useMemo(() => ([
         { href: '/', label: 'Início', icon: CalendarIcon },
         { href: '/meus-agendamentos', label: 'Meus agendamentos', icon: ClipboardIcon },
-        { href: `/b/${encodeURIComponent(currentBusinessSlug)}/agenda`, label: 'Agenda pública', icon: UsersIcon },
-    ]), [currentBusinessSlug])
+    ]), [])
     const accountItems: NavigationItem[] = useMemo(() => ([
         { href: '/admin', label: 'Admin', icon: ShieldIcon },
     ]), [])
@@ -98,9 +82,17 @@ export function PublicSiteHeader() {
                 <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
                     <Link
                         href="/"
-                        className="text-base font-semibold text-slate-900 transition hover:text-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-200 sm:text-lg"
+                        className="inline-flex items-center transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-purple-200"
+                        aria-label="MarcaCerta"
                     >
-                        Scheduler SaaS
+                        <Image
+                            src="/marcacerta-logo.png"
+                            alt="MarcaCerta"
+                            width={1400}
+                            height={260}
+                            priority
+                            className="h-auto w-[150px] sm:w-[185px]"
+                        />
                     </Link>
 
                     <Link
@@ -122,10 +114,18 @@ export function PublicSiteHeader() {
             <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
                 <Link
                     href="/"
-                    className="min-w-0 text-base font-semibold text-slate-900 transition hover:text-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-200 sm:text-lg"
+                    className="inline-flex min-w-0 items-center transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-purple-200"
                     onClick={() => setIsMenuOpen(false)}
+                    aria-label="MarcaCerta"
                 >
-                    Scheduler SaaS
+                    <Image
+                        src="/marcacerta-logo.png"
+                        alt="MarcaCerta"
+                        width={1400}
+                        height={260}
+                        priority
+                        className="h-auto w-[150px] sm:w-[190px]"
+                    />
                 </Link>
 
                 <nav className="hidden items-center gap-2 text-sm text-slate-600 lg:flex lg:gap-4">

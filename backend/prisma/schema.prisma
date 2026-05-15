@@ -17,6 +17,19 @@ enum Role {
     STAFF
 }
 
+enum BusinessPlan {
+    FREE
+    BASIC
+    PRO
+}
+
+enum SubscriptionStatus {
+    TRIALING
+    ACTIVE
+    PAST_DUE
+    CANCELED
+}
+
 model User {
     id          String       @id @default(uuid())
     name        String
@@ -53,6 +66,9 @@ model Business {
     openTime     String        @default("09:00")
     closeTime    String        @default("18:00")
     phone        String?
+    plan         BusinessPlan  @default(BASIC)
+    subscriptionStatus SubscriptionStatus @default(TRIALING)
+    trialEndsAt  DateTime?
     owner        User          @relation(fields: [ownerId], references: [id])
     ownerId      String
     memberships  Membership[]

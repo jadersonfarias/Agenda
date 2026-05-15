@@ -29,6 +29,9 @@ describe('AuthService registerBusinessOwner', () => {
           name: 'Salao da Maria',
           slug: 'salao-da-maria',
           phone: '(11) 91234-5678',
+          plan: 'BASIC',
+          subscriptionStatus: 'TRIALING',
+          trialEndsAt: '2026-05-21T12:00:00.000Z',
         },
         membership: {
           id: 'membership-1',
@@ -57,6 +60,9 @@ describe('AuthService registerBusinessOwner', () => {
         name: 'Salao da Maria',
         slug: 'salao-da-maria',
         phone: '(11) 91234-5678',
+        plan: 'BASIC',
+        subscriptionStatus: 'TRIALING',
+        trialEndsAt: '2026-05-21T12:00:00.000Z',
       },
       membership: {
         id: 'membership-1',
@@ -71,6 +77,9 @@ describe('AuthService registerBusinessOwner', () => {
       businessName: 'Salao da Maria',
       businessSlug: 'salao-da-maria',
       phone: '(11) 91234-5678',
+      plan: 'BASIC',
+      subscriptionStatus: 'TRIALING',
+      trialEndsAt: expect.any(Date),
     })
   })
 

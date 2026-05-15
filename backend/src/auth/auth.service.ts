@@ -56,6 +56,7 @@ export class AuthService {
     const email = input.email.trim().toLowerCase()
     const businessSlug = input.businessSlug.trim().toLowerCase()
     const phone = input.phone?.trim() ? input.phone.trim() : null
+    const trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
 
     const [existingUser, existingBusiness] = await Promise.all([
       this.authRepository.findUserByEmail(email),
@@ -79,6 +80,9 @@ export class AuthService {
       businessName: input.businessName.trim(),
       businessSlug,
       phone,
+      plan: 'BASIC',
+      subscriptionStatus: 'TRIALING',
+      trialEndsAt,
     })
   }
 }

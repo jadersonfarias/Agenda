@@ -20,6 +20,7 @@ import {
   updateAppointmentStatusSchema,
   UpdateAppointmentStatusDto,
 } from './appointment.schema'
+import { RateLimit } from '../common/rate-limit.decorator'
 
 @Controller('appointments')
 export class AppointmentsController {
@@ -78,6 +79,12 @@ export class AppointmentsController {
   }
 
   @Post()
+  @RateLimit({
+    key: 'appointments-create',
+    limit: 10,
+    windowMs: 60_000,
+    message: 'Muitas tentativas de agendamento. Tente novamente em instantes.',
+  })
   async create(@Body() body: unknown) {
     const parseResult = createAppointmentSchema.safeParse(body)
     if (!parseResult.success) {

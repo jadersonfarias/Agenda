@@ -2,6 +2,7 @@ import { Controller, Get, Param, Query, BadRequestException } from '@nestjs/comm
 import { BusinessesService } from './businesses.service'
 import { businessLookupSchema, getAvailabilityQuerySchema } from './businesses.schema'
 import { parsePaginationParams } from '../common/pagination'
+import { RateLimit } from '../common/rate-limit.decorator'
 
 @Controller('businesses')
 export class BusinessesController {
@@ -47,6 +48,12 @@ export class BusinessesController {
   }
 
   @Get(':businessId/availability')
+  @RateLimit({
+    key: 'businesses-availability',
+    limit: 60,
+    windowMs: 60_000,
+    message: 'Muitas consultas de disponibilidade. Tente novamente em instantes.',
+  })
   getAvailability(
     @Param('businessId') businessId: string,
     @Query('serviceId') serviceId: string,
