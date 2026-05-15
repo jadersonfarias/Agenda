@@ -149,7 +149,7 @@ export function OnboardingChecklist({
     }
 
     return (
-        <Card className="border-purple-300 bg-gradient-to-br from-white via-purple-50/70 to-slate-50 p-4 shadow-lg shadow-purple-100/70 sm:p-6">
+        <Card className="border-purple-300 bg-gradient-to-br from-white via-purple-50/70 to-slate-50 p-3.5 shadow-lg shadow-purple-100/70 sm:p-6">
             <div className="flex flex-col gap-3 border-b border-purple-100 pb-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6 sm:pb-5">
                 <div className="space-y-2">
                     <p className="text-[11px] uppercase tracking-[.24em] text-purple-700 sm:text-xs sm:tracking-[.3em]">
@@ -163,7 +163,7 @@ export function OnboardingChecklist({
                     </div>
                 </div>
 
-                <div className="inline-flex w-fit items-center rounded-full bg-purple-100 px-4 py-2 text-sm font-semibold text-purple-800">
+                <div className="inline-flex w-full items-center justify-center rounded-full bg-purple-100 px-4 py-2 text-sm font-semibold text-purple-800 sm:w-fit">
                     {completedRequiredSteps} de {requiredSteps.length} etapas principais concluídas
                 </div>
             </div>

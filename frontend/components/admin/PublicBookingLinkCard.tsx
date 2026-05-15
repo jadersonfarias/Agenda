@@ -41,7 +41,7 @@ export function PublicBookingLinkCard({ business }: PublicBookingLinkCardProps) 
             <div className="flex flex-col gap-4">
                 <div className="space-y-2">
                     <p className="text-xs uppercase tracking-[.25em] text-slate-500 sm:text-sm">Link de agendamento</p>
-                    <h2 className="text-xl font-semibold text-slate-900 sm:text-2xl">Página pública do negócio</h2>
+                    <h2 className="text-lg font-semibold text-slate-900 sm:text-2xl">Página pública do negócio</h2>
                     <p className="text-xs text-slate-600 sm:text-sm">
                         Compartilhe este link completo com clientes para receber reservas na agenda pública.
                     </p>
@@ -52,7 +52,7 @@ export function PublicBookingLinkCard({ business }: PublicBookingLinkCardProps) 
                     <p className="mt-2 break-all text-sm font-medium text-slate-900 sm:text-base">{publicBookingUrl}</p>
                 </div>
 
-                <div className="grid gap-2 md:grid-cols-2 md:gap-3">
+                <div className="grid gap-2 sm:grid-cols-2 sm:gap-3">
                     <Button type="button" variant="secondary" onClick={handleCopyLink} className="min-h-12 lg:min-h-0">
                         Copiar link
                     </Button>

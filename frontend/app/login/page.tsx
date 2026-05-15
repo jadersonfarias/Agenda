@@ -56,21 +56,21 @@ export default function LoginPage() {
     }
 
     return (
-        <main className="mx-auto flex min-h-screen max-w-3xl items-center px-4 py-16 sm:px-6 lg:px-8">
-            <Card>
-                <div className="space-y-4">
+        <main className="mx-auto flex min-h-screen w-full max-w-3xl items-start px-3 py-4 sm:items-center sm:px-6 sm:py-10 lg:px-8 lg:py-16">
+            <Card className="mx-auto w-full max-w-xl">
+                <div className="space-y-4 sm:space-y-5">
                     <div className="space-y-3">
                         <p className="text-sm uppercase tracking-[.3em] text-purple-700">Área administrativa</p>
-                        <h1 className="text-3xl font-semibold text-slate-900">Faça login</h1>
-                        <p className="text-slate-600">Use sua conta para acessar os dados do negócio e gerenciar agendamentos.</p>
+                        <h1 className="text-[1.65rem] font-semibold text-slate-900 sm:text-3xl">Faça login</h1>
+                        <p className="text-sm text-slate-600 sm:text-base">Use sua conta para acessar os dados do negócio e gerenciar agendamentos.</p>
                         {welcomeMode ? (
-                            <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+                            <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-3.5 py-3 text-sm text-emerald-900 sm:px-4">
                                 Conta criada com sucesso. Entre agora para cadastrar serviços, ajustar horários e compartilhar seu link público.
                             </div>
                         ) : null}
                     </div>
 
-                    <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4">
+                    <form onSubmit={handleSubmit(onSubmit)} className="grid gap-3.5 sm:gap-4">
                         <Label className="space-y-2">
                             <span>Email</span>
                             <Input type="email" {...register('email')} placeholder="owner@example.com" />
@@ -85,7 +85,7 @@ export default function LoginPage() {
 
                         {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
-                        <Button type="submit">Entrar</Button>
+                        <Button type="submit" className="w-full">Entrar</Button>
                     </form>
 
                     <p className="text-sm text-slate-600">

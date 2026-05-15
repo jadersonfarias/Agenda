@@ -60,7 +60,7 @@ export function PublicSiteHeader() {
         return slugMatch?.[1] ?? defaultBusinessId
     }, [pathname, defaultBusinessId])
     const navigationItems: NavigationItem[] = useMemo(() => ([
-        { href: '/', label: 'Reservar', icon: CalendarIcon },
+        { href: '/', label: 'Início', icon: CalendarIcon },
         { href: '/meus-agendamentos', label: 'Meus agendamentos', icon: ClipboardIcon },
         { href: `/b/${encodeURIComponent(currentBusinessSlug)}/agenda`, label: 'Agenda pública', icon: UsersIcon },
     ]), [currentBusinessSlug])
@@ -117,12 +117,12 @@ export function PublicSiteHeader() {
     return (
         <header
             ref={menuRef}
-            className="relative z-50 border-b border-slate-200 bg-white/90 py-4 shadow-sm shadow-slate-200/30 backdrop-blur-md"
+            className="relative z-50 border-b border-slate-200 bg-white/90 py-3 shadow-sm shadow-slate-200/30 backdrop-blur-md sm:py-4"
         >
-            <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
                 <Link
                     href="/"
-                    className="text-lg font-semibold text-slate-900 transition hover:text-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-200"
+                    className="min-w-0 text-base font-semibold text-slate-900 transition hover:text-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-200 sm:text-lg"
                     onClick={() => setIsMenuOpen(false)}
                 >
                     Scheduler SaaS
@@ -182,7 +182,7 @@ export function PublicSiteHeader() {
             </div>
 
             {isMenuOpen ? (
-                <div className="absolute right-4 top-[calc(100%+0.75rem)] z-50 w-[min(20rem,calc(100vw-2rem))] sm:right-6 lg:hidden">
+                <div className="absolute right-4 top-[calc(100%+0.75rem)] z-50 w-[min(19rem,calc(100vw-2rem))] sm:right-6 lg:hidden">
                     <div
                         id="public-mobile-menu"
                         className="max-h-[calc(100vh-6rem)] overflow-y-auto rounded-[1.5rem] border border-purple-100 bg-white px-4 py-4 shadow-2xl shadow-purple-100/70 sm:rounded-[2rem] sm:px-5 sm:py-5"

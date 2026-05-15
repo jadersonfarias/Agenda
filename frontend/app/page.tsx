@@ -1,4 +1,4 @@
-import { PublicBookingPage } from '../components/public/PublicBookingPage'
+import { PublicLandingPage } from '../components/public/PublicLandingPage'
 import { createServerApi } from '../lib/server-api'
 
 type PublicBusinessResponse = {
@@ -16,17 +16,14 @@ export default async function Home() {
 
     try {
         const response = await api.get<PublicBusinessResponse>(`/businesses/${encodeURIComponent(defaultBusinessId)}`)
+        const demoBookingHref = `/b/${encodeURIComponent(response.data.slug)}`
+        const demoBusinessHoursLabel =
+            response.data.openTime && response.data.closeTime
+                ? `${response.data.openTime} às ${response.data.closeTime}`
+                : undefined
 
-        return (
-            <PublicBookingPage
-                businessId={response.data.id}
-                businessSlug={response.data.slug}
-                businessName={response.data.name}
-                businessOpenTime={response.data.openTime}
-                businessCloseTime={response.data.closeTime}
-            />
-        )
+        return <PublicLandingPage demoBookingHref={demoBookingHref} demoBusinessName={response.data.name} demoBusinessHoursLabel={demoBusinessHoursLabel} />
     } catch {
-        return <PublicBookingPage businessId={defaultBusinessId} />
+        return <PublicLandingPage demoBookingHref="/b/default-business" demoBusinessName="Agenda de demonstração" />
     }
 }

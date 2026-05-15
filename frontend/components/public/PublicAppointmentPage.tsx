@@ -103,12 +103,12 @@ export function PublicAppointmentPage({ token }: PublicAppointmentPageProps) {
     const appointment = appointmentQuery.data
 
     return (
-        <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-5 overflow-x-hidden px-4 py-5 sm:gap-6 sm:px-6 sm:py-7 lg:px-8 lg:py-10">
+        <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-4 overflow-x-hidden px-3 py-4 sm:gap-6 sm:px-6 sm:py-7 lg:px-8 lg:py-10">
             <Card className="border-purple-100 bg-white shadow-sm shadow-purple-100/40">
                 <div className="space-y-4">
                     <div className="space-y-1.5 sm:space-y-2">
                         <p className="text-xs uppercase tracking-[.3em] text-violet-700 sm:text-sm">Consulta de agendamento</p>
-                        <h1 className="text-[1.75rem] font-semibold leading-tight text-slate-900 sm:text-3xl">
+                        <h1 className="text-[1.6rem] font-semibold leading-tight text-slate-900 sm:text-3xl">
                             Seu agendamento
                         </h1>
                         <p className="max-w-2xl text-sm leading-6 text-slate-600 sm:text-[15px]">
@@ -143,7 +143,7 @@ export function PublicAppointmentPage({ token }: PublicAppointmentPageProps) {
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div>
                                 <p className="text-xs uppercase tracking-[.2em] text-slate-400">Serviço</p>
-                                <h2 className="mt-1 text-2xl font-semibold text-slate-900">{appointment.service}</h2>
+                                <h2 className="mt-1 break-words text-[1.35rem] font-semibold text-slate-900 sm:text-2xl">{appointment.service}</h2>
                             </div>
 
                             <span className={`w-fit rounded-full px-3 py-1 text-sm font-medium ${getStatusClasses(appointment.status)}`}>

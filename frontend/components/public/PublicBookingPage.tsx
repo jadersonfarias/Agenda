@@ -338,12 +338,12 @@ export function PublicBookingPage({
 
     if (createdAppointmentLink) {
         return (
-            <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-5 overflow-x-hidden px-4 py-5 sm:gap-6 sm:px-6 sm:py-7 lg:px-8 lg:py-10">
+            <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-4 overflow-x-hidden px-3 py-4 sm:gap-6 sm:px-6 sm:py-7 lg:px-8 lg:py-10">
                 <Card className="border-purple-100 bg-white shadow-sm shadow-purple-100/40">
                     <div className="space-y-4">
                         <div className="space-y-1.5 sm:space-y-2">
                             <p className="text-xs uppercase tracking-[.3em] text-violet-700 sm:text-sm">Reserva confirmada</p>
-                            <h1 className="text-[1.75rem] font-semibold leading-tight text-slate-900 sm:text-3xl">
+                            <h1 className="text-[1.6rem] font-semibold leading-tight text-slate-900 sm:text-3xl">
                                 Seu agendamento foi criado
                             </h1>
                             <p className="max-w-2xl text-sm leading-6 text-slate-600 sm:text-[15px]">
@@ -393,12 +393,12 @@ export function PublicBookingPage({
     }
 
     return (
-        <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-5 overflow-x-hidden px-4 py-5 sm:gap-6 sm:px-6 sm:py-7 lg:px-8 lg:py-10">
+        <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-4 overflow-x-hidden px-3 py-4 sm:gap-6 sm:px-6 sm:py-7 lg:px-8 lg:py-10">
             <Card className="border-purple-100 bg-white shadow-sm shadow-purple-100/40">
                 <div className="space-y-4">
                     <div className="space-y-1.5 sm:space-y-2">
                         <p className="text-xs uppercase tracking-[.3em] text-violet-700 sm:text-sm">{eyebrow}</p>
-                        <h1 className="text-[1.75rem] font-semibold leading-tight text-slate-900 sm:text-3xl lg:text-[2rem]">{headline}</h1>
+                        <h1 className="text-[1.6rem] font-semibold leading-tight text-slate-900 sm:text-3xl lg:text-[2rem]">{headline}</h1>
                         <p className="max-w-2xl text-sm leading-6 text-slate-600 sm:text-[15px]">
                             Escolha um serviço, informe seus dados e confirme um horário livre sem sair do celular.
                         </p>
@@ -407,11 +407,11 @@ export function PublicBookingPage({
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                         <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4">
                             <p className="text-[11px] uppercase tracking-[.2em] text-slate-500">Negócio</p>
-                            <p className="mt-2 text-base font-semibold text-slate-900">{businessDisplayName}</p>
+                            <p className="mt-2 break-words text-base font-semibold text-slate-900">{businessDisplayName}</p>
                         </div>
                         <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4">
                             <p className="text-[11px] uppercase tracking-[.2em] text-slate-500">Funcionamento</p>
-                            <p className="mt-2 text-base font-semibold text-slate-900">{businessHoursLabel}</p>
+                            <p className="mt-2 break-words text-base font-semibold text-slate-900">{businessHoursLabel}</p>
                         </div>
                         <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4">
                             <p className="text-[11px] uppercase tracking-[.2em] text-slate-500">Serviços</p>
@@ -439,9 +439,9 @@ export function PublicBookingPage({
             <form
                 ref={bookingFormTopRef}
                 onSubmit={handleSubmit(onSubmit)}
-                className="grid gap-5 md:items-start md:gap-6 md:grid-cols-[minmax(0,1fr)_280px] lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1.15fr)_360px]"
+                className="grid gap-4 md:items-start md:gap-6 md:grid-cols-[minmax(0,1fr)_280px] lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1.15fr)_360px]"
             >
-                <div className="min-w-0 space-y-5 lg:max-w-3xl lg:space-y-6">
+                <div className="min-w-0 space-y-4 lg:max-w-3xl lg:space-y-6">
                     <Card className={currentStep === 'service' ? 'block' : 'hidden'}>
                         <div className="space-y-4 sm:space-y-5">
                             <div>
@@ -683,7 +683,7 @@ export function PublicBookingPage({
                 </div>
 
                 <div className="min-w-0 space-y-4 md:space-y-5 lg:space-y-6">
-                    <div className="md:sticky md:top-6">
+                    <div className="xl:sticky xl:top-6">
                         <div className="mb-3 md:mb-4">
                             <BookingSummary
                                 serviceName={selectedService?.name}
@@ -700,7 +700,7 @@ export function PublicBookingPage({
 
                         {currentStep !== 'service' ? (
                             <div className="mb-3 md:mb-4">
-                                <Card className="border-slate-200 shadow-lg shadow-slate-200/60">
+                                <Card className="hidden border-slate-200 shadow-lg shadow-slate-200/60 xl:block">
                                     <div className="space-y-3 sm:space-y-4">
                                         <div>
                                             <p className="text-xs uppercase tracking-[.3em] text-purple-700 sm:text-sm">Serviços</p>

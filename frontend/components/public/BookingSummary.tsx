@@ -39,28 +39,28 @@ export function BookingSummary({
                 {hasSummaryData ? (
                     <div className="space-y-2.5 text-sm text-slate-600 sm:space-y-3">
                         {serviceName ? (
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-3 sm:px-4">
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 sm:px-4 sm:py-3">
                                 <span className="block text-xs uppercase tracking-[.2em] text-slate-500">Serviço</span>
                                 <span className="mt-1 block font-medium text-slate-900">{serviceName}</span>
                             </div>
                         ) : null}
 
                         {durationMinutes ? (
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-3 sm:px-4">
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 sm:px-4 sm:py-3">
                                 <span className="block text-xs uppercase tracking-[.2em] text-slate-500">Duração</span>
                                 <span className="mt-1 block font-medium text-slate-900">{durationMinutes} min</span>
                             </div>
                         ) : null}
 
                         {price ? (
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-3 sm:px-4">
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 sm:px-4 sm:py-3">
                                 <span className="block text-xs uppercase tracking-[.2em] text-slate-500">Preço</span>
                                 <span className="mt-1 block font-medium text-slate-900">R$ {Number(price).toFixed(2)}</span>
                             </div>
                         ) : null}
 
                         {dateLabel || time ? (
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-3 sm:px-4">
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 sm:px-4 sm:py-3">
                                 <span className="block text-xs uppercase tracking-[.2em] text-slate-500">Data e horário</span>
                                 <span className="mt-1 block font-medium text-slate-900">
                                     {dateLabel && time ? `${dateLabel} às ${time}` : dateLabel || time}
@@ -69,21 +69,21 @@ export function BookingSummary({
                         ) : null}
 
                         {customerName ? (
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-3 sm:px-4">
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 sm:px-4 sm:py-3">
                                 <span className="block text-xs uppercase tracking-[.2em] text-slate-500">Cliente</span>
                                 <span className="mt-1 block font-medium text-slate-900">{customerName}</span>
                             </div>
                         ) : null}
 
                         {phone ? (
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-3 sm:px-4">
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 sm:px-4 sm:py-3">
                                 <span className="block text-xs uppercase tracking-[.2em] text-slate-500">Telefone</span>
                                 <span className="mt-1 block font-medium text-slate-900">{phone}</span>
                             </div>
                         ) : null}
                     </div>
                 ) : (
-                    <div className="rounded-2xl border border-dashed border-purple-200 bg-purple-50/50 px-4 py-3.5">
+                    <div className="rounded-2xl border border-dashed border-purple-200 bg-purple-50/50 px-3.5 py-3 sm:px-4 sm:py-3.5">
                         <p className="text-sm font-medium text-slate-900">
                             Comece escolhendo um serviço para montar sua reserva.
                         </p>

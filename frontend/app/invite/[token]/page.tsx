@@ -156,8 +156,8 @@ export default function InvitePage() {
     })
 
     return (
-        <main className="mx-auto flex min-h-screen max-w-3xl items-start px-3 py-4 sm:items-center sm:px-6 sm:py-10 lg:px-8 lg:py-16">
-            <Card className="rounded-2xl p-4 sm:rounded-3xl sm:p-6 lg:p-8">
+        <main className="mx-auto flex min-h-screen w-full max-w-3xl items-start overflow-x-hidden px-3 py-4 sm:items-center sm:px-6 sm:py-10 lg:px-8 lg:py-16">
+            <Card className="w-full rounded-2xl p-4 sm:rounded-3xl sm:p-6 lg:p-8">
                 {invitationDetailsQuery.isLoading ? (
                     <div className="space-y-2 sm:space-y-4">
                         <p className="text-xs uppercase tracking-[.18em] text-purple-700 sm:text-sm sm:tracking-[.3em]">Convite</p>
@@ -179,13 +179,13 @@ export default function InvitePage() {
                     <div className="space-y-4 sm:space-y-6">
                         <div className="space-y-2 sm:space-y-3">
                             <p className="text-xs uppercase tracking-[.18em] text-purple-700 sm:text-sm sm:tracking-[.3em]">Convite para equipe</p>
-                            <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl">Aceitar convite</h1>
+                            <h1 className="text-[1.6rem] font-semibold text-slate-900 sm:text-3xl">Aceitar convite</h1>
                             <p className="text-sm text-slate-600 sm:text-base">
                                 Você foi convidado para entrar no negócio <span className="font-semibold">{invitation.business.name}</span>.
                             </p>
                         </div>
 
-                        <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-3 sm:gap-4 sm:rounded-3xl sm:p-4">
+                        <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 md:grid-cols-3 md:gap-4 md:rounded-3xl md:p-4">
                             <div>
                                 <p className="text-[11px] uppercase tracking-[.14em] text-slate-500 sm:text-xs sm:tracking-[.2em]">Negócio</p>
                                 <p className="mt-0.5 text-sm font-medium text-slate-900 sm:mt-1 sm:text-base">{invitation.business.name}</p>

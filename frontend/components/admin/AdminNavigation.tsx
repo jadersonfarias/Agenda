@@ -41,14 +41,14 @@ export function AdminNavigation({ activeSection, onChange }: AdminNavigationProp
             </div>
 
             <div className="hidden sm:block">
-                <div className="flex gap-2 overflow-x-auto pb-1 lg:flex-wrap">
+                <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 lg:flex-wrap">
                     {adminSectionOptions.map((section) => (
                         <Button
                             key={section.id}
                             type="button"
                             variant={activeSection === section.id ? 'default' : 'secondary'}
                             onClick={() => onChange(section.id)}
-                            className="min-h-12 shrink-0 rounded-full px-4 py-2 text-sm font-semibold lg:min-h-0"
+                            className="min-h-12 shrink-0 whitespace-nowrap rounded-full px-3.5 py-2 text-sm font-semibold lg:min-h-0 lg:px-4"
                         >
                             {section.label}
                         </Button>

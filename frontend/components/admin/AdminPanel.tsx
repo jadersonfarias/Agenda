@@ -174,7 +174,7 @@ export default function AdminPanel({ initialData, businesses, currentBusinessId 
     }
 
     return (
-        <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 overflow-x-hidden px-4 py-6 sm:gap-8 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+        <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-5 overflow-x-hidden px-3 py-4 sm:gap-8 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
             <AdminHeader
                 business={business}
                 businesses={businesses}
@@ -203,7 +203,7 @@ export default function AdminPanel({ initialData, businesses, currentBusinessId 
                         />
                     ) : null}
 
-                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
                         <Card className="border-slate-200 shadow-lg shadow-slate-200/60">
                             <p className="text-xs uppercase tracking-[.25em] text-slate-500 sm:text-sm">Serviços</p>
                             <p className="mt-3 text-2xl font-semibold text-slate-900 sm:text-3xl">

@@ -25,11 +25,11 @@ export function AdminHeader({
 }: AdminHeaderProps) {
     return (
         <Card className="border-purple-200 bg-gradient-to-br from-white via-white to-purple-50">
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-end lg:justify-between">
                 <div className="min-w-0 space-y-2 sm:space-y-3">
                     <p className="text-xs uppercase tracking-[.3em] text-purple-700 sm:text-sm">Painel admin</p>
-                    <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl lg:text-4xl">Gestão do salão</h1>
-                    <p className="max-w-3xl text-sm text-slate-600 sm:text-base">
+                    <h1 className="text-[1.65rem] font-semibold text-slate-900 sm:text-3xl lg:text-4xl">Gestão do salão</h1>
+                    <p className="max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">
                         Ajuste a vitrine de serviços e a janela de atendimento do negócio <span className="font-semibold">{business.name}</span>.
                     </p>
                 </div>
@@ -41,9 +41,9 @@ export function AdminHeader({
                         disabled={isSwitchingBusiness}
                         onChange={onBusinessChange}
                     />
-                    <div className="min-w-0 rounded-2xl border border-purple-100 bg-white px-4 py-3 text-sm text-slate-600">
+                    <div className="min-w-0 rounded-2xl border border-purple-100 bg-white px-4 py-3 text-xs text-slate-600 sm:text-sm">
                         <div className="truncate font-medium text-slate-900">{business.slug}</div>
-                        <div className="break-all">{userEmail ?? 'Sessão ativa'}</div>
+                        <div className="break-all leading-5">{userEmail ?? 'Sessão ativa'}</div>
                     </div>
                     <Button
                         variant="secondary"

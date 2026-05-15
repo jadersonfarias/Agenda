@@ -70,21 +70,21 @@ export default function SignupPage() {
     })
 
     return (
-        <main className="mx-auto flex min-h-screen max-w-3xl items-center px-4 py-10 sm:px-6 lg:px-8">
-            <Card>
-                <div className="space-y-5">
+        <main className="mx-auto flex min-h-screen w-full max-w-3xl items-start px-3 py-4 sm:items-center sm:px-6 sm:py-10 lg:px-8">
+            <Card className="mx-auto w-full max-w-xl">
+                <div className="space-y-4 sm:space-y-5">
                     <div className="space-y-3">
                         <p className="text-sm uppercase tracking-[.3em] text-purple-700">Cadastro público</p>
-                        <h1 className="text-3xl font-semibold text-slate-900">Crie seu negócio</h1>
-                        <p className="text-slate-600">
+                        <h1 className="text-[1.65rem] font-semibold text-slate-900 sm:text-3xl">Crie seu negócio</h1>
+                        <p className="text-sm text-slate-600 sm:text-base">
                             Cadastre o dono e o primeiro negócio para começar a usar o painel administrativo.
                         </p>
-                        <div className="rounded-2xl border border-purple-100 bg-purple-50 px-4 py-3 text-sm text-purple-900">
+                        <div className="rounded-2xl border border-purple-100 bg-purple-50 px-3.5 py-3 text-sm text-purple-900 sm:px-4">
                             Depois do cadastro, o próximo passo é fazer login e concluir a configuração inicial no painel.
                         </div>
                     </div>
 
-                    <form onSubmit={onSubmit} className="grid gap-4">
+                    <form onSubmit={onSubmit} className="grid gap-3.5 sm:gap-4">
                         <Label className="space-y-2">
                             <span>Nome do dono</span>
                             <Input type="text" {...register('ownerName')} placeholder="Maria Oliveira" />
@@ -125,7 +125,7 @@ export default function SignupPage() {
 
                         {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
-                        <Button type="submit" disabled={formState.isSubmitting}>
+                        <Button type="submit" disabled={formState.isSubmitting} className="w-full">
                             {formState.isSubmitting ? 'Criando...' : 'Criar cadastro'}
                         </Button>
                     </form>
