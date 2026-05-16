@@ -16,6 +16,9 @@ export type AdminBusinessSettings = {
     plan: 'FREE' | 'BASIC' | 'PRO'
     subscriptionStatus: 'TRIALING' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED'
     trialEndsAt: string | null
+    subscriptionEndsAt: string | null
+    lastPaymentAt: string | null
+    paymentMethod: 'PIX' | 'MANUAL' | null
 }
 
 export type AdminBusinessOption = {
@@ -28,6 +31,13 @@ export type AdminBusinessOption = {
 export type AdminDashboardData = {
     business: AdminBusinessSettings
     services: AdminServiceItem[]
+    appointmentsCount?: number
+    appointmentsSummary?: {
+        total: number
+        scheduled: number
+        completed: number
+        canceled: number
+    }
 }
 
 export type AdminMonthlySummary = {
@@ -58,7 +68,7 @@ export type AdminFinancialReport = {
 }
 
 export type AdminAppointmentStatus = 'SCHEDULED' | 'COMPLETED' | 'CANCELED'
-export type AdminAppointmentStatusFilter = 'active' | 'completed' | 'all'
+export type AdminAppointmentStatusFilter = 'scheduled' | 'completed' | 'canceled' | 'all'
 
 export type AdminAppointmentItem = {
     id: string

@@ -1,10 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { type AdminAppointmentStatus, type AdminAppointmentStatusFilter } from '../../features/admin/types'
-import { useAdminAppointmentsQuery } from '../../features/admin/hooks/use-admin-appointments-query'
+import {
+    type AdminAppointmentItem,
+    type AdminAppointmentStatus,
+    type AdminAppointmentStatusFilter,
+} from '../../features/admin/types'
+import {
+    getAdminAppointmentsQueryBusinessKey,
+    useAdminAppointmentsQuery,
+} from '../../features/admin/hooks/use-admin-appointments-query'
 import { updateAdminAppointmentStatus } from '../../features/admin/services/admin-api.service'
 import { Button } from '../ui/button'
 import { Card } from '../ui/card'
@@ -24,8 +31,9 @@ const appointmentStatusBadgeStyles: Record<AdminAppointmentStatus, string> = {
 }
 
 const appointmentFilterOptions: { value: AdminAppointmentStatusFilter; label: string }[] = [
-    { value: 'active', label: 'Agenda' },
-    { value: 'completed', label: 'Histórico' },
+    { value: 'scheduled', label: 'Agendados' },
+    { value: 'completed', label: 'Concluídos' },
+    { value: 'canceled', label: 'Cancelados' },
     { value: 'all', label: 'Todos' },
 ]
 
@@ -34,6 +42,11 @@ type AppointmentsSectionProps = {
     enabled: boolean
     appointmentFilter: AdminAppointmentStatusFilter
     onAppointmentFilterChange: (value: AdminAppointmentStatusFilter) => void
+    initialAppointments?: AdminAppointmentItem[]
+    onAppointmentStatusSaved?: (input: {
+        previousStatus: AdminAppointmentStatus
+        nextStatus: AdminAppointmentStatus
+    }) => void
 }
 
 export function AppointmentsSection({
@@ -41,17 +54,28 @@ export function AppointmentsSection({
     enabled,
     appointmentFilter,
     onAppointmentFilterChange,
+    initialAppointments,
+    onAppointmentStatusSaved,
 }: AppointmentsSectionProps) {
     const queryClient = useQueryClient()
     const [appointmentStatusDrafts, setAppointmentStatusDrafts] = useState<Record<string, AdminAppointmentStatus>>({})
-    const appointmentsQuery = useAdminAppointmentsQuery(businessId, appointmentFilter, enabled)
+    const appointmentsQuery = useAdminAppointmentsQuery(
+        businessId,
+        appointmentFilter,
+        enabled,
+        appointmentFilter === 'scheduled' ? initialAppointments : undefined
+    )
+
+    useEffect(() => {
+        setAppointmentStatusDrafts({})
+    }, [appointmentFilter, businessId])
 
     const updateAppointmentStatusMutation = useMutation({
         mutationFn: updateAdminAppointmentStatus,
         onSuccess: async () => {
             await Promise.all([
-                queryClient.invalidateQueries({ queryKey: ['admin-appointments', businessId] }),
-                queryClient.invalidateQueries({ queryKey: ['admin-monthly-summary'] }),
+                queryClient.invalidateQueries({ queryKey: getAdminAppointmentsQueryBusinessKey(businessId) }),
+                queryClient.invalidateQueries({ queryKey: ['admin-monthly-summary', businessId] }),
             ])
             toast.success('Status do agendamento atualizado com sucesso')
         },
@@ -81,6 +105,11 @@ export function AppointmentsSection({
                 appointmentId,
                 businessId,
                 status: nextStatus,
+            })
+
+            onAppointmentStatusSaved?.({
+                previousStatus: originalStatus,
+                nextStatus,
             })
 
             setAppointmentStatusDrafts((current) => {

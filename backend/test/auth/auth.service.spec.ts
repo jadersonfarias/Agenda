@@ -1,8 +1,9 @@
 import { ConflictException } from '@nestjs/common'
+import * as bcrypt from 'bcryptjs'
 import { describe, expect, it, vi } from 'vitest'
 import { AuthService } from '../../src/auth/auth.service'
 
-describe('AuthService registerBusinessOwner', () => {
+describe('AuthService', () => {
   function createService(overrides: Record<string, unknown> = {}) {
     const authRepository = {
       findUserByEmail: vi.fn().mockResolvedValue(null),
@@ -16,6 +17,29 @@ describe('AuthService registerBusinessOwner', () => {
     return { authRepository, service }
   }
 
+  it('retorna isPlatformAdmin na validacao do login sem alterar memberships', async () => {
+    const hashedPassword = await bcrypt.hash('password123', 10)
+
+    const { service } = createService({
+      findUserByEmail: vi.fn().mockResolvedValue({
+        id: 'user-1',
+        name: 'Admin Plataforma',
+        email: 'admin@example.com',
+        password: hashedPassword,
+        isPlatformAdmin: true,
+      }),
+    })
+
+    await expect(
+      service.validateUser('admin@example.com', 'password123'),
+    ).resolves.toEqual({
+      id: 'user-1',
+      name: 'Admin Plataforma',
+      email: 'admin@example.com',
+      isPlatformAdmin: true,
+    })
+  })
+
   it('cria user, business e membership OWNER', async () => {
     const { authRepository, service } = createService({
       createBusinessOwner: vi.fn().mockResolvedValue({
@@ -23,6 +47,7 @@ describe('AuthService registerBusinessOwner', () => {
           id: 'user-1',
           name: 'Maria Dona',
           email: 'maria@example.com',
+          isPlatformAdmin: false,
         },
         business: {
           id: 'business-1',
@@ -32,6 +57,9 @@ describe('AuthService registerBusinessOwner', () => {
           plan: 'BASIC',
           subscriptionStatus: 'TRIALING',
           trialEndsAt: '2026-05-21T12:00:00.000Z',
+          subscriptionEndsAt: null,
+          lastPaymentAt: null,
+          paymentMethod: null,
         },
         membership: {
           id: 'membership-1',
@@ -54,6 +82,7 @@ describe('AuthService registerBusinessOwner', () => {
         id: 'user-1',
         name: 'Maria Dona',
         email: 'maria@example.com',
+        isPlatformAdmin: false,
       },
       business: {
         id: 'business-1',
@@ -63,6 +92,9 @@ describe('AuthService registerBusinessOwner', () => {
         plan: 'BASIC',
         subscriptionStatus: 'TRIALING',
         trialEndsAt: '2026-05-21T12:00:00.000Z',
+        subscriptionEndsAt: null,
+        lastPaymentAt: null,
+        paymentMethod: null,
       },
       membership: {
         id: 'membership-1',

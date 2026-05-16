@@ -17,6 +17,7 @@ type AuthenticatedRequest = {
   businessId?: string
   user?: {
     id: string
+    isPlatformAdmin: boolean
     memberships: Membership[]
   }
 }
@@ -48,7 +49,11 @@ export class AuthMiddleware implements NestMiddleware {
       this.asString(request.body?.businessId) ??
       (memberships.length === 1 ? memberships[0].businessId : undefined)
 
-    request.user = { id: payload.sub, memberships }
+    request.user = {
+      id: payload.sub,
+      isPlatformAdmin: payload.isPlatformAdmin === true,
+      memberships,
+    }
     request.businessId = businessId
 
     next()

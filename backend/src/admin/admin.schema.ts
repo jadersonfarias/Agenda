@@ -7,7 +7,7 @@ export const adminBusinessIdSchema = z.object({
 })
 
 export const adminAppointmentsQuerySchema = adminBusinessIdSchema.extend({
-  statusFilter: z.enum(['active', 'completed', 'all']).optional(),
+  statusFilter: z.enum(['scheduled', 'completed', 'canceled', 'all', 'active']).optional(),
 })
 
 export const adminMonthlySummaryQuerySchema = adminBusinessIdSchema.extend({

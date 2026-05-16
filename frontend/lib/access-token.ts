@@ -16,6 +16,7 @@ type AccessTokenPayload = {
   sub: string
   email?: string | null
   name?: string | null
+  isPlatformAdmin?: boolean
   memberships?: AccessTokenMembership[]
   businesses?: AccessTokenBusinessContext[]
   currentBusinessId?: string | null

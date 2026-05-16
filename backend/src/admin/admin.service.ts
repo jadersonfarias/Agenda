@@ -16,6 +16,7 @@ import {
 } from './admin.schema'
 import { MembershipRole } from '../auth/role.types'
 import { AvailabilityCacheService } from '../scheduling/availability-cache.service'
+import { AppointmentStatusFilter } from '../appointments/appointment-status-filter'
 
 type AdminServiceRecord = Awaited<ReturnType<AdminRepository['listServicesByBusinessId']>>[number]
 
@@ -39,6 +40,13 @@ type AdminInvitationRecord = {
   expiresAt: Date
   acceptedAt: Date | null
   createdAt: Date
+}
+
+type AdminAppointmentsSummary = {
+  total: number
+  scheduled: number
+  completed: number
+  canceled: number
 }
 
 @Injectable()
@@ -72,13 +80,39 @@ export class AdminService {
   }
 
   async getDashboard(businessId: string) {
-    const [business, services] = await Promise.all([
+    const [business, services, appointmentsCount, appointmentsByStatus] = await Promise.all([
       this.businessesRepository.findBusinessById(businessId),
       this.adminRepository.listServicesByBusinessId(businessId),
+      this.adminRepository.countAppointmentsByBusinessId(businessId),
+      this.adminRepository.countAppointmentsByStatusByBusinessId(businessId),
     ])
 
     if (!business) {
       throw new BadRequestException('Negócio inválido')
+    }
+
+    const appointmentsSummary: AdminAppointmentsSummary = {
+      total: appointmentsCount,
+      scheduled: 0,
+      completed: 0,
+      canceled: 0,
+    }
+
+    for (const item of appointmentsByStatus as Array<{
+      status: 'SCHEDULED' | 'COMPLETED' | 'CANCELED'
+      _count: { _all: number }
+    }>) {
+      if (item.status === 'SCHEDULED') {
+        appointmentsSummary.scheduled = item._count._all
+      }
+
+      if (item.status === 'COMPLETED') {
+        appointmentsSummary.completed = item._count._all
+      }
+
+      if (item.status === 'CANCELED') {
+        appointmentsSummary.canceled = item._count._all
+      }
     }
 
     return {
@@ -91,6 +125,9 @@ export class AdminService {
         plan: business.plan,
         subscriptionStatus: business.subscriptionStatus,
         trialEndsAt: business.trialEndsAt?.toISOString() ?? null,
+        subscriptionEndsAt: business.subscriptionEndsAt?.toISOString() ?? null,
+        lastPaymentAt: business.lastPaymentAt?.toISOString() ?? null,
+        paymentMethod: business.paymentMethod ?? null,
       },
       services: services.map((service: AdminServiceRecord) => ({
         id: service.id,
@@ -100,6 +137,8 @@ export class AdminService {
         appointmentCount: service._count.appointments,
         createdAt: service.createdAt.toISOString(),
       })),
+      appointmentsCount,
+      appointmentsSummary,
     }
   }
 
@@ -477,7 +516,7 @@ export class AdminService {
 
   async listAppointments(
     businessId: string,
-    statusFilter: 'active' | 'completed' | 'all' = 'all',
+    statusFilter: AppointmentStatusFilter = 'all',
     pagination: PaginationParams | null = null
   ) {
     return this.appointmentsService.getAll(businessId, statusFilter, pagination)

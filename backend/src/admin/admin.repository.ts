@@ -87,6 +87,22 @@ export class AdminRepository {
     }>
   }
 
+  async countAppointmentsByBusinessId(businessId: string) {
+    return this.prisma.appointment.count({
+      where: { businessId },
+    })
+  }
+
+  async countAppointmentsByStatusByBusinessId(businessId: string) {
+    return this.prisma.appointment.groupBy({
+      by: ['status'],
+      where: { businessId },
+      _count: {
+        _all: true,
+      },
+    })
+  }
+
   async findServiceByIdAndBusinessId(id: string, businessId: string) {
     return this.prisma.service.findFirst({
       where: { id, businessId },

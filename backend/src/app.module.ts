@@ -8,9 +8,18 @@ import { SchedulingModule } from './scheduling/scheduling.module'
 import { AdminModule } from './admin/admin.module'
 import { SimpleRateLimitGuard } from './common/simple-rate-limit.guard'
 import { SimpleRateLimitService } from './common/simple-rate-limit.service'
+import { PlatformModule } from './platform/platform.module'
 
 @Module({
-  imports: [PrismaModule, SchedulingModule, AppointmentsModule, BusinessesModule, AuthModule, AdminModule],
+  imports: [
+    PrismaModule,
+    SchedulingModule,
+    AppointmentsModule,
+    BusinessesModule,
+    AuthModule,
+    AdminModule,
+    PlatformModule,
+  ],
   providers: [
     SimpleRateLimitService,
     {

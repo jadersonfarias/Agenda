@@ -34,6 +34,7 @@ export type AuthUserResponse = {
   id: string
   name: string | null
   email: string
+  isPlatformAdmin: boolean
 }
 
 export type AuthBusinessContext = {
@@ -60,6 +61,9 @@ export type RegisterBusinessOwnerResponse = {
     plan: 'FREE' | 'BASIC' | 'PRO'
     subscriptionStatus: 'TRIALING' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED'
     trialEndsAt: string | null
+    subscriptionEndsAt: string | null
+    lastPaymentAt: string | null
+    paymentMethod: 'PIX' | 'MANUAL' | null
   }
   membership: {
     id: string

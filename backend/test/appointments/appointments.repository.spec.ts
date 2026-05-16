@@ -3,6 +3,72 @@ import { describe, expect, it, vi } from 'vitest'
 import { AppointmentsRepository } from '../../src/appointments/appointments.repository'
 
 describe('AppointmentsRepository', () => {
+  it('filtra apenas appointments SCHEDULED quando statusFilter=scheduled', async () => {
+    const prisma = {
+      appointment: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+    } as any
+    const repository = new AppointmentsRepository(prisma)
+
+    await repository.findMany('business-1', 'scheduled')
+
+    expect(prisma.appointment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          businessId: 'business-1',
+          status: {
+            in: [AppointmentStatus.SCHEDULED],
+          },
+        },
+      })
+    )
+  })
+
+  it('filtra apenas appointments COMPLETED quando statusFilter=completed', async () => {
+    const prisma = {
+      appointment: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+    } as any
+    const repository = new AppointmentsRepository(prisma)
+
+    await repository.findMany('business-1', 'completed')
+
+    expect(prisma.appointment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          businessId: 'business-1',
+          status: {
+            in: [AppointmentStatus.COMPLETED],
+          },
+        },
+      })
+    )
+  })
+
+  it('filtra apenas appointments CANCELED quando statusFilter=canceled', async () => {
+    const prisma = {
+      appointment: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+    } as any
+    const repository = new AppointmentsRepository(prisma)
+
+    await repository.findMany('business-1', 'canceled')
+
+    expect(prisma.appointment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          businessId: 'business-1',
+          status: {
+            in: [AppointmentStatus.CANCELED],
+          },
+        },
+      })
+    )
+  })
+
   it('considera apenas appointments COMPLETED no faturamento mensal', async () => {
     const prisma = {
       appointment: {

@@ -8,6 +8,7 @@ type SeedUser = {
   email: string;
   password: string;
   membershipRole: 'OWNER' | 'ADMIN' | 'STAFF';
+  isPlatformAdmin?: boolean;
 };
 
 async function main(): Promise<void> {
@@ -18,6 +19,7 @@ async function main(): Promise<void> {
       email: 'admin@salon.com',
       password: 'password123',
       membershipRole: 'OWNER',
+      isPlatformAdmin: true,
     },
     {
       name: 'Gerente',
@@ -51,11 +53,13 @@ async function main(): Promise<void> {
     update: {
       name: ownerSeedUser.name,
       password: ownerSeedUser.hashedPassword,
+      isPlatformAdmin: ownerSeedUser.isPlatformAdmin ?? false,
     },
     create: {
       name: ownerSeedUser.name,
       email: ownerSeedUser.email,
       password: ownerSeedUser.hashedPassword,
+      isPlatformAdmin: ownerSeedUser.isPlatformAdmin ?? false,
     },
   });
   console.log(`Usuário pronto para login: ${ownerSeedUser.email}`);
@@ -88,16 +92,18 @@ async function main(): Promise<void> {
       ? ownerUser
       : await prisma.user.upsert({
           where: { email: seedUser.email },
-          update: {
-            name: seedUser.name,
-            password: seedUser.hashedPassword,
-          },
-          create: {
-            name: seedUser.name,
-            email: seedUser.email,
-            password: seedUser.hashedPassword,
-          },
-        });
+        update: {
+          name: seedUser.name,
+          password: seedUser.hashedPassword,
+          isPlatformAdmin: seedUser.isPlatformAdmin ?? false,
+        },
+        create: {
+          name: seedUser.name,
+          email: seedUser.email,
+          password: seedUser.hashedPassword,
+          isPlatformAdmin: seedUser.isPlatformAdmin ?? false,
+        },
+      });
 
     await prisma.$executeRaw`
       INSERT INTO "Membership" ("id", "userId", "businessId", "role", "createdAt", "updatedAt")      

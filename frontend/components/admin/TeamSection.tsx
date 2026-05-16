@@ -13,6 +13,7 @@ import { useAdminDeleteMembershipMutation } from '../../features/admin/hooks/use
 import { useAdminInvitationsQuery } from '../../features/admin/hooks/use-admin-invitations-query'
 import { useAdminMembershipsQuery } from '../../features/admin/hooks/use-admin-memberships-query'
 import { useAdminUpdateMembershipRoleMutation } from '../../features/admin/hooks/use-admin-update-membership-role-mutation'
+import { formatIsoCalendarDate } from '../../lib/date-format'
 import { Button } from '../ui/button'
 import { Card } from '../ui/card'
 import { Input } from '../ui/input'
@@ -375,9 +376,7 @@ export function TeamSection({
                                               </span>
                                               <span>
                                                   Expira em{' '}
-                                                  {new Date(invitation.expiresAt).toLocaleDateString('pt-BR', {
-                                                      dateStyle: 'short',
-                                                  })}
+                                                  {formatIsoCalendarDate(invitation.expiresAt) ?? '-'}
                                               </span>
                                               {invitation.isExpired ? (
                                                   <span className="rounded-full bg-red-100 px-3 py-1 font-semibold uppercase tracking-[.2em] text-red-700">

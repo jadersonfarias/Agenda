@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common'
 import { AppointmentStatus } from '@prisma/client'
 import { PrismaService } from '../prisma/prisma.service'
 import { PaginationParams, PaginatedResult, buildPaginationMeta } from '../common/pagination'
+import { AppointmentStatusFilter } from './appointment-status-filter'
 
 type CreateAppointmentInput = {
   businessId: string
@@ -17,8 +18,6 @@ type MonthlyRevenueRange = {
   rangeStart: Date
   rangeEnd: Date
 }
-
-type AppointmentStatusFilter = 'active' | 'completed' | 'all'
 
 @Injectable()
 export class AppointmentsRepository {
@@ -75,10 +74,12 @@ export class AppointmentsRepository {
     pagination: PaginationParams | null = null
   ) {
     const statusCondition =
-      statusFilter === 'active'
+      statusFilter === 'scheduled'
         ? { in: ['SCHEDULED'] as AppointmentStatus[] }
         : statusFilter === 'completed'
-        ? { in: ['COMPLETED', 'CANCELED'] as AppointmentStatus[] }
+        ? { in: ['COMPLETED'] as AppointmentStatus[] }
+        : statusFilter === 'canceled'
+        ? { in: ['CANCELED'] as AppointmentStatus[] }
         : undefined
 
     const where = {

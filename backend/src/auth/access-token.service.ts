@@ -147,6 +147,7 @@ type AccessTokenPayload = {
   sub: string
   email?: string | null
   name?: string | null
+  isPlatformAdmin?: boolean
   memberships?: Membership[]
   businesses?: BusinessContext[]
   currentBusinessId?: string | null
@@ -162,6 +163,10 @@ export class AccessTokenService {
   async generateToken(userId: string, email: string, expiresInDays: number = 7): Promise<string> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
+      select: {
+        id: true,
+        isPlatformAdmin: true,
+      },
     })
 
     if (!user) {
@@ -212,6 +217,7 @@ export class AccessTokenService {
     const payload: AccessTokenPayload = {
       sub: userId,
       email,
+      isPlatformAdmin: user.isPlatformAdmin,
       memberships,
       businesses,
       currentBusinessId: businesses[0]?.id ?? null,

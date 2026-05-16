@@ -21,6 +21,7 @@ import {
   UpdateAppointmentStatusDto,
 } from './appointment.schema'
 import { RateLimit } from '../common/rate-limit.decorator'
+import { normalizeAppointmentStatusFilter } from './appointment-status-filter'
 
 @Controller('appointments')
 export class AppointmentsController {
@@ -47,10 +48,9 @@ export class AppointmentsController {
       throw new BadRequestException('businessId é obrigatório')
     }
 
-    const allowedFilters = ['active', 'completed', 'all'] as const
-    const parsedFilter = statusFilter === undefined ? 'all' : (statusFilter as typeof allowedFilters[number])
+    const parsedFilter = normalizeAppointmentStatusFilter(statusFilter)
 
-    if (statusFilter !== undefined && !allowedFilters.includes(parsedFilter)) {
+    if (!parsedFilter) {
       throw new BadRequestException('statusFilter inválido')
     }
 

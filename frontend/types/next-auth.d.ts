@@ -18,6 +18,7 @@ declare module 'next-auth' {
       name?: string | null
       email?: string | null
       image?: string | null
+      isPlatformAdmin?: boolean
     }
   }
 }
@@ -27,5 +28,6 @@ declare module 'next-auth/jwt' {
     accessToken?: string
     currentBusinessId?: string | null
     businesses?: SessionBusinessContext[]
+    isPlatformAdmin?: boolean
   }
 }

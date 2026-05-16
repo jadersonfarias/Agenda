@@ -259,7 +259,7 @@ export async function fetchAdminFinancialReport(businessId: string, month: strin
     }
 }
 
-export async function fetchAdminAppointments(businessId: string, statusFilter: AdminAppointmentStatusFilter = 'active') {
+export async function fetchAdminAppointments(businessId: string, statusFilter: AdminAppointmentStatusFilter = 'scheduled') {
     try {
         const response = await api.get<AdminAppointmentItem[] | PaginatedResponse<AdminAppointmentItem>>('/admin/appointments', {
             params: {

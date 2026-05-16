@@ -27,7 +27,12 @@ export class AuthService {
       return null
     }
 
-    return { id: user.id, name: user.name, email: user.email }
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      isPlatformAdmin: user.isPlatformAdmin,
+    }
   }
 
   async listBusinessesForUser(userId: string): Promise<AuthBusinessContext[]> {

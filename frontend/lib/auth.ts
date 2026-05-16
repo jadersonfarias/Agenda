@@ -56,6 +56,7 @@ export const authOptions: NextAuthOptions = {
         token.accessToken = (user as any).accessToken
         token.businesses = (user as any).businesses
         token.currentBusinessId = (user as any).currentBusinessId
+        token.isPlatformAdmin = (user as any).isPlatformAdmin
       }
       return token
     },
@@ -66,6 +67,7 @@ export const authOptions: NextAuthOptions = {
       if (token.accessToken) {
         session.accessToken = token.accessToken as string
       }
+      session.user.isPlatformAdmin = Boolean(token.isPlatformAdmin)
       session.businesses = token.businesses
       session.currentBusinessId = token.currentBusinessId as string | null | undefined
       return session

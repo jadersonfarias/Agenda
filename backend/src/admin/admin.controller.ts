@@ -12,6 +12,7 @@ import {
   adminMembershipRoleSchema,
   adminServiceSchema,
 } from './admin.schema'
+import { normalizeAppointmentStatusFilter } from '../appointments/appointment-status-filter'
 
 type AuthenticatedRequest = {
   businessId?: string
@@ -164,10 +165,9 @@ export class AdminController {
     @Query('page') page?: string,
     @Query('perPage') perPage?: string
   ) {
-    const allowedFilters = ['active', 'completed', 'all'] as const
-    const parsedFilter = statusFilter === undefined ? 'all' : (statusFilter as typeof allowedFilters[number])
+    const parsedFilter = normalizeAppointmentStatusFilter(statusFilter)
 
-    if (statusFilter !== undefined && !allowedFilters.includes(parsedFilter)) {
+    if (!parsedFilter) {
       throw new BadRequestException('statusFilter inválido')
     }
 

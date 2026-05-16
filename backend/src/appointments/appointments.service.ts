@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
 import { AppointmentStatus } from '@prisma/client'
 import { AppointmentsRepository } from './appointments.repository'
+import { AppointmentStatusFilter } from './appointment-status-filter'
 import { BusinessesRepository } from '../businesses/businesses.repository'
 import { BusinessesService } from '../businesses/businesses.service'
 import { TimezoneService } from '../scheduling/timezone.service'
@@ -96,7 +97,7 @@ export class AppointmentsService {
 
   async getAll(
     businessId: string,
-    statusFilter: 'active' | 'completed' | 'all' = 'all',
+    statusFilter: AppointmentStatusFilter = 'all',
     pagination: PaginationParams | null = null
   ) {
     const business = await this.businessesRepository.findBusinessById(businessId)

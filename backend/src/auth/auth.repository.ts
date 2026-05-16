@@ -7,7 +7,16 @@ export class AuthRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async findUserByEmail(email: string) {
-    return this.prisma.user.findUnique({ where: { email } })
+    return this.prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        password: true,
+        isPlatformAdmin: true,
+      },
+    })
   }
 
   async findBusinessBySlug(slug: string) {
@@ -72,6 +81,7 @@ export class AuthRepository {
         id: userId,
         name: input.ownerName,
         email: input.email,
+        isPlatformAdmin: false,
       },
       business: {
         id: businessId,
@@ -81,6 +91,9 @@ export class AuthRepository {
         plan: input.plan,
         subscriptionStatus: input.subscriptionStatus,
         trialEndsAt: input.trialEndsAt.toISOString(),
+        subscriptionEndsAt: null,
+        lastPaymentAt: null,
+        paymentMethod: null,
       },
       membership: {
         id: membershipId,

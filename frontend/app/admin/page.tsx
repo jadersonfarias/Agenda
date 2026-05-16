@@ -1,7 +1,10 @@
 import { getServerSession } from 'next-auth/next'
 import { redirect } from 'next/navigation'
 import AdminPanel from '../../components/admin/AdminPanel'
-import { fetchAdminDashboard } from '../../features/admin/services/admin-server-api.service'
+import {
+    fetchAdminAppointmentsServer,
+    fetchAdminDashboard,
+} from '../../features/admin/services/admin-server-api.service'
 import { authOptions } from '../../lib/auth'
 
 type AdminPageProps = {
@@ -33,11 +36,15 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         redirect('/admin')
     }
 
-    const initialData = await fetchAdminDashboard(session.accessToken, businessId)
+    const [initialData, initialAppointments] = await Promise.all([
+        fetchAdminDashboard(session.accessToken, businessId),
+        fetchAdminAppointmentsServer(session.accessToken, businessId, 'scheduled'),
+    ])
 
     return (
         <AdminPanel
             initialData={initialData}
+            initialAppointments={initialAppointments}
             businesses={availableBusinesses}
             currentBusinessId={businessId}
         />
