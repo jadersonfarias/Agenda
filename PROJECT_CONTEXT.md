@@ -31,15 +31,22 @@ Entidades principais por business:
 │  │  ├─ page.tsx
 │  │  ├─ login/page.tsx
 │  │  ├─ admin/page.tsx
+│  │  ├─ admin-master/page.tsx
 │  │  └─ api/auth/[...nextauth]/route.ts
 │  ├─ components/
 │  │  ├─ admin/AdminPanel.tsx
+│  │  ├─ platform/*
 │  │  └─ ui/*
 │  ├─ features/admin/
 │  │  ├─ hooks/*
 │  │  ├─ services/admin-api.service.ts
 │  │  ├─ services/admin-server-api.service.ts
+│  │  ├─ subscription-payment.ts
 │  │  ├─ schemas.ts
+│  │  └─ types.ts
+│  ├─ features/platform/
+│  │  ├─ hooks/*
+│  │  ├─ services/platform-api.service.ts
 │  │  └─ types.ts
 │  ├─ lib/
 │  │  ├─ api.ts
@@ -54,6 +61,7 @@ Entidades principais por business:
 │  │  ├─ auth/
 │  │  ├─ businesses/
 │  │  ├─ common/
+│  │  ├─ platform/
 │  │  ├─ prisma/
 │  │  ├─ scheduling/
 │  │  ├─ app.module.ts
@@ -72,6 +80,9 @@ Entidades principais por business:
 - `/admin` e server page + client panel:
   - `frontend/app/admin/page.tsx` carrega sessao e dashboard inicial
   - `frontend/components/admin/AdminPanel.tsx` faz queries/mutations
+- `/admin-master` e server page para administradores da plataforma:
+  - exige `session.user.isPlatformAdmin === true`
+  - usa `frontend/components/platform/*` e `frontend/features/platform/*`
 
 ## Fluxo Frontend/Backend
 ### Publico
@@ -106,6 +117,16 @@ Endpoints principais:
 - `PATCH /admin/appointments/:id/status`
 - `PATCH /admin/business/availability`
 
+### Platform / Admin Master
+`AdminMasterPage -> Axios -> Backend Nest -> Prisma`
+
+Rotas protegidas por `AuthMiddleware` + `PlatformAdminGuard`:
+- `GET /platform/health`
+- `GET /platform/businesses`
+- `PATCH /platform/businesses/:businessId/subscription`
+- `PATCH /platform/businesses/:businessId/cancel-subscription`
+- `PATCH /platform/businesses/:businessId/mark-past-due`
+
 ## Auth
 - Login real acontece no backend: `POST /auth/login`
 - `POST /auth/login` tem rate limit por rota
@@ -114,13 +135,16 @@ Endpoints principais:
 - Backend usa `JWT_SECRET`
 - Frontend usa `NEXTAUTH_SECRET`
 - Token carrega:
+  - `isPlatformAdmin`
   - `memberships`
   - `businesses`
   - `currentBusinessId`
 - Session frontend expoe:
   - `accessToken`
+  - `user.isPlatformAdmin`
   - `businesses`
   - `currentBusinessId`
+- `PlatformAdminGuard` permite `/platform/*` apenas para usuario com `isPlatformAdmin === true`
 
 ## Banco / Prisma
 Modelos criticos:
@@ -133,10 +157,15 @@ Modelos criticos:
 - `ManualBlock`
 
 Regras estruturais:
+- `User.isPlatformAdmin` identifica administradores da plataforma
 - `Membership` faz `User <-> Business`
 - roles: `OWNER | ADMIN | STAFF`
 - unique membership: `(userId, businessId)`
 - `Customer` e unico por `(businessId, phone)`
+- `Business.plan`: `FREE | BASIC | PRO`
+- `Business.subscriptionStatus`: `TRIALING | ACTIVE | PAST_DUE | CANCELED`
+- `Business.trialEndsAt`, `subscriptionEndsAt`, `lastPaymentAt` guardam datas do ciclo de assinatura
+- `Business.paymentMethod`: `PIX | MANUAL | null`
 
 ## Modulos Principais
 ### `backend/src/auth`
@@ -144,6 +173,7 @@ Regras estruturais:
 - JWT
 - `AuthMiddleware`
 - `RoleGuard`
+- `PlatformAdminGuard`
 - rate limit por decorator nas rotas sensiveis
 - resolve `request.user` e `request.businessId`
 
@@ -164,6 +194,13 @@ Regras estruturais:
 - services publicos
 - disponibilidade
 - clientes ativos
+
+### `backend/src/platform`
+- listagem paginada de businesses da plataforma
+- filtros por status, plano e busca
+- ativacao/renovacao manual de plano por meses
+- marcar assinatura como `PAST_DUE`
+- cancelar assinatura como `CANCELED`
 
 ### `backend/src/common`
 - `RateLimit` decorator por rota
@@ -196,6 +233,12 @@ Regras estruturais:
   - nao pode rebaixar ultimo `OWNER`
   - criar membro hoje exige usuario ja existente por email
   - criar membro e restrito a `OWNER`
+- assinatura/plano:
+  - ativacao manual define `plan`, `subscriptionEndsAt`, `lastPaymentAt` e `paymentMethod`
+  - renovacao soma meses a partir do fim atual se ainda estiver vigente; senao parte de agora
+  - `PAST_DUE` e `CANCELED` podem ser marcados pelo admin master
+  - Pix manual nao integra gateway nem valida comprovante automaticamente
+  - funcionalidades nao sao bloqueadas automaticamente pelo status da assinatura
 
 ## Frontend Admin
 - hooks principais em `frontend/features/admin/hooks`
@@ -208,6 +251,16 @@ Regras estruturais:
   - availability
   - financial summary
   - seletor de business atual
+- se o trial estiver expirado, ou status for `PAST_DUE`/`CANCELED`, o admin normal mostra card de Pix manual:
+  - constantes em `frontend/features/admin/subscription-payment.ts`
+  - botao abre WhatsApp de suporte com mensagem pre-preenchida
+
+## Frontend Admin Master
+- rota: `frontend/app/admin-master/page.tsx`
+- acesso: somente sessao com `user.isPlatformAdmin`
+- UI principal: `frontend/components/platform/PlatformBusinessesSection.tsx`
+- gerencia plano/status com `PlatformBusinessSubscriptionManager.tsx`
+- chamadas em `frontend/features/platform/services/platform-api.service.ts`
 
 ## Convencoes do Projeto
 - backend: manter padrao controller/service/repository
@@ -224,6 +277,9 @@ Regras estruturais:
   - ainda nao existe fluxo completo de “business switch” global no app inteiro
 - alguns fluxos dependem de decodificar token no frontend para decidir UI
 - `AccessTokenService` ainda mistura consulta Prisma + payload customizado
+- Pix do admin normal usa constantes hardcoded/placeholder no frontend
+- admin master faz controle manual de assinatura; nao existe gateway, upload de comprovante ou conciliacao automatica
+- status de assinatura ainda nao bloqueia rotas ou funcionalidades automaticamente
 - validar sempre se backend rodando foi reiniciado apos novas rotas; houve caso de rota nova nao refletida por processo antigo
 
 ## Variaveis de Ambiente Importantes
@@ -233,6 +289,12 @@ Regras estruturais:
 - `NEXTAUTH_URL`
 - `NEXTAUTH_SECRET`
 - `JWT_SECRET`
+
+## Constantes Frontend Importantes
+- `PIX_KEY`
+- `SUPPORT_WHATSAPP`
+- `BASIC_PRICE`
+- `PRO_PRICE`
 
 ## Agent Control
 - Prioridade: alterar codigo, nao documentacao

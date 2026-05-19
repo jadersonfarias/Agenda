@@ -18,8 +18,10 @@ import {
     type AdminBusinessOption,
     type AdminDashboardData,
 } from '../../features/admin/types'
+import { shouldShowSubscriptionPaymentCard } from '../../features/admin/subscription-payment'
 import { decodeAccessToken } from '../../lib/access-token'
 import { fetchAdminDashboard } from '../../features/admin/services/admin-api.service'
+import { useHydrated } from '../../hooks/use-hydrated'
 import { Button } from '../ui/button'
 import { Card } from '../ui/card'
 import { AdminHeader } from './AdminHeader'
@@ -30,6 +32,7 @@ import { FinancialSummarySection } from './FinancialSummarySection'
 import { OnboardingChecklist } from './OnboardingChecklist'
 import { PublicBookingLinkCard } from './PublicBookingLinkCard'
 import { ServicesSection } from './ServicesSection'
+import { SubscriptionPaymentCard } from './SubscriptionPaymentCard'
 import { TeamSection } from './TeamSection'
 
 type AdminPanelProps = {
@@ -75,6 +78,7 @@ export default function AdminPanel({
 }: AdminPanelProps) {
     const queryClient = useQueryClient()
     const { data: session } = useSession()
+    const isHydrated = useHydrated()
     const hasResolvedStoredBusiness = useRef(false)
     const [selectedBusinessId, setSelectedBusinessId] = useState(currentBusinessId)
     const [business, setBusiness] = useState(initialData.business)
@@ -87,6 +91,7 @@ export default function AdminPanel({
     const [isSwitchingBusiness, setIsSwitchingBusiness] = useState(false)
     const isAuthenticated = Boolean(session?.accessToken)
     const servicesQuery = useAdminServicesQuery(selectedBusinessId, isAuthenticated)
+    const shouldShowPaymentCard = isHydrated && shouldShowSubscriptionPaymentCard(business, Date.now())
     const appointmentsQuery = useAdminAppointmentsQuery(
         selectedBusinessId,
         appointmentFilter,
@@ -283,6 +288,8 @@ export default function AdminPanel({
             />
 
             <AdminNavigation activeSection={activeSection} onChange={setActiveSection} />
+
+            {shouldShowPaymentCard ? <SubscriptionPaymentCard business={business} /> : null}
 
             {activeSection === 'overview' ? (
                 <div className="flex flex-col gap-4">
