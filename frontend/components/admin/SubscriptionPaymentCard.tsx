@@ -9,7 +9,7 @@ type SubscriptionPaymentCardProps = {
 }
 
 export function SubscriptionPaymentCard({ business }: SubscriptionPaymentCardProps) {
-    const whatsappUrl = getSubscriptionPaymentWhatsAppUrl(business.name)
+    const whatsappUrl = getSubscriptionPaymentWhatsAppUrl(business)
 
     return (
         <Card className="border-amber-200 bg-amber-50 shadow-lg shadow-amber-100/60">

@@ -1,11 +1,12 @@
 import { NestFactory } from '@nestjs/core'
 import { AppModule } from './app.module'
 import { ValidationPipe } from '@nestjs/common'
+import { buildCorsOptions } from './common/cors.config'
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule)
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
-  app.enableCors({ origin: true })
+  app.enableCors(buildCorsOptions())
   const host = process.env.HOST || '0.0.0.0'
   console.log('Backend starting listen on 3333...')
   try {
