@@ -327,11 +327,11 @@ export default function AdminPanel({
                         </Card>
                         <PublicBookingLinkCard business={business} />
                         <Card className="border-slate-200 shadow-lg shadow-slate-200/60">
-                            <div className="flex h-full flex-col gap-4">
-                                <div>
+                            <div className="flex h-full min-w-0 flex-col gap-5">
+                                <div className="min-w-0">
                                     <p className="text-xs uppercase tracking-[.25em] text-slate-500 sm:text-sm">Agendamentos</p>
-                                    <div className="mt-3 flex items-end justify-between gap-3">
-                                        <div>
+                                    <div className="mt-3 flex min-w-0 flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                                        <div className="min-w-0 flex-1">
                                             <p className="text-2xl font-semibold text-slate-900 sm:text-3xl">
                                                 {appointmentsSummary.total}
                                             </p>
@@ -342,7 +342,7 @@ export default function AdminPanel({
                                         <Button
                                             type="button"
                                             variant="secondary"
-                                            className="min-h-11 shrink-0 px-4 py-2 text-sm"
+                                            className="min-h-11 w-full min-w-0 px-4 py-2 text-sm sm:w-auto sm:shrink-0"
                                             onClick={() => setActiveSection('appointments')}
                                         >
                                             Ver agenda
@@ -350,8 +350,8 @@ export default function AdminPanel({
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                                    <div className="rounded-2xl border border-amber-100 bg-amber-50 px-3 py-3">
+                                <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-3">
+                                    <div className="min-w-0 rounded-2xl border border-amber-100 bg-amber-50 px-3 py-3">
                                         <p className="text-[11px] font-semibold uppercase tracking-[.18em] text-amber-700">
                                             Agendados
                                         </p>
@@ -359,7 +359,7 @@ export default function AdminPanel({
                                             {appointmentsSummary.scheduled}
                                         </p>
                                     </div>
-                                    <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-3 py-3">
+                                    <div className="min-w-0 rounded-2xl border border-emerald-100 bg-emerald-50 px-3 py-3">
                                         <p className="text-[11px] font-semibold uppercase tracking-[.18em] text-emerald-700">
                                             Concluídos
                                         </p>
@@ -367,7 +367,7 @@ export default function AdminPanel({
                                             {appointmentsSummary.completed}
                                         </p>
                                     </div>
-                                    <div className="rounded-2xl border border-rose-100 bg-rose-50 px-3 py-3">
+                                    <div className="min-w-0 rounded-2xl border border-rose-100 bg-rose-50 px-3 py-3">
                                         <p className="text-[11px] font-semibold uppercase tracking-[.18em] text-rose-700">
                                             Cancelados
                                         </p>
