@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { strongPasswordSchema } from '../common/password-validation'
 
 export const loginSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -10,7 +11,7 @@ export type LoginDto = z.infer<typeof loginSchema>
 export const registerBusinessOwnerSchema = z.object({
   ownerName: z.string().trim().min(2, 'Informe o nome do dono'),
   email: z.string().trim().email('Email inválido'),
-  password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres'),
+  password: strongPasswordSchema,
   businessName: z.string().trim().min(2, 'Informe o nome do negócio'),
   businessSlug: z
     .string()

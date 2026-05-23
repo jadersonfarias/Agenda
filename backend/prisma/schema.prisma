@@ -36,18 +36,19 @@ enum PaymentMethod {
 }
 
 model User {
-    id          String       @id @default(uuid())
-    name        String
-    email       String       @unique
-    password    String
-    role        UserRole     @default(USER)
-    isPlatformAdmin Boolean  @default(false)
-    businesses  Business[]
-    memberships Membership[]
-    accounts    Account[]
-    sessions    Session[]
-    createdAt   DateTime     @default(now())
-    updatedAt   DateTime     @updatedAt
+    id                   String        @id @default(uuid())
+    name                 String
+    email                String        @unique
+    password             String
+    role                 UserRole      @default(USER)
+    isPlatformAdmin      Boolean       @default(false)
+    businesses           Business[]
+    memberships          Membership[]
+    assignedAppointments Appointment[] @relation("AppointmentAssignedUser")
+    accounts             Account[]
+    sessions             Session[]
+    createdAt            DateTime      @default(now())
+    updatedAt            DateTime      @updatedAt
 }
 
 model Membership {
@@ -157,24 +158,27 @@ enum AppointmentStatus {
 }
 
 model Appointment {
-    id          String            @id @default(uuid())
-    publicToken String            @unique @default(uuid())
-    scheduledAt DateTime
-    endsAt      DateTime
-    price       Decimal
-    status      AppointmentStatus @default(SCHEDULED)
-    completedAt DateTime?
-    business    Business          @relation(fields: [businessId], references: [id])
-    businessId  String
-    service     Service           @relation(fields: [serviceId], references: [id])
-    serviceId   String
-    customer    Customer          @relation(fields: [customerId], references: [id])
-    customerId  String
-    createdAt   DateTime          @default(now())
-    updatedAt   DateTime          @updatedAt
+    id               String            @id @default(uuid())
+    publicToken      String            @unique @default(uuid())
+    scheduledAt      DateTime
+    endsAt           DateTime
+    price            Decimal
+    status           AppointmentStatus @default(SCHEDULED)
+    completedAt      DateTime?
+    business         Business          @relation(fields: [businessId], references: [id])
+    businessId       String
+    service          Service           @relation(fields: [serviceId], references: [id])
+    serviceId        String
+    customer         Customer          @relation(fields: [customerId], references: [id])
+    customerId       String
+    assignedToUser   User?             @relation("AppointmentAssignedUser", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+    assignedToUserId String?
+    createdAt        DateTime          @default(now())
+    updatedAt        DateTime          @updatedAt
 
     @@index([businessId, scheduledAt, endsAt, status])
     @@index([businessId, serviceId, scheduledAt])
+    @@index([businessId, assignedToUserId, scheduledAt])
     @@index([customerId, scheduledAt])
 }
 

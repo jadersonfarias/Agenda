@@ -1,304 +1,286 @@
 # Project Context
 
 ## Visao Geral
-Monorepo fullstack para agendamento de servicos com:
-- area publica de reservas
-- area admin autenticada
-- multi-tenant por `Business`
+Monorepo fullstack da MarcaCerta para agendamento de servicos com:
+- site publico e reserva online;
+- area admin autenticada por business;
+- admin master da plataforma;
+- multi-business por `Business`;
+- isolamento de dados por `businessId`.
 
-Entidades principais por business:
-- `Service`
-- `Customer`
-- `Appointment`
-- `Membership`
-- `ManualBlock`
+Entidades principais:
+- `User`, `Business`, `Membership`, `Invitation`
+- `Service`, `Customer`, `Appointment`, `ManualBlock`
 
 ## Stack
 - Frontend: Next.js App Router, React, TypeScript, Tailwind
 - Estado client-side: TanStack Query
+- Formularios: React Hook Form + Zod
 - Auth frontend: NextAuth (`CredentialsProvider`)
 - HTTP frontend: Axios (`frontend/lib/api.ts`)
-- Backend: NestJS
+- Backend: NestJS + TypeScript
 - Banco: PostgreSQL + Prisma
 - Datas/fuso: Luxon
 - Feedback UI: react-hot-toast
 
-## Estrutura Resumida
+## Estrutura Atual
 ```text
-/
-├─ frontend/
-│  ├─ app/
-│  │  ├─ page.tsx
-│  │  ├─ login/page.tsx
-│  │  ├─ admin/page.tsx
-│  │  ├─ admin-master/page.tsx
-│  │  └─ api/auth/[...nextauth]/route.ts
-│  ├─ components/
-│  │  ├─ admin/AdminPanel.tsx
-│  │  ├─ platform/*
-│  │  └─ ui/*
-│  ├─ features/admin/
-│  │  ├─ hooks/*
-│  │  ├─ services/admin-api.service.ts
-│  │  ├─ services/admin-server-api.service.ts
-│  │  ├─ subscription-payment.ts
-│  │  ├─ schemas.ts
-│  │  └─ types.ts
-│  ├─ features/platform/
-│  │  ├─ hooks/*
-│  │  ├─ services/platform-api.service.ts
-│  │  └─ types.ts
-│  ├─ lib/
-│  │  ├─ api.ts
-│  │  ├─ auth.ts
-│  │  ├─ access-token.ts
-│  │  └─ server-api.ts
-│  └─ types/next-auth.d.ts
-├─ backend/
-│  ├─ src/
-│  │  ├─ admin/
-│  │  ├─ appointments/
-│  │  ├─ auth/
-│  │  ├─ businesses/
-│  │  ├─ common/
-│  │  ├─ platform/
-│  │  ├─ prisma/
-│  │  ├─ scheduling/
-│  │  ├─ app.module.ts
-│  │  └─ main.ts
-│  └─ prisma/
-│     ├─ schema.prisma
-│     ├─ migrations/
-│     └─ seed.ts
-└─ PROJECT_CONTEXT.md
+frontend/
+  app/
+    page.tsx
+    login/page.tsx
+    signup/page.tsx
+    admin/page.tsx
+    admin-master/page.tsx
+    b/[slug]/page.tsx
+    appointments/[token]/page.tsx
+    invite/[token]/page.tsx
+    meus-agendamentos/page.tsx
+    api/auth/[...nextauth]/route.ts
+  components/
+    admin/*
+    platform/*
+    public/*
+    ui/*
+  features/
+    admin/*
+    invitations/*
+    platform/*
+  lib/*
+  types/next-auth.d.ts
+
+backend/
+  src/
+    admin/
+    appointments/
+    auth/
+    businesses/
+    common/
+    platform/
+    prisma/
+    scheduling/
+  prisma/
+    schema.prisma
+    migrations/
+    seed.ts
 ```
 
-## Arquitetura Atual
-- Backend segue `Controller -> Service -> Repository -> Prisma`
-- Frontend nao usa Prisma
-- Frontend admin consome backend via HTTP
-- `/admin` e server page + client panel:
-  - `frontend/app/admin/page.tsx` carrega sessao e dashboard inicial
-  - `frontend/components/admin/AdminPanel.tsx` faz queries/mutations
-- `/admin-master` e server page para administradores da plataforma:
-  - exige `session.user.isPlatformAdmin === true`
-  - usa `frontend/components/platform/*` e `frontend/features/platform/*`
+## Arquitetura
+- Backend segue `Controller -> Service -> Repository -> Prisma`.
+- Frontend nao usa Prisma diretamente.
+- Admin normal usa `/admin` com server page + `AdminPanel`.
+- Admin master usa `/admin-master` e exige `session.user.isPlatformAdmin === true`.
+- Auth backend usa JWT via `@nestjs/jwt` e `JWT_SECRET`.
+- Auth frontend usa NextAuth e `NEXTAUTH_SECRET`.
+- `AuthMiddleware` resolve `request.user` e `request.businessId`.
+- `RoleGuard` valida role por `Membership`.
+- `PlatformAdminGuard` valida `isPlatformAdmin`.
 
-## Fluxo Frontend/Backend
+## Rotas Frontend
+- `/`: landing publica MarcaCerta
+- `/signup`: cadastro publico de dono + primeiro business
+- `/login`: login com NextAuth
+- `/admin`: painel admin do business
+- `/admin-master`: painel master da plataforma
+- `/b/[slug]`: pagina publica de reserva por slug
+- `/appointments/[token]`: detalhe/cancelamento publico da reserva
+- `/meus-agendamentos`: consulta publica de agendamentos por dados do cliente
+- `/invite/[token]`: aceite de convite de equipe
+
+## Endpoints Backend
+### Auth
+- `POST /auth/login`
+- `POST /auth/register-business-owner`
+
 ### Publico
-`Frontend -> Backend Nest -> Prisma`
-
-Endpoints usados:
+- `GET /businesses/:businessId`
+- `GET /businesses/slug/:slug`
 - `GET /businesses/:businessId/services`
 - `GET /businesses/:businessId/availability`
 - `GET /appointments`
+- `GET /appointments/customer`
+- `GET /appointments/financial/monthly`
+- `GET /appointments/public/:token`
 - `POST /appointments`
-
-Protecao basica contra abuso:
-- rate limit por rota em:
-  - `GET /businesses/:businessId/availability`
-  - `POST /appointments`
+- `PATCH /appointments/public/:token/cancel`
+- `PATCH /appointments/:id/status`
+- `DELETE /appointments/:id`
 
 ### Admin
-`AdminPanel -> Axios -> Backend Nest -> Prisma`
-
-Endpoints principais:
+Rotas protegidas por `AuthMiddleware` + `RoleGuard`.
 - `GET /admin/dashboard`
-- `GET /admin/financial-summary`
 - `GET /admin/services`
 - `POST /admin/services`
-- `PATCH /admin/services/:serviceId`
-- `DELETE /admin/services/:serviceId`
+- `PATCH /admin/services/:id`
+- `DELETE /admin/services/:id`
+- `PATCH /admin/business/availability`
 - `GET /admin/memberships`
 - `POST /admin/memberships`
 - `PATCH /admin/memberships/:id`
 - `DELETE /admin/memberships/:id`
+- `GET /admin/invitations`
+- `POST /admin/invitations`
 - `GET /admin/appointments`
 - `PATCH /admin/appointments/:id/status`
-- `PATCH /admin/business/availability`
+- `PATCH /admin/appointments/:id/assignee`
+- `GET /admin/financial-summary`
+- `GET /admin/reports/financial`
+
+### Convites
+- `GET /invitations/:token`
+- `POST /invitations/:token/accept`
 
 ### Platform / Admin Master
-`AdminMasterPage -> Axios -> Backend Nest -> Prisma`
-
-Rotas protegidas por `AuthMiddleware` + `PlatformAdminGuard`:
+Rotas protegidas por `AuthMiddleware` + `PlatformAdminGuard`.
 - `GET /platform/health`
 - `GET /platform/businesses`
 - `PATCH /platform/businesses/:businessId/subscription`
 - `PATCH /platform/businesses/:businessId/cancel-subscription`
 - `PATCH /platform/businesses/:businessId/mark-past-due`
 
-## Auth
-- Login real acontece no backend: `POST /auth/login`
-- `POST /auth/login` tem rate limit por rota
-- `POST /auth/register-business-owner` tem rate limit por rota
-- Frontend usa NextAuth para sessao
-- Backend usa `JWT_SECRET`
-- Frontend usa `NEXTAUTH_SECRET`
-- Token carrega:
+## Auth e Sessao
+- Login real acontece no backend.
+- NextAuth guarda `accessToken`, `businesses`, `currentBusinessId` e `isPlatformAdmin`.
+- Token backend carrega:
+  - `sub`
+  - `email`
   - `isPlatformAdmin`
   - `memberships`
   - `businesses`
   - `currentBusinessId`
-- Session frontend expoe:
-  - `accessToken`
-  - `user.isPlatformAdmin`
-  - `businesses`
-  - `currentBusinessId`
-- `PlatformAdminGuard` permite `/platform/*` apenas para usuario com `isPlatformAdmin === true`
+- Um usuario pode ter memberships em mais de um business.
+- Se houver apenas um membership, o backend consegue inferir `businessId`.
+- Chamadas admin do frontend enviam `businessId` explicitamente.
 
 ## Banco / Prisma
 Modelos criticos:
 - `User`
 - `Business`
 - `Membership`
+- `Invitation`
 - `Service`
 - `Customer`
 - `Appointment`
 - `ManualBlock`
 
 Regras estruturais:
-- `User.isPlatformAdmin` identifica administradores da plataforma
-- `Membership` faz `User <-> Business`
-- roles: `OWNER | ADMIN | STAFF`
-- unique membership: `(userId, businessId)`
-- `Customer` e unico por `(businessId, phone)`
-- `Business.plan`: `FREE | BASIC | PRO`
-- `Business.subscriptionStatus`: `TRIALING | ACTIVE | PAST_DUE | CANCELED`
-- `Business.trialEndsAt`, `subscriptionEndsAt`, `lastPaymentAt` guardam datas do ciclo de assinatura
-- `Business.paymentMethod`: `PIX | MANUAL | null`
+- `User.isPlatformAdmin` identifica administradores da plataforma.
+- `Membership` faz `User <-> Business`.
+- Roles: `OWNER | ADMIN | STAFF`.
+- `Membership` e unico por `(userId, businessId)`.
+- `Customer` e unico por `(businessId, phone)`.
+- `Business.slug` e unico.
+- `Business.plan`: `FREE | BASIC | PRO`.
+- `Business.subscriptionStatus`: `TRIALING | ACTIVE | PAST_DUE | CANCELED`.
+- `Business.paymentMethod`: `PIX | MANUAL | null`.
+- `Appointment.publicToken` e usado para detalhe publico da reserva.
+- `Appointment.assignedToUserId` e opcional e aponta para o `User` responsavel pelo atendimento.
 
-## Modulos Principais
-### `backend/src/auth`
-- login
-- JWT
-- `AuthMiddleware`
-- `RoleGuard`
-- `PlatformAdminGuard`
-- rate limit por decorator nas rotas sensiveis
-- resolve `request.user` e `request.businessId`
-
-### `backend/src/admin`
-- dashboard admin
-- CRUD de services
-- memberships
-- appointments admin
-- business availability
-- financial summary
-
-### `backend/src/appointments`
-- criacao/listagem
-- update status
-- faturamento mensal
-
-### `backend/src/businesses`
-- services publicos
-- disponibilidade
-- clientes ativos
-
-### `backend/src/platform`
-- listagem paginada de businesses da plataforma
-- filtros por status, plano e busca
-- ativacao/renovacao manual de plano por meses
-- marcar assinatura como `PAST_DUE`
-- cancelar assinatura como `CANCELED`
-
-### `backend/src/common`
-- `RateLimit` decorator por rota
-- `SimpleRateLimitGuard`
-- `SimpleRateLimitService`
-- limite simples em memoria por IP
-- excesso retorna `429` com header `Retry-After`
-
-### `backend/src/scheduling`
-- timezone
-- cache de disponibilidade
-
-## Regras de Negocio Criticas
-- `Business` pode ser resolvido por `id` ou `slug`
-- disponibilidade considera:
-  - horario do business
-  - appointments nao cancelados
-  - manual blocks
-  - timezone
-- agendamento publico nao aceita passado
-- `Customer.lastVisitAt` acompanha ultimo appointment concluido
-- faturamento mensal considera apenas `COMPLETED`
-- service com appointments nao pode ser excluido
-- permissoes por role:
-  - `OWNER`: acesso total do business
-  - `ADMIN`: gerencia quase tudo, sem algumas acoes exclusivas do owner
-  - `STAFF`: acesso operacional limitado
-- memberships:
-  - nao pode remover ultimo `OWNER`
-  - nao pode rebaixar ultimo `OWNER`
-  - criar membro hoje exige usuario ja existente por email
-  - criar membro e restrito a `OWNER`
-- assinatura/plano:
-  - ativacao manual define `plan`, `subscriptionEndsAt`, `lastPaymentAt` e `paymentMethod`
-  - renovacao soma meses a partir do fim atual se ainda estiver vigente; senao parte de agora
-  - `PAST_DUE` e `CANCELED` podem ser marcados pelo admin master
-  - Pix manual nao integra gateway nem valida comprovante automaticamente
-  - funcionalidades nao sao bloqueadas automaticamente pelo status da assinatura
+## Regras de Negocio Implementadas
+- Cadastro publico cria dono, business, membership `OWNER`, plano `BASIC`, status `TRIALING` e trial de 7 dias.
+- Disponibilidade considera horario do business, appointments nao cancelados, manual blocks e timezone.
+- Agendamento publico nao aceita horario passado.
+- `Customer.lastVisitAt` acompanha ultimo appointment concluido.
+- Faturamento mensal considera apenas appointments `COMPLETED`.
+- Agenda por responsavel no admin:
+  - `OWNER` e `ADMIN` listam todos os agendamentos do business.
+  - `STAFF` lista apenas agendamentos com `assignedToUserId` igual ao proprio usuario.
+  - `STAFF` so altera status de agendamentos atribuidos a ele.
+  - `OWNER` e `ADMIN` podem atribuir/trocar responsavel do atendimento.
+- Service com appointments nao pode ser excluido.
+- Membros:
+  - `OWNER` gerencia equipe e convites.
+  - nao pode remover/rebaixar ultimo `OWNER`.
+  - convite pode criar usuario novo ou vincular usuario existente.
+- Assinatura:
+  - admin master lista businesses e gerencia status/plano.
+  - ativacao manual define `plan`, `subscriptionEndsAt`, `lastPaymentAt` e `paymentMethod`.
+  - renovacao soma meses a partir do fim atual se ainda estiver vigente; senao parte de agora.
+  - `PAST_DUE` e `CANCELED` podem ser marcados manualmente.
+  - Pix manual nao integra gateway nem valida comprovante automaticamente.
+  - status da assinatura ainda nao bloqueia rotas ou funcionalidades automaticamente.
 
 ## Frontend Admin
-- hooks principais em `frontend/features/admin/hooks`
-- fetchers/mutations em `frontend/features/admin/services/admin-api.service.ts`
-- dashboard inicial server-side em `frontend/features/admin/services/admin-server-api.service.ts`
-- `AdminPanel.tsx` concentra UI de:
+- `frontend/app/admin/page.tsx` carrega sessao, dashboard inicial e appointments iniciais.
+- `frontend/components/admin/AdminPanel.tsx` concentra:
+  - overview/onboarding
   - services
-  - memberships
   - appointments
   - availability
-  - financial summary
-  - seletor de business atual
-- se o trial estiver expirado, ou status for `PAST_DUE`/`CANCELED`, o admin normal mostra card de Pix manual:
-  - constantes em `frontend/features/admin/subscription-payment.ts`
-  - botao abre WhatsApp de suporte com mensagem pre-preenchida
+  - financial summary/report
+  - team/memberships/invitations
+  - business switcher
+- Hooks e chamadas ficam em `frontend/features/admin/*`.
+- Agenda:
+  - mostra responsavel pelo atendimento quando existir.
+  - exibe "Sem responsavel" quando `assignedToUserId` e `null`.
+  - `OWNER` e `ADMIN` veem filtro por responsavel.
+  - queryKey da agenda usa `businessId`, `statusFilter` e `assignedToUserId`.
+- Se trial estiver expirado, ou status for `PAST_DUE`/`CANCELED`, mostra card Pix manual:
+  - componente: `frontend/components/admin/SubscriptionPaymentCard.tsx`
+  - constantes: `frontend/features/admin/subscription-payment.ts`
+  - botao abre WhatsApp com mensagem pre-preenchida.
 
 ## Frontend Admin Master
-- rota: `frontend/app/admin-master/page.tsx`
-- acesso: somente sessao com `user.isPlatformAdmin`
-- UI principal: `frontend/components/platform/PlatformBusinessesSection.tsx`
-- gerencia plano/status com `PlatformBusinessSubscriptionManager.tsx`
-- chamadas em `frontend/features/platform/services/platform-api.service.ts`
+- Rota: `frontend/app/admin-master/page.tsx`.
+- Acesso: somente `session.user.isPlatformAdmin`.
+- UI principal: `frontend/components/platform/PlatformBusinessesSection.tsx`.
+- Gerencia plano/status com `PlatformBusinessSubscriptionManager.tsx`.
+- Chamadas em `frontend/features/platform/services/platform-api.service.ts`.
 
-## Convencoes do Projeto
-- backend: manter padrao controller/service/repository
-- frontend: usar Axios + TanStack Query
-- evitar mover regra de negocio para o frontend
-- usar `businessId` explicitamente nas operacoes admin
-- auth do backend sempre com `JWT_SECRET`
-- auth do frontend sempre com NextAuth
+## Identidade Visual
+- Marca publica atual: MarcaCerta.
+- Metadata, header publico e landing usam MarcaCerta.
+- Logo usado em `frontend/public/marcacerta-logo.png` e assets relacionados.
+- Admin normal e admin master ainda usam visual mais generico do sistema, com predominancia de roxo.
 
-## Dividas Tecnicas Importantes
-- criacao de membro ainda nao cria `User`; apenas vincula usuario existente
-- multi-business esta minimo:
-  - ha seletor no admin
-  - ainda nao existe fluxo completo de “business switch” global no app inteiro
-- alguns fluxos dependem de decodificar token no frontend para decidir UI
-- `AccessTokenService` ainda mistura consulta Prisma + payload customizado
-- Pix do admin normal usa constantes hardcoded/placeholder no frontend
-- admin master faz controle manual de assinatura; nao existe gateway, upload de comprovante ou conciliacao automatica
-- status de assinatura ainda nao bloqueia rotas ou funcionalidades automaticamente
-- validar sempre se backend rodando foi reiniciado apos novas rotas; houve caso de rota nova nao refletida por processo antigo
-
-## Variaveis de Ambiente Importantes
+## Variaveis e Config
+Variaveis usadas/importantes:
 - `DATABASE_URL`
 - `NEXT_PUBLIC_API_URL`
 - `API_URL`
+- `NEXT_PUBLIC_DEFAULT_BUSINESS_ID`
 - `NEXTAUTH_URL`
 - `NEXTAUTH_SECRET`
 - `JWT_SECRET`
+- `FRONTEND_URL` para montar links de convite, com fallback para `NEXTAUTH_URL`
+- `HOST` no backend, opcional
 
-## Constantes Frontend Importantes
+Constantes frontend atuais para Pix manual:
 - `PIX_KEY`
 - `SUPPORT_WHATSAPP`
 - `BASIC_PRICE`
 - `PRO_PRICE`
 
-## Agent Control
-- Prioridade: alterar codigo, nao documentacao
-- Responder de forma curta
-- Reutilizar padroes existentes
-- Nao assumir arquitetura alvo; usar o codigo atual como verdade
-- Nao marcar como implementado o que ainda e so ideia
+Comandos uteis:
+- `npm run dev`
+- `npm run dev:ngrok`
+- `npm run build`
+- `npm run seed`
+- `npm --workspace=frontend run build`
+- `npm --workspace=backend run build`
+- `npm --workspace=backend run test`
+- `npm --workspace=backend run prisma:migrate`
+
+## Pendencias / Riscos Atuais
+- `PIX_KEY`, `SUPPORT_WHATSAPP`, `BASIC_PRICE` e `PRO_PRICE` estao hardcoded/placeholder no frontend.
+- Nao existe gateway, upload de comprovante ou conciliacao automatica de pagamento.
+- Status da assinatura ainda nao bloqueia uso do sistema.
+- `.env.example` nao documenta todas as variaveis usadas em producao, como `API_URL`, `JWT_SECRET` e `FRONTEND_URL`.
+- CORS do backend esta aberto com `origin: true`.
+- Alguns endpoints em `/appointments` usam apenas `businessId` por query/body e nao passam por `AuthMiddleware`; revisar antes de producao.
+- Agendamentos antigos podem estar sem responsavel (`assignedToUserId = null`); atribuir manualmente quando necessario.
+- Seed cria usuarios com senha `password123`; nao usar seed/credenciais de dev em producao.
+- Criacao direta de membro por email ainda depende de usuario existente; convite cobre criacao de usuario novo.
+- Multi-business ainda e simples: ha seletor no admin, mas nao ha fluxo global completo fora do painel.
+- Alguns fluxos do frontend ainda dependem de dados do token/session para decidir UI.
+- Reiniciar backend apos adicionar rotas novas; ja houve caso de processo antigo nao refletir rota nova.
+
+## Convencoes
+- Nao acessar Prisma diretamente em controller.
+- Manter isolamento por `businessId`.
+- Validar permissao antes de ler/alterar dados sensiveis.
+- Frontend deve usar Axios + TanStack Query para chamadas admin.
+- Formularios devem usar React Hook Form + Zod quando aplicavel.
+- Evitar refatoracao fora do escopo.
+- Nao marcar como implementado o que ainda e apenas ideia.

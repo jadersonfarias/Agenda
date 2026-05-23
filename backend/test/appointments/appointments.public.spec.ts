@@ -3,6 +3,24 @@ import { BadRequestException, NotFoundException } from '@nestjs/common'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppointmentsService } from '../../src/appointments/appointments.service'
 
+function createAppointmentsService({
+  appointmentsRepository = {} as any,
+  businessesRepository = {} as any,
+  businessesService = {} as any,
+  timezoneService = {} as any,
+  subscriptionService = {
+    assertBusinessCanWrite: vi.fn().mockResolvedValue(undefined),
+  } as any,
+} = {}) {
+  return new AppointmentsService(
+    appointmentsRepository,
+    businessesRepository,
+    businessesService,
+    timezoneService,
+    subscriptionService,
+  )
+}
+
 describe('AppointmentsService public routes', () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -30,12 +48,12 @@ describe('AppointmentsService public routes', () => {
     const businessesService = {} as any
     const timezoneService = {} as any
 
-    const service = new AppointmentsService(
+    const service = createAppointmentsService({
       appointmentsRepository,
       businessesRepository,
       businessesService,
-      timezoneService
-    )
+      timezoneService,
+    })
 
     const result = await service.getByCustomerPhone({ phone: '+55 48 99680 3757' })
 
@@ -74,12 +92,12 @@ describe('AppointmentsService public routes', () => {
     const businessesService = {} as any
     const timezoneService = {} as any
 
-    const service = new AppointmentsService(
+    const service = createAppointmentsService({
       appointmentsRepository,
       businessesRepository,
       businessesService,
-      timezoneService
-    )
+      timezoneService,
+    })
 
     await expect(service.getPublicByToken({ token: 'token-1' })).resolves.toEqual({
       token: 'token-1',
@@ -112,12 +130,12 @@ describe('AppointmentsService public routes', () => {
     } as any
     const timezoneService = {} as any
 
-    const service = new AppointmentsService(
+    const service = createAppointmentsService({
       appointmentsRepository,
       businessesRepository,
       businessesService,
-      timezoneService
-    )
+      timezoneService,
+    })
 
     await expect(service.cancelPublicAppointment({ token: 'token-1' })).rejects.toThrowError(BadRequestException)
   })
@@ -130,12 +148,12 @@ describe('AppointmentsService public routes', () => {
     const businessesService = {} as any
     const timezoneService = {} as any
 
-    const service = new AppointmentsService(
+    const service = createAppointmentsService({
       appointmentsRepository,
       businessesRepository,
       businessesService,
-      timezoneService
-    )
+      timezoneService,
+    })
 
     await expect(service.getPublicByToken({ token: 'inexistente' })).rejects.toThrowError(NotFoundException)
   })

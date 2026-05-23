@@ -16,7 +16,13 @@ function createService(adminRepositoryOverrides: Record<string, unknown>) {
 
   return {
     adminRepository,
-    service: new AdminService(adminRepository, {} as any, {} as any),
+    service: new AdminService(
+      adminRepository,
+      {} as any,
+      {} as any,
+      {} as any,
+      { assertBusinessCanWrite: vi.fn().mockResolvedValue(undefined) } as any,
+    ),
   }
 }
 
@@ -44,7 +50,7 @@ function createOwnerOnlyContext(role: 'OWNER' | 'ADMIN' | 'STAFF') {
 
 describe('Invitation rules', () => {
   it('OWNER cria convite com token, expiração e link', async () => {
-    const expiresAt = new Date('2026-05-18T12:00:00.000Z')
+    const expiresAt = new Date('2999-05-18T12:00:00.000Z')
     const createdAt = new Date('2026-05-11T12:00:00.000Z')
     const { adminRepository, service } = createService({
       findUserByEmail: vi.fn().mockResolvedValue(null),

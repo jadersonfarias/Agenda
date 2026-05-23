@@ -40,6 +40,29 @@ describe('AuthService', () => {
     })
   })
 
+  it('permite login com senha legada fora da nova política de cadastro', async () => {
+    const hashedPassword = await bcrypt.hash('password123', 10)
+
+    const { service } = createService({
+      findUserByEmail: vi.fn().mockResolvedValue({
+        id: 'user-2',
+        name: 'Usuário Legado',
+        email: 'legado@example.com',
+        password: hashedPassword,
+        isPlatformAdmin: false,
+      }),
+    })
+
+    await expect(
+      service.validateUser('legado@example.com', 'password123'),
+    ).resolves.toEqual({
+      id: 'user-2',
+      name: 'Usuário Legado',
+      email: 'legado@example.com',
+      isPlatformAdmin: false,
+    })
+  })
+
   it('cria user, business e membership OWNER', async () => {
     const { authRepository, service } = createService({
       createBusinessOwner: vi.fn().mockResolvedValue({

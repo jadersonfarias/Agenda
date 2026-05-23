@@ -15,13 +15,19 @@ export const adminSectionOptions = [
 ] as const
 
 export type AdminSectionId = (typeof adminSectionOptions)[number]['id']
+export type AdminSectionOption = (typeof adminSectionOptions)[number]
 
 type AdminNavigationProps = {
     activeSection: AdminSectionId
+    sections?: readonly AdminSectionOption[]
     onChange: (section: AdminSectionId) => void
 }
 
-export function AdminNavigation({ activeSection, onChange }: AdminNavigationProps) {
+export function AdminNavigation({
+    activeSection,
+    sections = adminSectionOptions,
+    onChange,
+}: AdminNavigationProps) {
     return (
         <Card className="border-slate-200 shadow-lg shadow-slate-200/60">
             <div className="sm:hidden">
@@ -31,7 +37,7 @@ export function AdminNavigation({ activeSection, onChange }: AdminNavigationProp
                         value={activeSection}
                         onChange={(event) => onChange(event.target.value as AdminSectionId)}
                     >
-                        {adminSectionOptions.map((section) => (
+                        {sections.map((section) => (
                             <option key={section.id} value={section.id}>
                                 {section.label}
                             </option>
@@ -42,7 +48,7 @@ export function AdminNavigation({ activeSection, onChange }: AdminNavigationProp
 
             <div className="hidden sm:block">
                 <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 lg:flex-wrap">
-                    {adminSectionOptions.map((section) => (
+                    {sections.map((section) => (
                         <Button
                             key={section.id}
                             type="button"

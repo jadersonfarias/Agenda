@@ -173,7 +173,7 @@ function InvitationForm({
             await onSaved()
             toast.success('Convite criado com sucesso')
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Erro ao enviar convite')
+            toast.error(error instanceof Error ? error.message : 'Erro ao criar convite')
         }
     })
 
@@ -200,7 +200,7 @@ function InvitationForm({
                     Cancelar
                 </Button>
                 <Button type="submit" disabled={createInvitationMutation.isPending} className="min-h-12 lg:min-h-0 sm:w-auto">
-                    {createInvitationMutation.isPending ? 'Enviando...' : 'Enviar convite'}
+                    {createInvitationMutation.isPending ? 'Criando...' : 'Criar convite'}
                 </Button>
             </div>
 
@@ -326,7 +326,7 @@ export function TeamSection({
                                 Novo membro
                             </Button>
                             <Button type="button" onClick={() => setIsCreateInvitationOpen(true)} className="min-h-12 lg:min-h-0 sm:w-auto">
-                                Convidar por email
+                                Gerar convite
                             </Button>
                         </div>
                     ) : null}
@@ -508,8 +508,8 @@ export function TeamSection({
 
             {canCreateMembership ? (
                 <Modal
-                    title="Convidar por email"
-                    description="Envie um convite para um novo funcionário aceitar depois."
+                    title="Criar convite para equipe"
+                    description="Gere um link para o funcionário aceitar o convite e acessar a equipe."
                     open={isCreateInvitationOpen}
                     onClose={() => setIsCreateInvitationOpen(false)}
                 >

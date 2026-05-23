@@ -6,9 +6,10 @@ import { AuthModule } from '../auth/auth.module'
 import { AuthMiddleware } from '../auth/auth.middleware'
 import { BusinessesModule } from '../businesses/businesses.module'
 import { AppointmentsModule } from '../appointments/appointments.module'
+import { SubscriptionModule } from '../subscriptions/subscription.module'
 
 @Module({
-  imports: [AuthModule, BusinessesModule, AppointmentsModule],
+  imports: [AuthModule, BusinessesModule, AppointmentsModule, SubscriptionModule],
   controllers: [AdminController, InvitationsController],
   providers: [AdminService, AdminRepository],
 })

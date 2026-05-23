@@ -12,6 +12,7 @@ import { Button } from '../../../components/ui/button'
 import { Card } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
+import { isStrongPassword, strongPasswordErrorMessage } from '../../../lib/password-validation'
 
 const acceptInvitationSchema = z.object({
     name: z.string().trim().optional(),
@@ -46,14 +47,11 @@ const acceptInvitationSchema = z.object({
         })
     }
 
-    if (value.password && value.password.length < 6) {
+    if (value.password && !isStrongPassword(value.password)) {
         context.addIssue({
-            code: z.ZodIssueCode.too_small,
+            code: z.ZodIssueCode.custom,
             path: ['password'],
-            minimum: 6,
-            inclusive: true,
-            type: 'string',
-            message: 'A senha deve ter pelo menos 6 caracteres',
+            message: strongPasswordErrorMessage,
         })
     }
 
@@ -212,7 +210,7 @@ export default function InvitePage() {
                                     <Label className="space-y-1.5 sm:space-y-2">
                                         <span>Crie sua senha</span>
                                         <Input type="password" {...register('password')} placeholder="••••••••" />
-                                        <p className="text-xs text-slate-500">Use pelo menos 6 caracteres.</p>
+                                        <p className="text-xs text-slate-500">{strongPasswordErrorMessage}</p>
                                         {errors.password ? <p className="text-sm text-red-600">{errors.password.message}</p> : null}
                                     </Label>
 

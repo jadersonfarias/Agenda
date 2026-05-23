@@ -12,11 +12,12 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import { strongPasswordErrorMessage, strongPasswordSchema } from '../../lib/password-validation'
 
 const signupSchema = z.object({
     ownerName: z.string().trim().min(2, 'Informe o nome do dono'),
     email: z.string().trim().email('Email inválido'),
-    password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres'),
+    password: strongPasswordSchema,
     businessName: z.string().trim().min(2, 'Informe o nome do negócio'),
     businessSlug: z
         .string()
@@ -100,7 +101,7 @@ export default function SignupPage() {
                         <Label className="space-y-2">
                             <span>Senha</span>
                             <Input type="password" {...register('password')} placeholder="••••••••" />
-                            <p className="text-xs text-slate-500">Use pelo menos 6 caracteres para acessar o admin.</p>
+                            <p className="text-xs text-slate-500">{strongPasswordErrorMessage}</p>
                             {formState.errors.password ? <p className="text-sm text-red-600">{formState.errors.password.message}</p> : null}
                         </Label>
 

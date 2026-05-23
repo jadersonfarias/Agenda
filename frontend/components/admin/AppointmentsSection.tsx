@@ -7,12 +7,16 @@ import {
     type AdminAppointmentItem,
     type AdminAppointmentStatus,
     type AdminAppointmentStatusFilter,
+    type AdminMembershipItem,
 } from '../../features/admin/types'
 import {
     getAdminAppointmentsQueryBusinessKey,
     useAdminAppointmentsQuery,
 } from '../../features/admin/hooks/use-admin-appointments-query'
-import { updateAdminAppointmentStatus } from '../../features/admin/services/admin-api.service'
+import {
+    updateAdminAppointmentAssignee,
+    updateAdminAppointmentStatus,
+} from '../../features/admin/services/admin-api.service'
 import { Button } from '../ui/button'
 import { Card } from '../ui/card'
 import { Label } from '../ui/label'
@@ -42,6 +46,10 @@ type AppointmentsSectionProps = {
     enabled: boolean
     appointmentFilter: AdminAppointmentStatusFilter
     onAppointmentFilterChange: (value: AdminAppointmentStatusFilter) => void
+    assignedToUserIdFilter?: string
+    onAssignedToUserIdFilterChange?: (value: string) => void
+    canManageAppointmentAssignee?: boolean
+    assignableMembers?: AdminMembershipItem[]
     initialAppointments?: AdminAppointmentItem[]
     onAppointmentStatusSaved?: (input: {
         previousStatus: AdminAppointmentStatus
@@ -54,21 +62,30 @@ export function AppointmentsSection({
     enabled,
     appointmentFilter,
     onAppointmentFilterChange,
+    assignedToUserIdFilter = 'all',
+    onAssignedToUserIdFilterChange,
+    canManageAppointmentAssignee = false,
+    assignableMembers = [],
     initialAppointments,
     onAppointmentStatusSaved,
 }: AppointmentsSectionProps) {
     const queryClient = useQueryClient()
     const [appointmentStatusDrafts, setAppointmentStatusDrafts] = useState<Record<string, AdminAppointmentStatus>>({})
+    const [appointmentAssigneeDrafts, setAppointmentAssigneeDrafts] = useState<Record<string, string>>({})
+    const normalizedAssignedToUserIdFilter =
+        canManageAppointmentAssignee && assignedToUserIdFilter !== 'all' ? assignedToUserIdFilter : undefined
     const appointmentsQuery = useAdminAppointmentsQuery(
         businessId,
         appointmentFilter,
         enabled,
-        appointmentFilter === 'scheduled' ? initialAppointments : undefined
+        appointmentFilter === 'scheduled' && !normalizedAssignedToUserIdFilter ? initialAppointments : undefined,
+        normalizedAssignedToUserIdFilter
     )
 
     useEffect(() => {
         setAppointmentStatusDrafts({})
-    }, [appointmentFilter, businessId])
+        setAppointmentAssigneeDrafts({})
+    }, [appointmentFilter, businessId, normalizedAssignedToUserIdFilter])
 
     const updateAppointmentStatusMutation = useMutation({
         mutationFn: updateAdminAppointmentStatus,
@@ -86,10 +103,30 @@ export function AppointmentsSection({
         },
     })
 
+    const updateAppointmentAssigneeMutation = useMutation({
+        mutationFn: updateAdminAppointmentAssignee,
+        onSuccess: async () => {
+            await queryClient.invalidateQueries({ queryKey: getAdminAppointmentsQueryBusinessKey(businessId) })
+            toast.success('Responsável do agendamento atualizado com sucesso')
+        },
+        onError: (error) => {
+            const message = error instanceof Error ? error.message : 'Erro ao atualizar responsável do agendamento'
+
+            toast.error(message || 'Erro ao atualizar responsável do agendamento')
+        },
+    })
+
     const handleAppointmentStatusChange = (appointmentId: string, status: AdminAppointmentStatus) => {
         setAppointmentStatusDrafts((current) => ({
             ...current,
             [appointmentId]: status,
+        }))
+    }
+
+    const handleAppointmentAssigneeChange = (appointmentId: string, assignedToUserId: string) => {
+        setAppointmentAssigneeDrafts((current) => ({
+            ...current,
+            [appointmentId]: assignedToUserId,
         }))
     }
 
@@ -113,6 +150,34 @@ export function AppointmentsSection({
             })
 
             setAppointmentStatusDrafts((current) => {
+                const nextDrafts = { ...current }
+                delete nextDrafts[appointmentId]
+                return nextDrafts
+            })
+        } catch {
+            return
+        }
+    }
+
+    const handleAppointmentAssigneeSave = async (
+        appointmentId: string,
+        selectedAssigneeId: string,
+        originalAssigneeId: string | null
+    ) => {
+        const nextAssignedToUserId = selectedAssigneeId === 'unassigned' ? null : selectedAssigneeId
+
+        if (nextAssignedToUserId === originalAssigneeId) {
+            return
+        }
+
+        try {
+            await updateAppointmentAssigneeMutation.mutateAsync({
+                appointmentId,
+                businessId,
+                assignedToUserId: nextAssignedToUserId,
+            })
+
+            setAppointmentAssigneeDrafts((current) => {
                 const nextDrafts = { ...current }
                 delete nextDrafts[appointmentId]
                 return nextDrafts
@@ -147,6 +212,27 @@ export function AppointmentsSection({
                 </div>
             </div>
 
+            {canManageAppointmentAssignee && onAssignedToUserIdFilterChange ? (
+                <div className="mb-4 rounded-3xl border border-slate-200 bg-slate-50 p-3 sm:mb-6 sm:p-4">
+                    <Label className="space-y-2">
+                        <span className="text-xs font-semibold uppercase tracking-[.2em] text-slate-500">
+                            Filtrar por responsável
+                        </span>
+                        <Select
+                            value={assignedToUserIdFilter}
+                            onChange={(event) => onAssignedToUserIdFilterChange(event.target.value)}
+                        >
+                            <option value="all">Todos os responsáveis</option>
+                            {assignableMembers.map((membership) => (
+                                <option key={membership.user.id} value={membership.user.id}>
+                                    {membership.user.name} ({membership.role})
+                                </option>
+                            ))}
+                        </Select>
+                    </Label>
+                </div>
+            ) : null}
+
             <div className="space-y-3 sm:space-y-4">
                 {appointmentsQuery.isLoading ? (
                     <div className="rounded-3xl border border-slate-200 bg-slate-50 px-6 py-10 text-center text-xs text-slate-500 sm:text-sm">
@@ -172,7 +258,16 @@ export function AppointmentsSection({
                           const isSaving =
                               updateAppointmentStatusMutation.isPending &&
                               updateAppointmentStatusMutation.variables?.appointmentId === appointment.id
+                          const selectedAssignee =
+                              appointmentAssigneeDrafts[appointment.id] ??
+                              appointment.assignedToUserId ??
+                              'unassigned'
+                          const isSavingAssignee =
+                              updateAppointmentAssigneeMutation.isPending &&
+                              updateAppointmentAssigneeMutation.variables?.appointmentId === appointment.id
                           const hasStatusChanged = selectedStatus !== appointment.status
+                          const hasAssigneeChanged =
+                              (selectedAssignee === 'unassigned' ? null : selectedAssignee) !== appointment.assignedToUserId
 
                           return (
                               <div
@@ -188,6 +283,12 @@ export function AppointmentsSection({
                                       </div>
                                       <p className="text-sm text-slate-600">{appointment.customer.phone}</p>
                                       <p className="text-sm text-slate-500">{appointment.service.name}</p>
+                                      <p className="text-sm text-slate-500">
+                                          Responsável pelo atendimento:{' '}
+                                          <span className="font-medium text-slate-700">
+                                              {appointment.assignedToUser?.name ?? 'Sem responsável'}
+                                          </span>
+                                      </p>
                                       <p className="text-sm text-slate-500">
                                           {new Date(appointment.scheduledAt).toLocaleString('pt-BR', {
                                               dateStyle: 'short',
@@ -223,6 +324,47 @@ export function AppointmentsSection({
                                       >
                                           {isSaving ? 'Salvando...' : 'Salvar status'}
                                       </Button>
+
+                                      {canManageAppointmentAssignee ? (
+                                          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                                              <Label className="w-full space-y-2">
+                                                  <span>Responsável pelo atendimento</span>
+                                                  <Select
+                                                      value={selectedAssignee}
+                                                      onChange={(event) =>
+                                                          handleAppointmentAssigneeChange(
+                                                              appointment.id,
+                                                              event.target.value
+                                                          )
+                                                      }
+                                                      disabled={isSavingAssignee}
+                                                  >
+                                                      <option value="unassigned">Sem responsável</option>
+                                                      {assignableMembers.map((membership) => (
+                                                          <option key={membership.user.id} value={membership.user.id}>
+                                                              {membership.user.name} ({membership.role})
+                                                          </option>
+                                                      ))}
+                                                  </Select>
+                                              </Label>
+
+                                              <Button
+                                                  type="button"
+                                                  variant="secondary"
+                                                  onClick={() =>
+                                                      handleAppointmentAssigneeSave(
+                                                          appointment.id,
+                                                          selectedAssignee,
+                                                          appointment.assignedToUserId
+                                                      )
+                                                  }
+                                                  disabled={isSavingAssignee || !hasAssigneeChanged}
+                                                  className="mt-3 min-h-12 lg:min-h-0 lg:w-full"
+                                              >
+                                                  {isSavingAssignee ? 'Salvando...' : 'Salvar responsável'}
+                                              </Button>
+                                          </div>
+                                      ) : null}
                                   </div>
                               </div>
                           )

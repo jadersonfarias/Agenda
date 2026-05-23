@@ -1,6 +1,24 @@
 import { describe, expect, it, vi } from 'vitest'
 import { AdminService } from '../../src/admin/admin.service'
 
+function createAdminService({
+  adminRepository = {} as any,
+  businessesRepository = {} as any,
+  appointmentsService = {} as any,
+  availabilityCacheService = {} as any,
+  subscriptionService = {
+    assertBusinessCanWrite: vi.fn().mockResolvedValue(undefined),
+  } as any,
+} = {}) {
+  return new AdminService(
+    adminRepository,
+    businessesRepository,
+    appointmentsService,
+    availabilityCacheService,
+    subscriptionService,
+  )
+}
+
 describe('AdminService financial data', () => {
   it('monta o resumo financeiro mensal com clientes ativos e inativos', async () => {
     const adminRepository = {
@@ -17,12 +35,10 @@ describe('AdminService financial data', () => {
       }),
     } as any
 
-    const service = new AdminService(
+    const service = createAdminService({
       adminRepository,
-      businessesRepository,
       appointmentsService,
-      {} as any
-    )
+    })
 
     await expect(service.getMonthlySummary('business-1', '2026-05')).resolves.toEqual({
       month: '2026-05',
@@ -66,12 +82,10 @@ describe('AdminService financial data', () => {
       }),
     } as any
 
-    const service = new AdminService(
+    const service = createAdminService({
       adminRepository,
-      businessesRepository,
       appointmentsService,
-      {} as any
-    )
+    })
 
     await expect(service.getFinancialReport('business-1', '2026-05')).resolves.toEqual({
       month: '2026-05',
@@ -120,12 +134,9 @@ describe('AdminService financial data', () => {
       }),
     } as any
 
-    const service = new AdminService(
+    const service = createAdminService({
       adminRepository,
-      {} as any,
-      {} as any,
-      {} as any
-    )
+    })
 
     await expect(service.deleteService('service-1', 'business-1')).rejects.toThrow(
       'Serviços com agendamentos vinculados não podem ser excluídos'
@@ -144,12 +155,10 @@ describe('AdminService financial data', () => {
       }),
     } as any
 
-    const service = new AdminService(
+    const service = createAdminService({
       adminRepository,
-      {} as any,
-      {} as any,
-      { deleteByPrefix } as any
-    )
+      availabilityCacheService: { deleteByPrefix } as any,
+    })
 
     await expect(
       service.updateBusinessAvailability('business-1', {
@@ -166,5 +175,40 @@ describe('AdminService financial data', () => {
     })
 
     expect(deleteByPrefix).toHaveBeenCalledWith('availability:business-1:')
+  })
+
+  it('mantém leitura permitida sem validar assinatura', async () => {
+    const subscriptionService = {
+      assertBusinessCanWrite: vi.fn(),
+    }
+    const adminRepository = {
+      listServicesByBusinessId: vi.fn().mockResolvedValue([
+        {
+          id: 'service-1',
+          name: 'Corte',
+          price: { toString: () => '80' },
+          durationMinutes: 60,
+          createdAt: new Date('2026-05-20T12:00:00.000Z'),
+          _count: { appointments: 0 },
+        },
+      ]),
+    } as any
+    const service = createAdminService({
+      adminRepository,
+      subscriptionService: subscriptionService as any,
+    })
+
+    await expect(service.listServices('business-1')).resolves.toEqual([
+      {
+        id: 'service-1',
+        name: 'Corte',
+        price: '80',
+        durationMinutes: 60,
+        appointmentCount: 0,
+        createdAt: '2026-05-20T12:00:00.000Z',
+      },
+    ])
+
+    expect(subscriptionService.assertBusinessCanWrite).not.toHaveBeenCalled()
   })
 })

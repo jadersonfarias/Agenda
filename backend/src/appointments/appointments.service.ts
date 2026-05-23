@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
 import { AppointmentStatus } from '@prisma/client'
 import { AppointmentsRepository } from './appointments.repository'
 import { AppointmentStatusFilter } from './appointment-status-filter'
@@ -10,8 +10,16 @@ import {
   CustomerAppointmentsLookupDto,
   CreateAppointmentDto,
   PublicAppointmentTokenDto,
+  UpdateAppointmentAssigneeDto,
   UpdateAppointmentStatusDto,
 } from './appointment.schema'
+import { SubscriptionService } from '../subscriptions/subscription.service'
+import { MembershipRole } from '../auth/role.types'
+
+type AdminAppointmentAccess = {
+  userId: string
+  role: MembershipRole
+}
 
 @Injectable()
 export class AppointmentsService {
@@ -19,7 +27,8 @@ export class AppointmentsService {
     private readonly appointmentsRepository: AppointmentsRepository,
     private readonly businessesRepository: BusinessesRepository,
     private readonly businessesService: BusinessesService,
-    private readonly timezoneService: TimezoneService
+    private readonly timezoneService: TimezoneService,
+    private readonly subscriptionService: SubscriptionService
   ) {}
 
   private normalizeMonth(month?: string) {
@@ -105,7 +114,31 @@ export class AppointmentsService {
       throw new BadRequestException('Negócio inválido')
     }
 
-    return this.appointmentsRepository.findMany(business.id, statusFilter, pagination)
+    return this.appointmentsRepository.findMany({
+      businessId: business.id,
+      statusFilter,
+      pagination,
+    })
+  }
+
+  async getAllForAdmin(
+    businessId: string,
+    statusFilter: AppointmentStatusFilter = 'all',
+    pagination: PaginationParams | null = null,
+    access: AdminAppointmentAccess,
+    assignedToUserId?: string
+  ) {
+    const business = await this.businessesRepository.findBusinessById(businessId)
+    if (!business) {
+      throw new BadRequestException('Negócio inválido')
+    }
+
+    return this.appointmentsRepository.findMany({
+      businessId: business.id,
+      statusFilter,
+      pagination,
+      assignedToUserId: access.role === 'STAFF' ? access.userId : assignedToUserId,
+    })
   }
 
   async getByCustomerPhone(query: CustomerAppointmentsLookupDto) {
@@ -146,6 +179,8 @@ export class AppointmentsService {
     if (!business) {
       throw new BadRequestException('Negócio inválido')
     }
+
+    await this.subscriptionService.assertBusinessCanWrite(business.id)
 
     const service = await this.businessesRepository.findServiceById(data.serviceId)
     if (!service || service.businessId !== business.id) {
@@ -240,6 +275,8 @@ export class AppointmentsService {
       throw new BadRequestException('Negócio inválido')
     }
 
+    await this.subscriptionService.assertBusinessCanWrite(business.id)
+
     const appointment = await this.appointmentsRepository.findById(id, business.id)
     if (!appointment) {
       throw new NotFoundException('Agendamento não encontrado')
@@ -256,12 +293,73 @@ export class AppointmentsService {
     return { id, status: statusDto.status }
   }
 
+  async updateStatusForAdmin(
+    id: string,
+    businessId: string,
+    statusDto: UpdateAppointmentStatusDto,
+    access: AdminAppointmentAccess
+  ) {
+    const business = await this.businessesRepository.findBusinessById(businessId)
+    if (!business) {
+      throw new BadRequestException('Negócio inválido')
+    }
+
+    await this.subscriptionService.assertBusinessCanWrite(business.id)
+
+    const appointment = await this.appointmentsRepository.findById(id, business.id)
+    if (!appointment) {
+      throw new NotFoundException('Agendamento não encontrado')
+    }
+
+    if (access.role === 'STAFF' && appointment.assignedToUserId !== access.userId) {
+      throw new ForbiddenException('Usuário sem permissão para este agendamento')
+    }
+
+    const result = await this.appointmentsRepository.updateStatus(id, business.id, statusDto.status)
+    if (!result) {
+      throw new NotFoundException('Agendamento não encontrado')
+    }
+
+    await this.syncCustomerLastVisitAt(appointment.customerId)
+    this.businessesService.invalidateBusinessAvailability(business.id)
+
+    return { id, status: statusDto.status }
+  }
+
+  async updateAssignee(id: string, businessId: string, assigneeDto: UpdateAppointmentAssigneeDto) {
+    const business = await this.businessesRepository.findBusinessById(businessId)
+    if (!business) {
+      throw new BadRequestException('Negócio inválido')
+    }
+
+    await this.subscriptionService.assertBusinessCanWrite(business.id)
+
+    const appointment = await this.appointmentsRepository.findById(id, business.id)
+    if (!appointment) {
+      throw new NotFoundException('Agendamento não encontrado')
+    }
+
+    const updatedAppointment = await this.appointmentsRepository.updateAssignee(
+      id,
+      business.id,
+      assigneeDto.assignedToUserId
+    )
+
+    if (!updatedAppointment) {
+      throw new NotFoundException('Agendamento não encontrado')
+    }
+
+    return updatedAppointment
+  }
+
   async cancelPublicAppointment(params: PublicAppointmentTokenDto) {
     const appointment = await this.appointmentsRepository.findByPublicToken(params.token)
 
     if (!appointment) {
       throw new NotFoundException('Agendamento não encontrado')
     }
+
+    await this.subscriptionService.assertBusinessCanWrite(appointment.businessId)
 
     const canCancel =
       appointment.status === AppointmentStatus.SCHEDULED &&

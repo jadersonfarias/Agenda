@@ -1,6 +1,7 @@
 'use client'
 
 import { signOut } from 'next-auth/react'
+import { getSubscriptionLifecycleNotice } from '../../features/admin/subscription-payment'
 import { type AdminBusinessOption, type AdminDashboardData } from '../../features/admin/types'
 import { useHydrated } from '../../hooks/use-hydrated'
 import { formatIsoCalendarDate } from '../../lib/date-format'
@@ -36,25 +37,13 @@ export function AdminHeader({
     )
     const isTrialing = business.subscriptionStatus === 'TRIALING'
     const isActivePlan = business.subscriptionStatus === 'ACTIVE'
-    const hasExpiredTrial = Boolean(
-        isHydrated &&
-        isTrialing &&
-        parsedTrialEndsAt &&
-        !Number.isNaN(parsedTrialEndsAt.getTime()) &&
-        parsedTrialEndsAt.getTime() < Date.now()
-    )
-    const hasExpiredActivePlan = Boolean(
-        isHydrated &&
-        isActivePlan &&
-        parsedSubscriptionEndsAt &&
-        !Number.isNaN(parsedSubscriptionEndsAt.getTime()) &&
-        parsedSubscriptionEndsAt.getTime() < Date.now()
-    )
-    const shouldShowExpiredNotice =
-        hasExpiredTrial ||
-        hasExpiredActivePlan ||
-        business.subscriptionStatus === 'PAST_DUE' ||
-        business.subscriptionStatus === 'CANCELED'
+    const subscriptionNotice = isHydrated ? getSubscriptionLifecycleNotice(business, Date.now()) : null
+    const shouldShowCurrentTrialBadge = isTrialing && hasValidTrialDate && trialEndsAtLabel && !subscriptionNotice
+    const shouldShowCurrentPlanBadge = isActivePlan && hasValidSubscriptionEndDate && subscriptionEndsAtLabel && !subscriptionNotice
+    const subscriptionNoticeClasses =
+        subscriptionNotice?.type === 'expired'
+            ? 'border-rose-200 bg-rose-50 text-rose-900'
+            : 'border-amber-200 bg-amber-50 text-amber-900'
 
     return (
         <Card className="border-purple-200 bg-gradient-to-br from-white via-white to-purple-50">
@@ -63,12 +52,12 @@ export function AdminHeader({
                     <div className="min-w-0 space-y-2 sm:space-y-3">
                         <div className="flex flex-wrap items-center gap-2">
                             <p className="text-xs uppercase tracking-[.3em] text-purple-700 sm:text-sm">Painel admin</p>
-                            {isTrialing && hasValidTrialDate && trialEndsAtLabel && !hasExpiredTrial ? (
+                            {shouldShowCurrentTrialBadge ? (
                                 <span className="rounded-full bg-purple-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[.18em] text-purple-800">
                                     Teste grátis até {trialEndsAtLabel}
                                 </span>
                             ) : null}
-                            {isActivePlan && hasValidSubscriptionEndDate && subscriptionEndsAtLabel && !hasExpiredActivePlan ? (
+                            {shouldShowCurrentPlanBadge ? (
                                 <span className="rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[.18em] text-emerald-800">
                                     Plano ativo até {subscriptionEndsAtLabel}
                                 </span>
@@ -102,9 +91,9 @@ export function AdminHeader({
                     </div>
                 </div>
 
-                {shouldShowExpiredNotice ? (
-                    <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                        Plano expirado. Entre em contato para ativar.
+                {subscriptionNotice ? (
+                    <div className={`rounded-2xl border px-4 py-3 text-sm font-medium ${subscriptionNoticeClasses}`}>
+                        {subscriptionNotice.message}
                     </div>
                 ) : null}
             </div>

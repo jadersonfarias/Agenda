@@ -6,9 +6,10 @@ import { type AdminAppointmentItem, type AdminAppointmentStatusFilter } from '..
 
 export function getAdminAppointmentsQueryKey(
     businessId?: string,
-    statusFilter: AdminAppointmentStatusFilter = 'scheduled'
+    statusFilter: AdminAppointmentStatusFilter = 'scheduled',
+    assignedToUserId?: string
 ) {
-    return ['admin-appointments', businessId ?? null, statusFilter] as const
+    return ['admin-appointments', businessId ?? null, statusFilter, assignedToUserId ?? null] as const
 }
 
 export function getAdminAppointmentsQueryBusinessKey(businessId?: string) {
@@ -19,11 +20,12 @@ export function useAdminAppointmentsQuery(
     businessId?: string,
     statusFilter: AdminAppointmentStatusFilter = 'scheduled',
     enabled = true,
-    initialData?: AdminAppointmentItem[]
+    initialData?: AdminAppointmentItem[],
+    assignedToUserId?: string
 ) {
     return useQuery({
-        queryKey: getAdminAppointmentsQueryKey(businessId, statusFilter),
-        queryFn: () => fetchAdminAppointments(businessId!, statusFilter),
+        queryKey: getAdminAppointmentsQueryKey(businessId, statusFilter, assignedToUserId),
+        queryFn: () => fetchAdminAppointments(businessId!, statusFilter, assignedToUserId),
         enabled: enabled && Boolean(businessId),
         initialData,
     })

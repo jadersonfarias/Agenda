@@ -7,11 +7,14 @@ import toast from 'react-hot-toast'
 import {
     getAdminAppointmentsQueryBusinessKey,
     getAdminAppointmentsQueryKey,
-    useAdminAppointmentsQuery,
 } from '../../features/admin/hooks/use-admin-appointments-query'
 import { useAdminInvitationsQuery } from '../../features/admin/hooks/use-admin-invitations-query'
 import { useAdminMembershipsQuery } from '../../features/admin/hooks/use-admin-memberships-query'
 import { useAdminServicesQuery } from '../../features/admin/hooks/use-admin-services-query'
+import {
+    canViewAdminSection,
+    resolveAdminUiPermissions,
+} from '../../features/admin/permissions'
 import {
     type AdminAppointmentItem,
     type AdminAppointmentStatusFilter,
@@ -19,7 +22,6 @@ import {
     type AdminDashboardData,
 } from '../../features/admin/types'
 import { shouldShowSubscriptionPaymentCard } from '../../features/admin/subscription-payment'
-import { decodeAccessToken } from '../../lib/access-token'
 import { fetchAdminDashboard } from '../../features/admin/services/admin-api.service'
 import { useHydrated } from '../../hooks/use-hydrated'
 import { Button } from '../ui/button'
@@ -27,7 +29,7 @@ import { Card } from '../ui/card'
 import { AdminHeader } from './AdminHeader'
 import { AppointmentsSection } from './AppointmentsSection'
 import { AvailabilitySection } from './AvailabilitySection'
-import { AdminNavigation, type AdminSectionId } from './AdminNavigation'
+import { AdminNavigation, adminSectionOptions, type AdminSectionId } from './AdminNavigation'
 import { FinancialSummarySection } from './FinancialSummarySection'
 import { OnboardingChecklist } from './OnboardingChecklist'
 import { PublicBookingLinkCard } from './PublicBookingLinkCard'
@@ -43,6 +45,7 @@ type AdminPanelProps = {
 }
 
 const ADMIN_BUSINESS_STORAGE_KEY = 'admin.currentBusinessId'
+const DEFAULT_ALLOWED_SECTION: AdminSectionId = 'appointments'
 
 type AppointmentsSummary = {
     total: number
@@ -70,6 +73,16 @@ function resolveAppointmentsSummary(
     }
 }
 
+function resolveInitialSection(
+    businesses: AdminBusinessOption[],
+    businessId: string
+): AdminSectionId {
+    const role = businesses.find((item) => item.id === businessId)?.role ?? null
+    const permissions = resolveAdminUiPermissions(role)
+
+    return permissions.canViewOverview ? 'overview' : DEFAULT_ALLOWED_SECTION
+}
+
 export default function AdminPanel({
     initialData,
     initialAppointments,
@@ -86,21 +99,26 @@ export default function AdminPanel({
     const [appointmentsSummary, setAppointmentsSummary] = useState<AppointmentsSummary>(
         resolveAppointmentsSummary(initialData)
     )
-    const [activeSection, setActiveSection] = useState<AdminSectionId>('overview')
+    const [activeSection, setActiveSection] = useState<AdminSectionId>(() =>
+        resolveInitialSection(businesses, currentBusinessId)
+    )
     const [appointmentFilter, setAppointmentFilter] = useState<AdminAppointmentStatusFilter>('scheduled')
+    const [appointmentAssigneeFilter, setAppointmentAssigneeFilter] = useState('all')
     const [isSwitchingBusiness, setIsSwitchingBusiness] = useState(false)
     const isAuthenticated = Boolean(session?.accessToken)
-    const servicesQuery = useAdminServicesQuery(selectedBusinessId, isAuthenticated)
-    const shouldShowPaymentCard = isHydrated && shouldShowSubscriptionPaymentCard(business, Date.now())
-    const appointmentsQuery = useAdminAppointmentsQuery(
-        selectedBusinessId,
-        appointmentFilter,
-        isAuthenticated,
-        selectedBusinessId === currentBusinessId && appointmentFilter === 'scheduled'
-            ? initialAppointments
-            : undefined
+    const currentBusinessRole = businesses.find((item) => item.id === selectedBusinessId)?.role ?? null
+    const uiPermissions = resolveAdminUiPermissions(currentBusinessRole)
+    const allowedSections = adminSectionOptions.filter((section) =>
+        canViewAdminSection(uiPermissions, section.id)
     )
-
+    const servicesQuery = useAdminServicesQuery(
+        selectedBusinessId,
+        isAuthenticated && uiPermissions.canViewServices
+    )
+    const shouldShowPaymentCard =
+        uiPermissions.canViewSubscriptionPayment &&
+        isHydrated &&
+        shouldShowSubscriptionPaymentCard(business, Date.now())
     const updateAdminUrl = (businessId: string) => {
         if (typeof window === 'undefined') {
             return
@@ -117,6 +135,7 @@ export default function AdminPanel({
         setBusiness(initialData.business)
         setServicesSnapshot(initialData.services)
         setAppointmentsSummary(resolveAppointmentsSummary(initialData))
+        setAppointmentAssigneeFilter('all')
         setIsSwitchingBusiness(false)
     }, [currentBusinessId, initialData])
 
@@ -126,6 +145,14 @@ export default function AdminPanel({
             initialAppointments
         )
     }, [currentBusinessId, initialAppointments, queryClient])
+
+    useEffect(() => {
+        const permissions = resolveAdminUiPermissions(currentBusinessRole)
+
+        if (!canViewAdminSection(permissions, activeSection)) {
+            setActiveSection(DEFAULT_ALLOWED_SECTION)
+        }
+    }, [activeSection, currentBusinessRole])
 
     useEffect(() => {
         if (typeof window === 'undefined' || hasResolvedStoredBusiness.current) {
@@ -148,45 +175,17 @@ export default function AdminPanel({
         window.localStorage.setItem(ADMIN_BUSINESS_STORAGE_KEY, currentBusinessId)
     }, [businesses, currentBusinessId])
 
-    const canCreateMembership = (() => {
-        if (!session?.accessToken) {
-            return false
-        }
-
-        try {
-            const membership = decodeAccessToken(session.accessToken).memberships?.find(
-                (item) => item.businessId === selectedBusinessId
-            )
-
-            return membership?.role === 'OWNER'
-        } catch {
-            return false
-        }
-    })()
-
-    const canManageMemberships = (() => {
-        if (!session?.accessToken) {
-            return false
-        }
-
-        try {
-            const membership = decodeAccessToken(session.accessToken).memberships?.find(
-                (item) => item.businessId === selectedBusinessId
-            )
-
-            return membership?.role === 'OWNER' || membership?.role === 'ADMIN'
-        } catch {
-            return false
-        }
-    })()
-
     const onboardingMembershipsQuery = useAdminMembershipsQuery(
         selectedBusinessId,
-        isAuthenticated && activeSection === 'overview' && canCreateMembership
+        isAuthenticated && activeSection === 'overview' && uiPermissions.canCreateMembership
     )
     const onboardingInvitationsQuery = useAdminInvitationsQuery(
         selectedBusinessId,
-        isAuthenticated && activeSection === 'overview' && canCreateMembership
+        isAuthenticated && activeSection === 'overview' && uiPermissions.canCreateInvitation
+    )
+    const appointmentMembersQuery = useAdminMembershipsQuery(
+        selectedBusinessId,
+        isAuthenticated && activeSection === 'appointments' && uiPermissions.canManageAppointmentAssignee
     )
 
     const handleBusinessChange = async (nextBusinessId: string) => {
@@ -195,6 +194,7 @@ export default function AdminPanel({
         }
 
         setSelectedBusinessId(nextBusinessId)
+        setAppointmentAssigneeFilter('all')
         setIsSwitchingBusiness(true)
 
         if (typeof window !== 'undefined') {
@@ -287,13 +287,17 @@ export default function AdminPanel({
                 onBusinessChange={handleBusinessChange}
             />
 
-            <AdminNavigation activeSection={activeSection} onChange={setActiveSection} />
+            <AdminNavigation
+                activeSection={activeSection}
+                sections={allowedSections}
+                onChange={setActiveSection}
+            />
 
             {shouldShowPaymentCard ? <SubscriptionPaymentCard business={business} /> : null}
 
-            {activeSection === 'overview' ? (
+            {activeSection === 'overview' && uiPermissions.canViewOverview ? (
                 <div className="flex flex-col gap-4">
-                    {canCreateMembership ? (
+                    {uiPermissions.canCreateMembership ? (
                         <OnboardingChecklist
                             business={business}
                             servicesCount={servicesQuery.data?.length ?? servicesSnapshot.length}
@@ -382,11 +386,11 @@ export default function AdminPanel({
                 </div>
             ) : null}
 
-            {activeSection === 'financial' ? (
+            {activeSection === 'financial' && uiPermissions.canViewFinancial ? (
                 <FinancialSummarySection businessId={selectedBusinessId} enabled={isAuthenticated} />
             ) : null}
 
-            {activeSection === 'settings' ? (
+            {activeSection === 'settings' && uiPermissions.canViewSettings ? (
                 <AvailabilitySection
                     business={business}
                     onSaved={(updatedBusiness) => {
@@ -395,29 +399,35 @@ export default function AdminPanel({
                 />
             ) : null}
 
-            {activeSection === 'team' ? (
+            {activeSection === 'team' && uiPermissions.canViewTeam ? (
                 <TeamSection
                     businessId={selectedBusinessId}
                     enabled={isAuthenticated}
-                    canCreateMembership={canCreateMembership}
-                    canManageMemberships={canManageMemberships}
+                    canCreateMembership={uiPermissions.canCreateMembership}
+                    canManageMemberships={uiPermissions.canManageMemberships}
                 />
             ) : null}
 
-            {activeSection === 'appointments' ? (
+            {activeSection === 'appointments' && uiPermissions.canViewAppointments ? (
                 <AppointmentsSection
                     businessId={selectedBusinessId}
                     enabled={isAuthenticated}
                     appointmentFilter={appointmentFilter}
                     onAppointmentFilterChange={setAppointmentFilter}
+                    assignedToUserIdFilter={appointmentAssigneeFilter}
+                    onAssignedToUserIdFilterChange={setAppointmentAssigneeFilter}
+                    canManageAppointmentAssignee={uiPermissions.canManageAppointmentAssignee}
+                    assignableMembers={appointmentMembersQuery.data ?? []}
                     initialAppointments={
-                        selectedBusinessId === currentBusinessId ? initialAppointments : undefined
+                        selectedBusinessId === currentBusinessId && appointmentAssigneeFilter === 'all'
+                            ? initialAppointments
+                            : undefined
                     }
                     onAppointmentStatusSaved={handleAppointmentStatusSaved}
                 />
             ) : null}
 
-            {activeSection === 'services' ? (
+            {activeSection === 'services' && uiPermissions.canViewServices ? (
                 <ServicesSection
                     businessId={selectedBusinessId}
                     enabled={isAuthenticated}

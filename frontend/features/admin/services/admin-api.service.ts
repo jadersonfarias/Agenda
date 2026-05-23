@@ -259,12 +259,17 @@ export async function fetchAdminFinancialReport(businessId: string, month: strin
     }
 }
 
-export async function fetchAdminAppointments(businessId: string, statusFilter: AdminAppointmentStatusFilter = 'scheduled') {
+export async function fetchAdminAppointments(
+    businessId: string,
+    statusFilter: AdminAppointmentStatusFilter = 'scheduled',
+    assignedToUserId?: string
+) {
     try {
         const response = await api.get<AdminAppointmentItem[] | PaginatedResponse<AdminAppointmentItem>>('/admin/appointments', {
             params: {
                 businessId,
                 statusFilter,
+                ...(assignedToUserId ? { assignedToUserId } : {}),
             },
         })
 
@@ -291,5 +296,25 @@ export async function updateAdminAppointmentStatus(input: {
         return response.data
     } catch (error) {
         throw new Error(getApiErrorMessage(error, 'Não foi possível atualizar o status do agendamento'))
+    }
+}
+
+export async function updateAdminAppointmentAssignee(input: {
+    appointmentId: string
+    businessId: string
+    assignedToUserId: string | null
+}) {
+    try {
+        const response = await api.patch<Pick<AdminAppointmentItem, 'id' | 'assignedToUserId' | 'assignedToUser'>>(
+            `/admin/appointments/${input.appointmentId}/assignee`,
+            { assignedToUserId: input.assignedToUserId },
+            {
+                params: { businessId: input.businessId },
+            }
+        )
+
+        return response.data
+    } catch (error) {
+        throw new Error(getApiErrorMessage(error, 'Não foi possível atualizar o responsável do agendamento'))
     }
 }

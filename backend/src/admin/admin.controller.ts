@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common'
+import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common'
 import { AdminService } from './admin.service'
 import { RoleGuard } from '../auth/role.guard'
 import { Roles } from '../auth/roles.decorator'
@@ -7,17 +7,23 @@ import { updateAppointmentStatusSchema } from '../appointments/appointment.schem
 import {
   acceptInvitationSchema,
   adminBusinessAvailabilitySchema,
+  adminAppointmentAssigneeSchema,
   adminCreateInvitationSchema,
   adminCreateMembershipSchema,
   adminMembershipRoleSchema,
   adminServiceSchema,
 } from './admin.schema'
 import { normalizeAppointmentStatusFilter } from '../appointments/appointment-status-filter'
+import { MembershipRole } from '../auth/role.types'
 
 type AuthenticatedRequest = {
   businessId?: string
   user?: {
     id: string
+    memberships: {
+      businessId: string
+      role: MembershipRole
+    }[]
   }
 }
 
@@ -25,6 +31,19 @@ type AuthenticatedRequest = {
 @UseGuards(RoleGuard)
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
+
+  private getBusinessAccess(request: AuthenticatedRequest) {
+    const membership = request.user?.memberships.find((item) => item.businessId === request.businessId)
+
+    if (!request.user || !membership) {
+      throw new ForbiddenException('Usuário sem permissão para este negócio')
+    }
+
+    return {
+      userId: request.user.id,
+      role: membership.role,
+    }
+  }
 
   @Get('dashboard')
   @Roles('OWNER', 'ADMIN', 'STAFF')
@@ -37,7 +56,8 @@ export class AdminController {
   async listServices(
     @Req() request: AuthenticatedRequest,
     @Query('page') page?: string,
-    @Query('perPage') perPage?: string
+    @Query('perPage') perPage?: string,
+    @Query('assignedToUserId') assignedToUserId?: string
   ) {
     const pagination = parsePaginationParams(page, perPage)
     return this.adminService.listServices(request.businessId!, pagination)
@@ -95,7 +115,7 @@ export class AdminController {
   }
 
   @Get('memberships')
-  @Roles('OWNER', 'ADMIN', 'STAFF')
+  @Roles('OWNER', 'ADMIN')
   async listMemberships(@Req() request: AuthenticatedRequest) {
     return this.adminService.listMemberships(request.businessId!)
   }
@@ -163,7 +183,8 @@ export class AdminController {
     @Req() request: AuthenticatedRequest,
     @Query('statusFilter') statusFilter?: string,
     @Query('page') page?: string,
-    @Query('perPage') perPage?: string
+    @Query('perPage') perPage?: string,
+    @Query('assignedToUserId') assignedToUserId?: string
   ) {
     const parsedFilter = normalizeAppointmentStatusFilter(statusFilter)
 
@@ -172,7 +193,15 @@ export class AdminController {
     }
 
     const pagination = parsePaginationParams(page, perPage)
-    return this.adminService.listAppointments(request.businessId!, parsedFilter, pagination)
+    return this.adminService.listAppointments(
+      request.businessId!,
+      parsedFilter,
+      pagination,
+      this.getBusinessAccess(request),
+      typeof assignedToUserId === 'string' && assignedToUserId.trim().length > 0
+        ? assignedToUserId
+        : undefined
+    )
   }
 
   @Patch('appointments/:id/status')
@@ -184,17 +213,37 @@ export class AdminController {
       throw new BadRequestException(parseResult.error.errors.map((error) => error.message).join(', '))
     }
 
-    return this.adminService.updateAppointmentStatus(id, request.businessId!, parseResult.data)
+    return this.adminService.updateAppointmentStatus(
+      id,
+      request.businessId!,
+      parseResult.data,
+      this.getBusinessAccess(request)
+    )
+  }
+
+  @Patch('appointments/:id/assignee')
+  @Roles('OWNER', 'ADMIN')
+  async updateAppointmentAssignee(@Param('id') id: string, @Req() request: AuthenticatedRequest, @Body() body: unknown) {
+    const parseResult = adminAppointmentAssigneeSchema.safeParse({
+      ...(typeof body === 'object' && body !== null ? body : {}),
+      businessId: request.businessId,
+    })
+
+    if (!parseResult.success) {
+      throw new BadRequestException(parseResult.error.errors.map((error) => error.message).join(', '))
+    }
+
+    return this.adminService.updateAppointmentAssignee(id, request.businessId!, parseResult.data)
   }
 
   @Get('financial-summary')
-  @Roles('OWNER', 'ADMIN', 'STAFF')
+  @Roles('OWNER', 'ADMIN')
   async getMonthlySummary(@Req() request: AuthenticatedRequest, @Query('month') month?: string) {
     return this.adminService.getMonthlySummary(request.businessId!, month)
   }
 
   @Get('reports/financial')
-  @Roles('OWNER', 'ADMIN', 'STAFF')
+  @Roles('OWNER', 'ADMIN')
   async getFinancialReport(@Req() request: AuthenticatedRequest, @Query('month') month?: string) {
     return this.adminService.getFinancialReport(request.businessId!, month)
   }

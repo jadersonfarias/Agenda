@@ -8,7 +8,7 @@ import {
   Post,
   Query,
   BadRequestException,
-  NotFoundException,
+  HttpException,
 } from '@nestjs/common'
 import { parsePaginationParams } from '../common/pagination'
 import { AppointmentsService } from './appointments.service'
@@ -94,7 +94,7 @@ export class AppointmentsController {
     try {
       return await this.appointmentsService.create(parseResult.data)
     } catch (error) {
-      if (error instanceof NotFoundException) {
+      if (error instanceof HttpException) {
         throw error
       }
       throw new BadRequestException(error instanceof Error ? error.message : 'Erro ao criar agendamento')
@@ -131,7 +131,7 @@ export class AppointmentsController {
     try {
       return await this.appointmentsService.delete(id, businessId)
     } catch (error) {
-      if (error instanceof NotFoundException) {
+      if (error instanceof HttpException) {
         throw error
       }
       throw new BadRequestException(error instanceof Error ? error.message : 'Erro ao excluir agendamento')

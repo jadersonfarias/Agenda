@@ -76,6 +76,12 @@ export type AdminAppointmentItem = {
     completedAt: string | null
     status: AdminAppointmentStatus
     price: string
+    assignedToUserId: string | null
+    assignedToUser: {
+        id: string
+        name: string
+        email: string
+    } | null
     service: {
         id: string
         name: string

@@ -13,6 +13,14 @@ export const updateAppointmentStatusSchema = z.object({
   status: z.enum(['SCHEDULED', 'COMPLETED', 'CANCELED']),
 })
 
+export const updateAppointmentAssigneeSchema = z.object({
+  assignedToUserId: z
+    .string()
+    .trim()
+    .min(1, 'assignedToUserId inválido')
+    .nullable(),
+})
+
 export const customerAppointmentsLookupSchema = z.object({
   phone: z.string().trim().min(8, 'Telefone inválido').max(20, 'Telefone inválido').regex(/^[0-9+()\-\s]+$/, 'Telefone inválido'),
 })
@@ -23,5 +31,6 @@ export const publicAppointmentTokenSchema = z.object({
 
 export type CreateAppointmentDto = z.infer<typeof createAppointmentSchema>
 export type UpdateAppointmentStatusDto = z.infer<typeof updateAppointmentStatusSchema>
+export type UpdateAppointmentAssigneeDto = z.infer<typeof updateAppointmentAssigneeSchema>
 export type CustomerAppointmentsLookupDto = z.infer<typeof customerAppointmentsLookupSchema>
 export type PublicAppointmentTokenDto = z.infer<typeof publicAppointmentTokenSchema>

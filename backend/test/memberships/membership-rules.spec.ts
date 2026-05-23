@@ -18,7 +18,13 @@ describe('Membership ownership rules', () => {
 
     return {
       adminRepository,
-      service: new AdminService(adminRepository, {} as any, {} as any),
+      service: new AdminService(
+        adminRepository,
+        {} as any,
+        {} as any,
+        {} as any,
+        { assertBusinessCanWrite: vi.fn().mockResolvedValue(undefined) } as any,
+      ),
     }
   }
 

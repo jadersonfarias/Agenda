@@ -19,6 +19,13 @@ type MonthlyRevenueRange = {
   rangeEnd: Date
 }
 
+type FindManyAppointmentsInput = {
+  businessId: string
+  statusFilter?: AppointmentStatusFilter
+  assignedToUserId?: string
+  pagination?: PaginationParams | null
+}
+
 @Injectable()
 export class AppointmentsRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -68,11 +75,12 @@ export class AppointmentsRepository {
     })
   }
 
-  async findMany(
-    businessId: string,
-    statusFilter: AppointmentStatusFilter = 'all',
-    pagination: PaginationParams | null = null
-  ) {
+  async findMany({
+    businessId,
+    statusFilter = 'all',
+    assignedToUserId,
+    pagination = null,
+  }: FindManyAppointmentsInput) {
     const statusCondition =
       statusFilter === 'scheduled'
         ? { in: ['SCHEDULED'] as AppointmentStatus[] }
@@ -85,29 +93,42 @@ export class AppointmentsRepository {
     const where = {
       businessId,
       ...(statusCondition ? { status: statusCondition } : {}),
+      ...(assignedToUserId ? { assignedToUserId } : {}),
+    }
+
+    const select = {
+      id: true,
+      scheduledAt: true,
+      completedAt: true,
+      status: true,
+      price: true,
+      assignedToUserId: true,
+      assignedToUser: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+      service: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      customer: {
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+        },
+      },
     }
 
     if (!pagination) {
       return this.prisma.appointment.findMany({
         where,
-        select: {
-          id: true,
-          scheduledAt: true,
-          status: true,
-          service: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          customer: {
-            select: {
-              id: true,
-              name: true,
-              phone: true,
-            },
-          },
-        },
+        select,
         orderBy: { scheduledAt: 'asc' },
       })
     }
@@ -115,24 +136,7 @@ export class AppointmentsRepository {
     const [data, total] = await Promise.all([
       this.prisma.appointment.findMany({
         where,
-        select: {
-          id: true,
-          scheduledAt: true,
-          status: true,
-          service: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          customer: {
-            select: {
-              id: true,
-              name: true,
-              phone: true,
-            },
-          },
-        },
+        select,
         orderBy: { scheduledAt: 'asc' },
         skip: (pagination.page - 1) * pagination.perPage,
         take: pagination.perPage,
@@ -147,6 +151,14 @@ export class AppointmentsRepository {
       id: string
       scheduledAt: Date
       status: AppointmentStatus
+      completedAt: Date | null
+      price: unknown
+      assignedToUserId: string | null
+      assignedToUser: {
+        id: string
+        name: string
+        email: string
+      } | null
       service: {
         id: string
         name: string
@@ -162,7 +174,7 @@ export class AppointmentsRepository {
   async findById(id: string, businessId: string) {
     return this.prisma.appointment.findFirst({
       where: { id, businessId },
-      include: { service: true, customer: true },
+      include: { service: true, customer: true, assignedToUser: true },
     })
   }
 
@@ -220,6 +232,32 @@ export class AppointmentsRepository {
       data: {
         status,
         completedAt: status === AppointmentStatus.COMPLETED ? new Date() : null,
+      },
+    })
+  }
+
+  async updateAssignee(id: string, businessId: string, assignedToUserId: string | null) {
+    const result = await this.prisma.appointment.updateMany({
+      where: { id, businessId },
+      data: { assignedToUserId },
+    })
+
+    if (result.count === 0) {
+      return null
+    }
+
+    return this.prisma.appointment.findFirst({
+      where: { id, businessId },
+      select: {
+        id: true,
+        assignedToUserId: true,
+        assignedToUser: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
       },
     })
   }

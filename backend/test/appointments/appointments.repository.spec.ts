@@ -11,7 +11,10 @@ describe('AppointmentsRepository', () => {
     } as any
     const repository = new AppointmentsRepository(prisma)
 
-    await repository.findMany('business-1', 'scheduled')
+    await repository.findMany({
+      businessId: 'business-1',
+      statusFilter: 'scheduled',
+    })
 
     expect(prisma.appointment.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -33,7 +36,10 @@ describe('AppointmentsRepository', () => {
     } as any
     const repository = new AppointmentsRepository(prisma)
 
-    await repository.findMany('business-1', 'completed')
+    await repository.findMany({
+      businessId: 'business-1',
+      statusFilter: 'completed',
+    })
 
     expect(prisma.appointment.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -55,7 +61,10 @@ describe('AppointmentsRepository', () => {
     } as any
     const repository = new AppointmentsRepository(prisma)
 
-    await repository.findMany('business-1', 'canceled')
+    await repository.findMany({
+      businessId: 'business-1',
+      statusFilter: 'canceled',
+    })
 
     expect(prisma.appointment.findMany).toHaveBeenCalledWith(
       expect.objectContaining({

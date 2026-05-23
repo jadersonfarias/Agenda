@@ -9,6 +9,7 @@ import { UpdateAppointmentStatusDto } from '../appointments/appointment.schema'
 import {
   AcceptInvitationDto,
   AdminBusinessAvailabilityDto,
+  AdminAppointmentAssigneeDto,
   AdminCreateInvitationDto,
   AdminCreateMembershipDto,
   AdminMembershipRoleDto,
@@ -17,6 +18,7 @@ import {
 import { MembershipRole } from '../auth/role.types'
 import { AvailabilityCacheService } from '../scheduling/availability-cache.service'
 import { AppointmentStatusFilter } from '../appointments/appointment-status-filter'
+import { SubscriptionService } from '../subscriptions/subscription.service'
 
 type AdminServiceRecord = Awaited<ReturnType<AdminRepository['listServicesByBusinessId']>>[number]
 
@@ -58,7 +60,8 @@ export class AdminService {
     private readonly adminRepository: AdminRepository,
     private readonly businessesRepository: BusinessesRepository,
     private readonly appointmentsService: AppointmentsService,
-    private readonly availabilityCacheService: AvailabilityCacheService
+    private readonly availabilityCacheService: AvailabilityCacheService,
+    private readonly subscriptionService: SubscriptionService
   ) {}
 
   private normalizeMonth(month?: string) {
@@ -168,6 +171,8 @@ export class AdminService {
   }
 
   async createService(businessId: string, dto: AdminServiceDto) {
+    await this.subscriptionService.assertBusinessCanWrite(businessId)
+
     const business = await this.businessesRepository.findBusinessById(businessId)
 
     if (!business) {
@@ -192,6 +197,8 @@ export class AdminService {
   }
 
   async updateService(id: string, businessId: string, dto: AdminServiceDto) {
+    await this.subscriptionService.assertBusinessCanWrite(businessId)
+
     const service = await this.adminRepository.findServiceByIdAndBusinessId(id, businessId)
 
     if (!service) {
@@ -219,6 +226,8 @@ export class AdminService {
   }
 
   async deleteService(id: string, businessId: string) {
+    await this.subscriptionService.assertBusinessCanWrite(businessId)
+
     const service = await this.adminRepository.findServiceByIdAndBusinessId(id, businessId)
 
     if (!service) {
@@ -235,6 +244,8 @@ export class AdminService {
   }
 
   async updateBusinessAvailability(businessId: string, dto: AdminBusinessAvailabilityDto) {
+    await this.subscriptionService.assertBusinessCanWrite(businessId)
+
     const business = await this.adminRepository.updateBusinessAvailability(businessId, {
       openTime: dto.openTime,
       closeTime: dto.closeTime,
@@ -262,6 +273,8 @@ export class AdminService {
   }
 
   async createMembership(businessId: string, dto: AdminCreateMembershipDto) {
+    await this.subscriptionService.assertBusinessCanWrite(businessId)
+
     const email = dto.email.toLowerCase()
     const user = await this.adminRepository.findUserByEmail(email)
 
@@ -339,6 +352,8 @@ export class AdminService {
   }
 
   async createInvitation(businessId: string, dto: AdminCreateInvitationDto) {
+    await this.subscriptionService.assertBusinessCanWrite(businessId)
+
     const email = dto.email.toLowerCase()
     const existingUser = await this.adminRepository.findUserByEmail(email)
 
@@ -426,6 +441,8 @@ export class AdminService {
     if (this.isExpired(invitation.expiresAt)) {
       throw new BadRequestException('Este convite expirou')
     }
+
+    await this.subscriptionService.assertBusinessCanWrite(invitation.businessId)
 
     const existingUser = await this.adminRepository.findUserByEmail(invitation.email)
 
@@ -517,13 +534,47 @@ export class AdminService {
   async listAppointments(
     businessId: string,
     statusFilter: AppointmentStatusFilter = 'all',
-    pagination: PaginationParams | null = null
+    pagination: PaginationParams | null = null,
+    access: { userId: string; role: MembershipRole },
+    assignedToUserId?: string
   ) {
-    return this.appointmentsService.getAll(businessId, statusFilter, pagination)
+    return this.appointmentsService.getAllForAdmin(
+      businessId,
+      statusFilter,
+      pagination,
+      access,
+      assignedToUserId
+    )
   }
 
-  async updateAppointmentStatus(id: string, businessId: string, statusDto: UpdateAppointmentStatusDto) {
-    return this.appointmentsService.updateStatus(id, businessId, statusDto)
+  async updateAppointmentStatus(
+    id: string,
+    businessId: string,
+    statusDto: UpdateAppointmentStatusDto,
+    access: { userId: string; role: MembershipRole }
+  ) {
+    return this.appointmentsService.updateStatusForAdmin(id, businessId, statusDto, access)
+  }
+
+  async updateAppointmentAssignee(
+    id: string,
+    businessId: string,
+    dto: AdminAppointmentAssigneeDto
+  ) {
+    if (dto.assignedToUserId) {
+      const membership = await this.adminRepository.findMembershipByUserAndBusinessId(
+        dto.assignedToUserId,
+        businessId
+      )
+
+      if (!membership) {
+        throw new BadRequestException('Funcionário inválido para este negócio')
+      }
+    }
+
+    return this.appointmentsService.updateAssignee(id, businessId, {
+      assignedToUserId: dto.assignedToUserId,
+    })
   }
 
   async getMonthlySummary(businessId: string, month?: string) {

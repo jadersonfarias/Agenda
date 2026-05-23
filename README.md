@@ -1,79 +1,193 @@
-# Scheduler SaaS
+# MarcaCerta
 
-Projeto fullstack multi-tenant com:
-- Frontend: Next.js App Router, Tailwind CSS, React Hook Form, Zod, TanStack Query, NextAuth
-- Backend: NestJS, Prisma, PostgreSQL, Zod
-- Arquitetura: Controller, Service, Repository, Prisma ORM
+Monorepo fullstack para agendamento de serviços com:
 
-## Como rodar
+- site público para reservas online
+- área admin autenticada por negócio
+- área admin master da plataforma
+- suporte a multi-business com isolamento por `businessId`
 
-1. Defina variáveis de ambiente no arquivo `.env` na raiz:
-```bash
-DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE"
-NEXT_PUBLIC_API_URL="http://localhost:3333"
+## Stack
+
+- Frontend: Next.js App Router, React, TypeScript, Tailwind CSS
+- Estado e formulários: TanStack Query, React Hook Form, Zod
+- Autenticação frontend: NextAuth
+- Backend: NestJS, TypeScript
+- Banco: PostgreSQL + Prisma
+- Datas: Luxon
+
+## Estrutura
+
+```text
+frontend/
+  app/
+  components/
+  features/
+  lib/
+
+backend/
+  src/
+  prisma/
+
+scripts/
+```
+
+## Rotas principais
+
+Públicas:
+
+- `/`
+- `/signup`
+- `/login`
+- `/b/[slug]`
+- `/appointments/[token]`
+- `/meus-agendamentos`
+- `/invite/[token]`
+
+Administrativas:
+
+- `/admin`
+- `/admin-master`
+
+## Variáveis de ambiente
+
+Crie um arquivo `.env` na raiz com pelo menos:
+
+```env
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/salao"
+NEXT_PUBLIC_API_URL="/backend"
+API_URL="http://127.0.0.1:3333"
 NEXT_PUBLIC_DEFAULT_BUSINESS_ID="default-business"
 NEXTAUTH_URL="http://localhost:3000"
 NEXTAUTH_SECRET="uma_senha_secreta_segura"
+JWT_SECRET="uma_chave_jwt_segura"
+FRONTEND_URL="http://localhost:3000"
 ```
 
-2. Instale dependências
+## Como rodar localmente
+
+1. Instale as dependências:
+
 ```bash
 npm install
 ```
 
-3. Gere o cliente Prisma
+2. Suba o banco:
+
 ```bash
-npx prisma generate
+npm run db:up
 ```
 
-4. (Opcional) Gere dados iniciais de exemplo
+3. Gere/aplique o Prisma se necessário:
+
+```bash
+npm --workspace=backend run prisma:generate
+npm --workspace=backend run prisma:push
+```
+
+4. Opcionalmente rode a seed:
+
 ```bash
 npm run seed
 ```
 
-5. Execute a aplicação
+5. Inicie o projeto:
+
 ```bash
 npm run dev
 ```
 
-5. Acesse:
-- Frontend: http://localhost:3000
-- Backend: http://localhost:3333
+## Comandos úteis
 
-## Usando Docker no Windows
-
-Se você quiser rodar o banco PostgreSQL em Docker, use o `docker-compose.yml` fornecido.
-
-1. Instale o Docker Desktop e habilite o backend WSL 2.
-2. Inicie o container do banco:
-```bash
-docker compose up -d
-```
-3. Certifique-se de que `DATABASE_URL` no `.env` está definido como:
-```bash
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/salao"
-```
-4. Execute as migrações/seed:
-```bash
-npx prisma db push
-npm --workspace=backend run seed
-```
-5. Inicie o app:
 ```bash
 npm run dev
+npm run dev:stop
+npm run db:up
+npm run db:down
+npm run db:logs
+npm run seed
+npm run build
+npm --workspace=frontend run build
+npm --workspace=backend run build
+npm --workspace=backend run test
+```
+
+## Teste no celular com ngrok
+
+O projeto já tem um fluxo pronto para abrir o frontend no smartphone:
+
+```bash
+npm run mobile
+```
+
+Esse comando:
+
+- sobe um túnel `ngrok` para a porta `3000`
+- atualiza o `.env.ngrok` com a URL pública
+- inicia frontend e backend no modo correto
+
+Para parar:
+
+```bash
+Ctrl + C
+```
+
+Se quiser limpar os processos manualmente:
+
+```bash
+npm run dev:stop
 ```
 
 ## Endpoints principais
 
-- `GET /appointments?businessId=...`
-- `POST /appointments`
-- `PATCH /appointments/:id/status?businessId=...`
-- `DELETE /appointments/:id?businessId=...`
+Auth:
+
+- `POST /auth/login`
+- `POST /auth/register-business-owner`
+
+Públicos:
+
+- `GET /businesses/:businessId`
+- `GET /businesses/slug/:slug`
 - `GET /businesses/:businessId/services`
-- `GET /businesses/:businessId/availability?serviceId=...&date=...`
+- `GET /businesses/:businessId/availability`
+- `GET /appointments/customer`
+- `GET /appointments/public/:token`
+- `POST /appointments`
+- `PATCH /appointments/public/:token/cancel`
 
-## Notas
+Admin:
 
-- O frontend inclui login com NextAuth para a área `/admin`
-- O backend usa Prisma para modelos multi-business: `User`, `Business`, `Customer`, `Service`, `Appointment`
-- A lógica evita conflito de horários por negócio e calcula disponibilidade por serviço
+- `GET /admin/dashboard`
+- `GET /admin/services`
+- `POST /admin/services`
+- `PATCH /admin/services/:id`
+- `DELETE /admin/services/:id`
+- `GET /admin/appointments`
+- `PATCH /admin/appointments/:id/status`
+- `PATCH /admin/appointments/:id/assignee`
+- `GET /admin/memberships`
+- `GET /admin/invitations`
+- `GET /admin/financial-summary`
+
+Platform:
+
+- `GET /platform/health`
+- `GET /platform/businesses`
+- `PATCH /platform/businesses/:businessId/subscription`
+- `PATCH /platform/businesses/:businessId/cancel-subscription`
+- `PATCH /platform/businesses/:businessId/mark-past-due`
+
+## Regras importantes
+
+- O backend segue `Controller -> Service -> Repository`.
+- O frontend não acessa Prisma diretamente.
+- Toda regra administrativa deve respeitar o `businessId`.
+- Um usuário pode participar de mais de um negócio.
+- O admin master exige `session.user.isPlatformAdmin === true`.
+
+## Observações
+
+- O visual público usa a identidade MarcaCerta.
+- O backend usa `FRONTEND_URL` com fallback para `NEXTAUTH_URL` em links públicos.
+- O fluxo de assinatura atual é manual e ainda não bloqueia automaticamente o uso do sistema.
