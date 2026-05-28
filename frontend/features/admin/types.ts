@@ -7,6 +7,18 @@ export type AdminServiceItem = {
     createdAt: string
 }
 
+export type AdminPaginationMeta = {
+    page: number
+    perPage: number
+    total: number
+    totalPages: number
+}
+
+export type AdminPaginatedResponse<T> = {
+    data: T[]
+    meta: AdminPaginationMeta
+}
+
 export type AdminBusinessSettings = {
     id: string
     name: string

@@ -17,47 +17,13 @@ const platformSubscriptionStatusActionMessages: Record<PlatformBusinessSubscript
   cancelSubscription: 'Não foi possível cancelar a assinatura',
 }
 
-async function requestPlatformBusinessesPage(page: number, perPage: number) {
-  const response = await api.get<PlatformBusinessesResponse>('/platform/businesses', {
-    params: { page, perPage },
-  })
-
-  return response.data
-}
-
 export async function fetchPlatformBusinesses(page = 1, perPage = 20) {
   try {
-    const firstPage = await requestPlatformBusinessesPage(page, perPage)
+    const response = await api.get<PlatformBusinessesResponse>('/platform/businesses', {
+      params: { page, perPage },
+    })
 
-    if (page !== 1 || firstPage.meta.totalPages <= 1) {
-      return firstPage
-    }
-
-    const remainingPages = Array.from(
-      { length: Math.max(firstPage.meta.totalPages - 1, 0) },
-      (_value, index) => index + 2,
-    )
-
-    if (remainingPages.length === 0) {
-      return firstPage
-    }
-
-    const remainingResults = await Promise.all(
-      remainingPages.map((currentPage) => requestPlatformBusinessesPage(currentPage, perPage)),
-    )
-
-    const data = [
-      ...firstPage.data,
-      ...remainingResults.flatMap((result) => result.data),
-    ]
-
-    return {
-      data,
-      meta: {
-        ...firstPage.meta,
-        perPage: data.length,
-      },
-    }
+    return response.data
   } catch (error) {
     throw new Error(getApiErrorMessage(error, 'Não foi possível carregar os clientes da plataforma'))
   }

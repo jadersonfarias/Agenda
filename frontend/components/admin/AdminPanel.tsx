@@ -185,7 +185,9 @@ export default function AdminPanel({
     )
     const appointmentMembersQuery = useAdminMembershipsQuery(
         selectedBusinessId,
-        isAuthenticated && activeSection === 'appointments' && uiPermissions.canManageAppointmentAssignee
+        isAuthenticated && activeSection === 'appointments' && uiPermissions.canManageAppointmentAssignee,
+        1,
+        100
     )
 
     const handleBusinessChange = async (nextBusinessId: string) => {
@@ -301,10 +303,9 @@ export default function AdminPanel({
                         <OnboardingChecklist
                             business={business}
                             servicesCount={servicesQuery.data?.length ?? servicesSnapshot.length}
-                            membershipsCount={onboardingMembershipsQuery.data?.length ?? 1}
+                            membershipsCount={onboardingMembershipsQuery.data?.meta.total ?? 1}
                             pendingInvitationsCount={
-                                onboardingInvitationsQuery.data?.filter((invitation) => !invitation.acceptedAt && !invitation.isExpired)
-                                    .length ?? 0
+                                onboardingInvitationsQuery.data?.meta.total ?? 0
                             }
                             onOpenServices={() => setActiveSection('services')}
                             onOpenSettings={() => setActiveSection('settings')}
@@ -417,7 +418,7 @@ export default function AdminPanel({
                     assignedToUserIdFilter={appointmentAssigneeFilter}
                     onAssignedToUserIdFilterChange={setAppointmentAssigneeFilter}
                     canManageAppointmentAssignee={uiPermissions.canManageAppointmentAssignee}
-                    assignableMembers={appointmentMembersQuery.data ?? []}
+                    assignableMembers={appointmentMembersQuery.data?.data ?? []}
                     initialAppointments={
                         selectedBusinessId === currentBusinessId && appointmentAssigneeFilter === 'all'
                             ? initialAppointments

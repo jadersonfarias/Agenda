@@ -28,8 +28,14 @@ export class AppointmentsController {
   constructor(private readonly appointmentsService: AppointmentsService) {}
 
   @Get('customer')
-  getByCustomerPhone(@Query('phone') phone: string) {
-    const parseResult = customerAppointmentsLookupSchema.safeParse({ phone })
+  @RateLimit({
+    key: 'appointments-customer-lookup',
+    limit: 10,
+    windowMs: 60_000,
+    message: 'Muitas consultas de agendamentos. Tente novamente em instantes.',
+  })
+  getByCustomerPhone(@Query('phone') phone: string, @Query('businessId') businessId?: string) {
+    const parseResult = customerAppointmentsLookupSchema.safeParse({ phone, businessId })
     if (!parseResult.success) {
       throw new BadRequestException(parseResult.error.errors.map((error) => error.message).join(', '))
     }
@@ -69,6 +75,12 @@ export class AppointmentsController {
   }
 
   @Get('public/:token')
+  @RateLimit({
+    key: 'appointments-public-detail',
+    limit: 20,
+    windowMs: 60_000,
+    message: 'Muitas consultas do agendamento. Tente novamente em instantes.',
+  })
   getPublicByToken(@Param('token') token: string) {
     const parseResult = publicAppointmentTokenSchema.safeParse({ token })
     if (!parseResult.success) {
@@ -102,6 +114,12 @@ export class AppointmentsController {
   }
 
   @Patch('public/:token/cancel')
+  @RateLimit({
+    key: 'appointments-public-cancel',
+    limit: 5,
+    windowMs: 60_000,
+    message: 'Muitas tentativas de cancelamento. Tente novamente em instantes.',
+  })
   cancelPublicAppointment(@Param('token') token: string) {
     const parseResult = publicAppointmentTokenSchema.safeParse({ token })
     if (!parseResult.success) {

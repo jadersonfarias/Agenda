@@ -4,6 +4,7 @@ import { RoleGuard } from '../auth/role.guard'
 import { Roles } from '../auth/roles.decorator'
 import { parsePaginationParams } from '../common/pagination'
 import { updateAppointmentStatusSchema } from '../appointments/appointment.schema'
+import { RateLimit } from '../common/rate-limit.decorator'
 import {
   acceptInvitationSchema,
   adminBusinessAvailabilitySchema,
@@ -116,8 +117,13 @@ export class AdminController {
 
   @Get('memberships')
   @Roles('OWNER', 'ADMIN')
-  async listMemberships(@Req() request: AuthenticatedRequest) {
-    return this.adminService.listMemberships(request.businessId!)
+  async listMemberships(
+    @Req() request: AuthenticatedRequest,
+    @Query('page') page?: string,
+    @Query('perPage') perPage?: string
+  ) {
+    const pagination = parsePaginationParams(page, perPage)
+    return this.adminService.listMemberships(request.businessId!, pagination)
   }
 
   @Post('memberships')
@@ -158,8 +164,13 @@ export class AdminController {
 
   @Get('invitations')
   @Roles('OWNER')
-  async listInvitations(@Req() request: AuthenticatedRequest) {
-    return this.adminService.listInvitations(request.businessId!)
+  async listInvitations(
+    @Req() request: AuthenticatedRequest,
+    @Query('page') page?: string,
+    @Query('perPage') perPage?: string
+  ) {
+    const pagination = parsePaginationParams(page, perPage)
+    return this.adminService.listInvitations(request.businessId!, pagination)
   }
 
   @Post('invitations')
@@ -254,11 +265,23 @@ export class InvitationsController {
   constructor(private readonly adminService: AdminService) {}
 
   @Get(':token')
+  @RateLimit({
+    key: 'invitations-public-detail',
+    limit: 20,
+    windowMs: 60_000,
+    message: 'Muitas consultas de convite. Tente novamente em instantes.',
+  })
   async getInvitation(@Param('token') token: string) {
     return this.adminService.getInvitationDetails(token)
   }
 
   @Post(':token/accept')
+  @RateLimit({
+    key: 'invitations-public-accept',
+    limit: 5,
+    windowMs: 60_000,
+    message: 'Muitas tentativas de aceite de convite. Tente novamente em instantes.',
+  })
   async acceptInvitation(@Param('token') token: string, @Body() body: unknown) {
     const parseResult = acceptInvitationSchema.safeParse(body)
 

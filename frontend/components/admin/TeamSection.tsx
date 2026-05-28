@@ -1,7 +1,7 @@
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
@@ -38,6 +38,8 @@ const membershipRoleBadgeStyles: Record<AdminMembershipRole, string> = {
     STAFF: 'bg-slate-100 text-slate-700',
 }
 
+const teamListPerPage = 10
+
 const membershipFormSchema = z.object({
     email: z.string().trim().email('Informe um email válido'),
     role: z.enum(['OWNER', 'ADMIN', 'STAFF']),
@@ -67,6 +69,54 @@ function getInvitationStatus(invitation: AdminInvitationItem) {
 function getWhatsAppInvitationUrl(invitationLink: string) {
     const message = `Olá! Você recebeu um convite para acessar a equipe. Use este link para aceitar: ${invitationLink}`
     return `https://wa.me/?text=${encodeURIComponent(message)}`
+}
+
+function PaginationControls({
+    currentPage,
+    total,
+    totalPages,
+    isLoading,
+    onPrevious,
+    onNext,
+}: {
+    currentPage: number
+    total: number
+    totalPages: number
+    isLoading: boolean
+    onPrevious: () => void
+    onNext: () => void
+}) {
+    const displayCurrentPage = total === 0 ? 0 : currentPage
+    const canGoPrevious = currentPage > 1 && !isLoading
+    const canGoNext = currentPage < totalPages && !isLoading
+
+    return (
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-slate-500 sm:text-sm">
+                Página {displayCurrentPage} de {totalPages} · {total} total
+            </p>
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+                <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={onPrevious}
+                    disabled={!canGoPrevious}
+                    className="min-h-11 lg:min-h-0"
+                >
+                    Anterior
+                </Button>
+                <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={onNext}
+                    disabled={!canGoNext}
+                    className="min-h-11 lg:min-h-0"
+                >
+                    Próxima
+                </Button>
+            </div>
+        </div>
+    )
 }
 
 function MembershipForm({
@@ -255,10 +305,44 @@ export function TeamSection({
     const [isCreateInvitationOpen, setIsCreateInvitationOpen] = useState(false)
     const [deletingMembershipId, setDeletingMembershipId] = useState<string | null>(null)
     const [membershipRoleDrafts, setMembershipRoleDrafts] = useState<Record<string, AdminMembershipRole>>({})
-    const membershipsQuery = useAdminMembershipsQuery(businessId, enabled)
-    const invitationsQuery = useAdminInvitationsQuery(businessId, enabled)
+    const [membershipsPage, setMembershipsPage] = useState(1)
+    const [invitationsPage, setInvitationsPage] = useState(1)
+    const membershipsQuery = useAdminMembershipsQuery(businessId, enabled, membershipsPage, teamListPerPage)
+    const invitationsQuery = useAdminInvitationsQuery(businessId, enabled && canCreateMembership, invitationsPage, teamListPerPage)
     const updateMembershipRoleMutation = useAdminUpdateMembershipRoleMutation()
     const deleteMembershipMutation = useAdminDeleteMembershipMutation()
+    const memberships = membershipsQuery.data?.data ?? []
+    const membershipsMeta = membershipsQuery.data?.meta
+    const membershipsTotal = membershipsMeta?.total ?? 0
+    const membershipsTotalPages = membershipsMeta?.totalPages ?? 1
+    const membershipsCurrentPage = membershipsMeta?.page ?? membershipsPage
+    const invitations = invitationsQuery.data?.data ?? []
+    const invitationsMeta = invitationsQuery.data?.meta
+    const invitationsTotal = invitationsMeta?.total ?? 0
+    const invitationsTotalPages = invitationsMeta?.totalPages ?? 1
+    const invitationsCurrentPage = invitationsMeta?.page ?? invitationsPage
+
+    useEffect(() => {
+        setMembershipsPage(1)
+        setInvitationsPage(1)
+        setMembershipRoleDrafts({})
+    }, [businessId])
+
+    useEffect(() => {
+        if (!membershipsMeta || membershipsPage <= membershipsMeta.totalPages) {
+            return
+        }
+
+        setMembershipsPage(membershipsMeta.totalPages)
+    }, [membershipsMeta, membershipsPage])
+
+    useEffect(() => {
+        if (!invitationsMeta || invitationsPage <= invitationsMeta.totalPages) {
+            return
+        }
+
+        setInvitationsPage(invitationsMeta.totalPages)
+    }, [invitationsMeta, invitationsPage])
 
     const handleMembershipRoleChange = (membershipId: string, role: AdminMembershipRole) => {
         setMembershipRoleDrafts((current) => ({
@@ -353,14 +437,14 @@ export function TeamSection({
                             </div>
                         ) : null}
 
-                        {!invitationsQuery.isLoading && !invitationsQuery.isError && (invitationsQuery.data?.length ?? 0) === 0 ? (
+                        {!invitationsQuery.isLoading && !invitationsQuery.isError && invitations.length === 0 ? (
                             <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-5 text-center text-xs text-slate-500 sm:text-sm">
                                 Nenhum convite pendente neste negócio.
                             </div>
                         ) : null}
 
                         {!invitationsQuery.isLoading && !invitationsQuery.isError
-                            ? invitationsQuery.data?.map((invitation) => (
+                            ? invitations.map((invitation) => (
                                   <div
                                       key={invitation.id}
                                       className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 lg:flex-row lg:items-center lg:justify-between"
@@ -409,6 +493,17 @@ export function TeamSection({
                                   </div>
                               ))
                             : null}
+
+                        {!invitationsQuery.isLoading && !invitationsQuery.isError && invitationsTotal > 0 ? (
+                            <PaginationControls
+                                currentPage={invitationsCurrentPage}
+                                total={invitationsTotal}
+                                totalPages={invitationsTotalPages}
+                                isLoading={invitationsQuery.isFetching}
+                                onPrevious={() => setInvitationsPage((current) => Math.max(1, current - 1))}
+                                onNext={() => setInvitationsPage((current) => Math.min(invitationsTotalPages, current + 1))}
+                            />
+                        ) : null}
                     </div>
                 </div>
 
@@ -425,14 +520,14 @@ export function TeamSection({
                         </div>
                     ) : null}
 
-                    {!membershipsQuery.isLoading && !membershipsQuery.isError && (membershipsQuery.data?.length ?? 0) === 0 ? (
+                    {!membershipsQuery.isLoading && !membershipsQuery.isError && memberships.length === 0 ? (
                         <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center text-xs text-slate-500 sm:text-sm">
                             Nenhum membro adicional vinculado a este negócio.
                         </div>
                     ) : null}
 
                     {!membershipsQuery.isLoading && !membershipsQuery.isError
-                        ? membershipsQuery.data?.map((membership) => {
+                        ? memberships.map((membership) => {
                               const selectedRole = membershipRoleDrafts[membership.id] ?? membership.role
                               const isSavingRole =
                                   updateMembershipRoleMutation.isPending &&
@@ -503,6 +598,17 @@ export function TeamSection({
                               )
                           })
                         : null}
+
+                    {!membershipsQuery.isLoading && !membershipsQuery.isError && membershipsTotal > 0 ? (
+                        <PaginationControls
+                            currentPage={membershipsCurrentPage}
+                            total={membershipsTotal}
+                            totalPages={membershipsTotalPages}
+                            isLoading={membershipsQuery.isFetching}
+                            onPrevious={() => setMembershipsPage((current) => Math.max(1, current - 1))}
+                            onNext={() => setMembershipsPage((current) => Math.min(membershipsTotalPages, current + 1))}
+                        />
+                    ) : null}
                 </div>
             </Card>
 
@@ -517,6 +623,7 @@ export function TeamSection({
                         businessId={businessId}
                         onCancel={() => setIsCreateInvitationOpen(false)}
                         onSaved={async () => {
+                            setInvitationsPage(1)
                             await queryClient.invalidateQueries({ queryKey: ['admin-invitations', businessId] })
                         }}
                     />
@@ -534,6 +641,7 @@ export function TeamSection({
                         businessId={businessId}
                         onCancel={() => setIsCreateMembershipOpen(false)}
                         onSaved={async () => {
+                            setMembershipsPage(1)
                             await queryClient.invalidateQueries({ queryKey: ['admin-memberships', businessId] })
                             setIsCreateMembershipOpen(false)
                         }}

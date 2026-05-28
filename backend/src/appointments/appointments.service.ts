@@ -66,6 +66,10 @@ export class AppointmentsService {
       variants.add(normalized)
     }
 
+    if (normalized.length === 10 || normalized.length === 11) {
+      variants.add(`55${normalized}`)
+    }
+
     if (normalized.length >= 11) {
       variants.add(normalized.slice(-11))
     }
@@ -75,6 +79,83 @@ export class AppointmentsService {
     }
 
     return [...variants]
+  }
+
+  private buildFormattedPhoneCandidates(phone: string) {
+    const digits = phone.replace(/\D/g, '')
+
+    if (digits.length !== 10 && digits.length !== 11) {
+      return []
+    }
+
+    const areaCode = digits.slice(0, 2)
+    const localNumber = digits.slice(2)
+    const prefixLength = localNumber.length === 9 ? 5 : 4
+    const prefix = localNumber.slice(0, prefixLength)
+    const suffix = localNumber.slice(prefixLength)
+    const spacedMobilePrefix =
+      localNumber.length === 9
+        ? `${localNumber.slice(0, 1)} ${localNumber.slice(1, prefixLength)}`
+        : null
+
+    return [
+      digits,
+      `(${areaCode}) ${localNumber}`,
+      `(${areaCode})${localNumber}`,
+      `(${areaCode}) ${prefix}-${suffix}`,
+      `(${areaCode})${prefix}-${suffix}`,
+      ...(spacedMobilePrefix ? [`(${areaCode}) ${spacedMobilePrefix}-${suffix}`] : []),
+      `${areaCode} ${localNumber}`,
+      `${areaCode} ${prefix}-${suffix}`,
+      ...(spacedMobilePrefix ? [`${areaCode} ${spacedMobilePrefix}-${suffix}`] : []),
+      `${areaCode} ${prefix} ${suffix}`,
+      `${areaCode}-${prefix}-${suffix}`,
+    ]
+  }
+
+  private buildCustomerPhoneLookup(phone: string) {
+    const trimmedPhone = phone.trim()
+    const rawPhoneCandidates = new Set<string>()
+    const normalizedPhoneVariants = new Set<string>()
+
+    if (trimmedPhone.length > 0) {
+      rawPhoneCandidates.add(trimmedPhone)
+    }
+
+    const addPhoneCandidate = (digits: string) => {
+      if (!digits) {
+        return
+      }
+
+      normalizedPhoneVariants.add(digits)
+      rawPhoneCandidates.add(digits)
+
+      for (const candidate of this.buildFormattedPhoneCandidates(digits)) {
+        rawPhoneCandidates.add(candidate)
+      }
+
+      if ((digits.length === 12 || digits.length === 13) && digits.startsWith('55')) {
+        const localDigits = digits.slice(2)
+
+        for (const candidate of this.buildFormattedPhoneCandidates(localDigits)) {
+          rawPhoneCandidates.add(`+55 ${candidate}`)
+          rawPhoneCandidates.add(`+55${candidate}`)
+          rawPhoneCandidates.add(`55 ${candidate}`)
+          rawPhoneCandidates.add(`55${candidate}`)
+        }
+
+        rawPhoneCandidates.add(`+${digits}`)
+      }
+    }
+
+    for (const variant of this.buildPhoneVariants(trimmedPhone)) {
+      addPhoneCandidate(variant)
+    }
+
+    return {
+      rawPhoneCandidates: [...rawPhoneCandidates],
+      normalizedPhoneVariants: [...normalizedPhoneVariants],
+    }
   }
 
   private toPublicAppointmentResponse(appointment: {
@@ -142,8 +223,23 @@ export class AppointmentsService {
   }
 
   async getByCustomerPhone(query: CustomerAppointmentsLookupDto) {
-    const phoneVariants = this.buildPhoneVariants(query.phone.trim())
-    const appointments = await this.appointmentsRepository.findPublicByCustomerPhoneVariants(phoneVariants)
+    if (!query.businessId) {
+      return []
+    }
+
+    const lookup = this.buildCustomerPhoneLookup(query.phone)
+    const business = await this.businessesRepository.findBusinessById(query.businessId)
+
+    if (!business) {
+      return []
+    }
+
+    const appointments = await this.appointmentsRepository.findPublicByCustomerPhoneLookup({
+      rawPhoneCandidates: lookup.rawPhoneCandidates,
+      normalizedPhoneVariants: lookup.normalizedPhoneVariants,
+      startsAtOrAfter: new Date(),
+      businessId: business.id,
+    })
 
     return appointments.map((appointment: {
       id: string

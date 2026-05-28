@@ -191,24 +191,56 @@ export class AdminRepository {
     })
   }
 
-  async listMembershipsByBusinessId(businessId: string) {
-    return this.prisma.membership.findMany({
-      where: { businessId },
-      select: {
-        id: true,
-        role: true,
-        createdAt: true,
-        updatedAt: true,
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
+  async listMembershipsByBusinessId(businessId: string, pagination: PaginationParams | null = null) {
+    const where = { businessId }
+    const select = {
+      id: true,
+      role: true,
+      createdAt: true,
+      updatedAt: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
         },
       },
-      orderBy: [{ role: 'asc' }, { createdAt: 'asc' }],
-    })
+    }
+    const orderBy = [{ role: 'asc' as const }, { createdAt: 'asc' as const }]
+
+    if (!pagination) {
+      return this.prisma.membership.findMany({
+        where,
+        select,
+        orderBy,
+      })
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.membership.findMany({
+        where,
+        select,
+        orderBy,
+        skip: (pagination.page - 1) * pagination.perPage,
+        take: pagination.perPage,
+      }),
+      this.prisma.membership.count({ where }),
+    ])
+
+    return {
+      data,
+      meta: buildPaginationMeta(total, pagination),
+    } as PaginatedResult<{
+      id: string
+      role: MembershipRole
+      createdAt: Date
+      updatedAt: Date
+      user: {
+        id: string
+        name: string
+        email: string
+      }
+    }>
   }
 
   async findUserByEmail(email: string) {
@@ -305,23 +337,53 @@ export class AdminRepository {
     })
   }
 
-  async listInvitationsByBusinessId(businessId: string) {
-    return this.prisma.invitation.findMany({
-      where: {
-        businessId,
-        acceptedAt: null,
-      },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        token: true,
-        expiresAt: true,
-        acceptedAt: true,
-        createdAt: true,
-      },
-      orderBy: [{ createdAt: 'desc' }, { email: 'asc' }],
-    })
+  async listInvitationsByBusinessId(businessId: string, pagination: PaginationParams | null = null) {
+    const where = {
+      businessId,
+      acceptedAt: null,
+    }
+    const select = {
+      id: true,
+      email: true,
+      role: true,
+      token: true,
+      expiresAt: true,
+      acceptedAt: true,
+      createdAt: true,
+    }
+    const orderBy = [{ createdAt: 'desc' as const }, { email: 'asc' as const }]
+
+    if (!pagination) {
+      return this.prisma.invitation.findMany({
+        where,
+        select,
+        orderBy,
+      })
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.invitation.findMany({
+        where,
+        select,
+        orderBy,
+        skip: (pagination.page - 1) * pagination.perPage,
+        take: pagination.perPage,
+      }),
+      this.prisma.invitation.count({ where }),
+    ])
+
+    return {
+      data,
+      meta: buildPaginationMeta(total, pagination),
+    } as PaginatedResult<{
+      id: string
+      email: string
+      role: MembershipRole
+      token: string
+      expiresAt: Date
+      acceptedAt: Date | null
+      createdAt: Date
+    }>
   }
 
   async findPendingInvitationByBusinessAndEmail(businessId: string, email: string, now: Date) {

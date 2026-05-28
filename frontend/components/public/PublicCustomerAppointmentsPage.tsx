@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
 import { format } from 'date-fns'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { Card } from '../ui/card'
@@ -31,6 +32,10 @@ type CustomerAppointmentItem = {
     price: string
 }
 
+type PublicCustomerAppointmentsPageProps = {
+    businessId?: string
+}
+
 async function readJson<T>(response: Response): Promise<T | null> {
     return (await response.json().catch(() => null)) as T | null
 }
@@ -53,7 +58,10 @@ function getStatusClasses(status: CustomerAppointmentItem['status']) {
     return 'bg-slate-200 text-slate-700'
 }
 
-export function PublicCustomerAppointmentsPage() {
+const lastPublicBusinessIdStorageKey = 'marcacerta:lastPublicBusinessId'
+
+export function PublicCustomerAppointmentsPage({ businessId }: PublicCustomerAppointmentsPageProps) {
+    const [lookupBusinessId, setLookupBusinessId] = useState(businessId?.trim() || '')
     const {
         register,
         handleSubmit,
@@ -65,9 +73,41 @@ export function PublicCustomerAppointmentsPage() {
         },
     })
 
+    useEffect(() => {
+        const trimmedBusinessId = businessId?.trim()
+
+        if (trimmedBusinessId) {
+            setLookupBusinessId(trimmedBusinessId)
+            try {
+                window.localStorage.setItem(lastPublicBusinessIdStorageKey, trimmedBusinessId)
+            } catch {
+                // Consulta continua funcionando pelo businessId da URL.
+            }
+            return
+        }
+
+        let storedBusinessId: string | null = null
+
+        try {
+            storedBusinessId = window.localStorage.getItem(lastPublicBusinessIdStorageKey)
+        } catch {
+            storedBusinessId = null
+        }
+
+        if (storedBusinessId) {
+            setLookupBusinessId(storedBusinessId)
+        }
+    }, [businessId])
+
     const searchMutation = useMutation({
         mutationFn: async ({ phone }: AppointmentsLookupForm) => {
             const searchParams = new URLSearchParams({ phone })
+            const trimmedBusinessId = lookupBusinessId.trim()
+
+            if (trimmedBusinessId) {
+                searchParams.set('businessId', trimmedBusinessId)
+            }
+
             const response = await fetch(`${apiBase}/appointments/customer?${searchParams.toString()}`, {
                 cache: 'no-store',
             })
@@ -140,29 +180,6 @@ export function PublicCustomerAppointmentsPage() {
                     </div>
                 </Card>
 
-                <Card className="w-full self-center border-purple-100/80 bg-gradient-to-br from-white via-purple-50/60 to-purple-100/70 shadow-sm shadow-purple-100/50 sm:max-w-2xl lg:max-w-3xl">
-                    <div className="space-y-3">
-                        <p className="text-[11px] font-semibold uppercase tracking-[.24em] text-purple-700">
-                            PARA NEGÓCIOS
-                        </p>
-                        <div className="space-y-2">
-                            <h2 className="text-lg font-semibold leading-tight text-slate-900 sm:text-xl">
-                                Também quer receber reservas online?
-                            </h2>
-                            <p className="text-sm leading-6 text-slate-600">
-                                Com a MarcaCerta, você cria sua agenda, compartilha seu link e acompanha seus atendimentos em um só painel.
-                            </p>
-                        </div>
-                        <div className="flex flex-col pt-1 sm:flex-row sm:justify-start">
-                            <Link href="/signup" className="w-full sm:w-auto">
-                                <Button className="w-full bg-purple-700 px-5 py-3 text-sm hover:bg-purple-800 sm:w-auto">
-                                    Começar grátis
-                                </Button>
-                            </Link>
-                        </div>
-                    </div>
-                </Card>
-
                 {searchMutation.isError ? (
                     <Card className="w-full self-center border-red-200 bg-red-50 shadow-sm shadow-red-100/40 sm:max-w-2xl lg:max-w-3xl">
                         <p className="text-sm font-medium text-red-700">
@@ -180,7 +197,7 @@ export function PublicCustomerAppointmentsPage() {
                 ) : null}
 
                 {hasAppointments ? (
-                    <section className="space-y-4">
+                    <section className="w-full self-center space-y-4 sm:max-w-2xl lg:max-w-3xl">
                         {searchMutation.data.map((appointment) => (
                             <Card key={appointment.id} className="border-slate-200 bg-white shadow-sm shadow-slate-100 sm:p-5 lg:p-6">
                                 <div className="space-y-4">
@@ -229,6 +246,29 @@ export function PublicCustomerAppointmentsPage() {
                         ))}
                     </section>
                 ) : null}
+
+                <Card className="w-full self-center border-purple-100/80 bg-gradient-to-br from-white via-purple-50/60 to-purple-100/70 shadow-sm shadow-purple-100/50 sm:max-w-2xl lg:max-w-3xl">
+                    <div className="space-y-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-[.24em] text-purple-700">
+                            PARA NEGÓCIOS
+                        </p>
+                        <div className="space-y-2">
+                            <h2 className="text-lg font-semibold leading-tight text-slate-900 sm:text-xl">
+                                Também quer receber reservas online?
+                            </h2>
+                            <p className="text-sm leading-6 text-slate-600">
+                                Com a MarcaCerta, você cria sua agenda, compartilha seu link e acompanha seus atendimentos em um só painel.
+                            </p>
+                        </div>
+                        <div className="flex flex-col pt-1 sm:flex-row sm:justify-start">
+                            <Link href="/signup" className="w-full sm:w-auto">
+                                <Button className="w-full bg-purple-700 px-5 py-3 text-sm hover:bg-purple-800 sm:w-auto">
+                                    Começar grátis
+                                </Button>
+                            </Link>
+                        </div>
+                    </div>
+                </Card>
             </div>
         </main>
     )

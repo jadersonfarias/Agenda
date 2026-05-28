@@ -33,7 +33,7 @@ describe('AppointmentsService public routes', () => {
 
   it('busca agendamentos públicos por telefone com variações normalizadas', async () => {
     const appointmentsRepository = {
-      findPublicByCustomerPhoneVariants: vi.fn().mockResolvedValue([
+      findPublicByCustomerPhoneLookup: vi.fn().mockResolvedValue([
         {
           id: 'appointment-1',
           publicToken: 'token-1',
@@ -44,7 +44,9 @@ describe('AppointmentsService public routes', () => {
         },
       ]),
     } as any
-    const businessesRepository = {} as any
+    const businessesRepository = {
+      findBusinessById: vi.fn().mockResolvedValue({ id: 'business-1' }),
+    } as any
     const businessesService = {} as any
     const timezoneService = {} as any
 
@@ -55,13 +57,24 @@ describe('AppointmentsService public routes', () => {
       timezoneService,
     })
 
-    const result = await service.getByCustomerPhone({ phone: '+55 48 99680 3757' })
+    const result = await service.getByCustomerPhone({
+      phone: '+55 48 99680 3757',
+      businessId: 'business-1',
+    })
 
-    expect(appointmentsRepository.findPublicByCustomerPhoneVariants).toHaveBeenCalledWith([
-      '5548996803757',
-      '48996803757',
-      '8996803757',
-    ])
+    expect(businessesRepository.findBusinessById).toHaveBeenCalledWith('business-1')
+    expect(appointmentsRepository.findPublicByCustomerPhoneLookup).toHaveBeenCalledWith(
+      expect.objectContaining({
+        businessId: 'business-1',
+        normalizedPhoneVariants: ['5548996803757', '48996803757', '8996803757'],
+        startsAtOrAfter: new Date('2026-05-11T18:00:00.000Z'),
+        rawPhoneCandidates: expect.arrayContaining([
+          '+55 48 99680 3757',
+          '5548996803757',
+          '(48) 99680-3757',
+        ]),
+      })
+    )
     expect(result).toEqual([
       {
         id: 'appointment-1',
@@ -72,6 +85,129 @@ describe('AppointmentsService public routes', () => {
         price: '80',
       },
     ])
+  })
+
+  it('busca apenas appointments do business informado', async () => {
+    const appointmentsRepository = {
+      findPublicByCustomerPhoneLookup: vi.fn().mockResolvedValue([]),
+    } as any
+    const businessesRepository = {
+      findBusinessById: vi.fn().mockResolvedValue({ id: 'business-1' }),
+    } as any
+
+    const service = createAppointmentsService({
+      appointmentsRepository,
+      businessesRepository,
+    })
+
+    const result = await service.getByCustomerPhone({
+      phone: '(48) 99680-3757',
+      businessId: 'business-public-slug',
+    })
+
+    expect(businessesRepository.findBusinessById).toHaveBeenCalledWith('business-public-slug')
+    expect(appointmentsRepository.findPublicByCustomerPhoneLookup).toHaveBeenCalledWith(
+      expect.objectContaining({
+        businessId: 'business-1',
+        startsAtOrAfter: new Date('2026-05-11T18:00:00.000Z'),
+      })
+    )
+    expect(result).toEqual([])
+  })
+
+  it('inclui variações com código do Brasil ao buscar por telefone local', async () => {
+    const appointmentsRepository = {
+      findPublicByCustomerPhoneLookup: vi.fn().mockResolvedValue([]),
+    } as any
+    const businessesRepository = {
+      findBusinessById: vi.fn().mockResolvedValue({ id: 'business-1' }),
+    } as any
+
+    const service = createAppointmentsService({
+      appointmentsRepository,
+      businessesRepository,
+    })
+
+    await service.getByCustomerPhone({
+      phone: '(48) 99680-3757',
+      businessId: 'business-1',
+    })
+
+    expect(appointmentsRepository.findPublicByCustomerPhoneLookup).toHaveBeenCalledWith(
+      expect.objectContaining({
+        businessId: 'business-1',
+        normalizedPhoneVariants: ['48996803757', '5548996803757', '8996803757'],
+        startsAtOrAfter: new Date('2026-05-11T18:00:00.000Z'),
+        rawPhoneCandidates: expect.arrayContaining([
+          '(48) 99680-3757',
+          '+55 48 99680 3757',
+          '(48) 9 9680-3757',
+        ]),
+      })
+    )
+  })
+
+  it('mantém busca por telefone sem máscara dentro do business informado', async () => {
+    const appointmentsRepository = {
+      findPublicByCustomerPhoneLookup: vi.fn().mockResolvedValue([]),
+    } as any
+    const businessesRepository = {
+      findBusinessById: vi.fn().mockResolvedValue({ id: 'business-1' }),
+    } as any
+
+    const service = createAppointmentsService({
+      appointmentsRepository,
+      businessesRepository,
+    })
+
+    await service.getByCustomerPhone({
+      phone: '48996803757',
+      businessId: 'business-1',
+    })
+
+    expect(appointmentsRepository.findPublicByCustomerPhoneLookup).toHaveBeenCalledWith(
+      expect.objectContaining({
+        businessId: 'business-1',
+        normalizedPhoneVariants: ['48996803757', '5548996803757', '8996803757'],
+        rawPhoneCandidates: expect.arrayContaining([
+          '48996803757',
+          '(48) 99680-3757',
+          '+55 (48) 99680-3757',
+        ]),
+      })
+    )
+  })
+
+  it('retorna lista vazia quando nenhum agendamento é encontrado', async () => {
+    const appointmentsRepository = {
+      findPublicByCustomerPhoneLookup: vi.fn().mockResolvedValue([]),
+    } as any
+    const businessesRepository = {
+      findBusinessById: vi.fn().mockResolvedValue({ id: 'business-1' }),
+    } as any
+
+    const service = createAppointmentsService({
+      appointmentsRepository,
+      businessesRepository,
+    })
+
+    await expect(service.getByCustomerPhone({
+      phone: '(11) 90000-0000',
+      businessId: 'business-1',
+    })).resolves.toEqual([])
+  })
+
+  it('retorna lista vazia sem consultar clientes quando businessId não é informado', async () => {
+    const appointmentsRepository = {
+      findPublicByCustomerPhoneLookup: vi.fn().mockResolvedValue([]),
+    } as any
+
+    const service = createAppointmentsService({
+      appointmentsRepository,
+    })
+
+    await expect(service.getByCustomerPhone({ phone: '(11) 90000-0000' })).resolves.toEqual([])
+    expect(appointmentsRepository.findPublicByCustomerPhoneLookup).not.toHaveBeenCalled()
   })
 
   it('retorna o detalhe público por token com canCancel verdadeiro para agendamento futuro', async () => {

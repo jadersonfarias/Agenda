@@ -23,6 +23,7 @@ export const updateAppointmentAssigneeSchema = z.object({
 
 export const customerAppointmentsLookupSchema = z.object({
   phone: z.string().trim().min(8, 'Telefone inválido').max(20, 'Telefone inválido').regex(/^[0-9+()\-\s]+$/, 'Telefone inválido'),
+  businessId: z.string().trim().min(1, 'businessId inválido').optional(),
 })
 
 export const publicAppointmentTokenSchema = z.object({

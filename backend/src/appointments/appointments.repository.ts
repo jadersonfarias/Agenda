@@ -26,28 +26,73 @@ type FindManyAppointmentsInput = {
   pagination?: PaginationParams | null
 }
 
+type PublicCustomerPhoneLookupInput = {
+  rawPhoneCandidates: string[]
+  normalizedPhoneVariants: string[]
+  startsAtOrAfter: Date
+  businessId: string
+}
+
 @Injectable()
 export class AppointmentsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findPublicByCustomerPhoneVariants(phoneVariants: string[]) {
-    if (phoneVariants.length === 0) {
+  async findPublicByCustomerPhoneLookup({
+    rawPhoneCandidates,
+    normalizedPhoneVariants,
+    startsAtOrAfter,
+    businessId,
+  }: PublicCustomerPhoneLookupInput) {
+    if (rawPhoneCandidates.length === 0 || normalizedPhoneVariants.length === 0) {
       return []
     }
 
     const matchingCustomers = await this.prisma.customer.findMany({
+      where: {
+        businessId,
+        phone: {
+          in: rawPhoneCandidates,
+        },
+      },
       select: {
         id: true,
         phone: true,
+        businessId: true,
       },
     })
-    const normalizedVariants = new Set(phoneVariants)
-    const customerIds = matchingCustomers
-      .filter((customer: { phone: string }) => {
-        const normalizedPhone = customer.phone.replace(/\D/g, '')
-        return normalizedVariants.has(normalizedPhone)
-      })
-      .map((customer: { id: string }) => customer.id)
+    const normalizedVariants = new Set(normalizedPhoneVariants)
+    const filteredCustomerMap = new Map<string, {
+      id: string
+      phone: string
+      businessId: string
+    }>()
+    const addCustomerIfPhoneMatches = (customer: {
+      id: string
+      phone: string
+      businessId: string
+    }) => {
+      if (customer.businessId !== businessId) {
+        return
+      }
+
+      const normalizedPhone = customer.phone.replace(/\D/g, '')
+
+      if (normalizedVariants.has(normalizedPhone)) {
+        filteredCustomerMap.set(customer.id, customer)
+      }
+    }
+
+    for (const customer of matchingCustomers) {
+      addCustomerIfPhoneMatches(customer)
+    }
+
+    const filteredCustomers = [...filteredCustomerMap.values()]
+
+    if (filteredCustomers.length === 0) {
+      return []
+    }
+
+    const customerIds = filteredCustomers.map((customer: { id: string }) => customer.id)
 
     if (customerIds.length === 0) {
       return []
@@ -55,6 +100,10 @@ export class AppointmentsRepository {
 
     return this.prisma.appointment.findMany({
       where: {
+        businessId,
+        scheduledAt: {
+          gte: startsAtOrAfter,
+        },
         customerId: {
           in: customerIds,
         },
@@ -71,7 +120,7 @@ export class AppointmentsRepository {
           },
         },
       },
-      orderBy: [{ scheduledAt: 'desc' }, { createdAt: 'desc' }],
+      orderBy: [{ scheduledAt: 'asc' }, { createdAt: 'desc' }],
     })
   }
 
@@ -174,7 +223,13 @@ export class AppointmentsRepository {
   async findById(id: string, businessId: string) {
     return this.prisma.appointment.findFirst({
       where: { id, businessId },
-      include: { service: true, customer: true, assignedToUser: true },
+      select: {
+        id: true,
+        businessId: true,
+        customerId: true,
+        status: true,
+        assignedToUserId: true,
+      },
     })
   }
 
@@ -227,13 +282,19 @@ export class AppointmentsRepository {
   }
 
   async updateStatus(id: string, businessId: string, status: AppointmentStatus) {
-    return this.prisma.appointment.update({
-      where: { id },
+    const result = await this.prisma.appointment.updateMany({
+      where: { id, businessId },
       data: {
         status,
         completedAt: status === AppointmentStatus.COMPLETED ? new Date() : null,
       },
     })
+
+    if (result.count === 0) {
+      return null
+    }
+
+    return { id, status }
   }
 
   async updateAssignee(id: string, businessId: string, assignedToUserId: string | null) {

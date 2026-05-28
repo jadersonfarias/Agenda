@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 import { Button } from '../ui/button'
@@ -17,6 +17,10 @@ import { BookingSummary } from './BookingSummary'
 import { StepIndicator } from './StepIndicator'
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL || '/backend'
+const publicServicesStaleTimeMs = 10 * 60 * 1000
+const publicServicesGcTimeMs = 30 * 60 * 1000
+const availabilityStaleTimeMs = 15 * 1000
+const availabilityGcTimeMs = 2 * 60 * 1000
 
 const appointmentSchema = z.object({
     serviceId: z.string().uuid('Selecione um serviço válido'),
@@ -93,6 +97,7 @@ export function PublicBookingPage({
     eyebrow = 'Reserva de serviço',
     headline = 'Agende seu atendimento com facilidade',
 }: PublicBookingPageProps) {
+    const queryClient = useQueryClient()
     const [currentStep, setCurrentStep] = useState<BookingStep>('service')
     const [createdAppointmentLink, setCreatedAppointmentLink] = useState<string | null>(null)
     const [publicBookingUrl, setPublicBookingUrl] = useState('')
@@ -125,7 +130,7 @@ export function PublicBookingPage({
     const formattedDate = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : ''
 
     const servicesQuery = useQuery<Service[]>({
-        queryKey: ['services', businessId],
+        queryKey: ['public-services', businessId],
         queryFn: async () => {
             const response = await fetch(`${apiBase}/businesses/${businessId}/services`)
             if (!response.ok) {
@@ -140,8 +145,11 @@ export function PublicBookingPage({
 
             return normalizeListResponse(payload)
         },
-        refetchOnMount: 'always',
-        refetchOnWindowFocus: true,
+        staleTime: publicServicesStaleTimeMs,
+        gcTime: publicServicesGcTimeMs,
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
     })
 
     const availabilityQuery = useQuery<string[]>({
@@ -164,7 +172,10 @@ export function PublicBookingPage({
             return payload
         },
         enabled: Boolean(selectedServiceId && formattedDate),
+        staleTime: availabilityStaleTimeMs,
+        gcTime: availabilityGcTimeMs,
         refetchOnWindowFocus: false,
+        refetchOnMount: false,
         retry: false,
     })
 
@@ -188,6 +199,7 @@ export function PublicBookingPage({
             return createdAppointment
         },
         onSuccess: async (createdAppointment) => {
+            await queryClient.invalidateQueries({ queryKey: ['availability', businessId] })
             toast.success('Agendamento criado com sucesso')
             const appointmentLink =
                 createdAppointment.publicToken
@@ -209,9 +221,18 @@ export function PublicBookingPage({
     const selectedDateLabel = selectedDate ? format(selectedDate, 'dd/MM/yyyy') : ''
     const publicBusinessSlug = businessSlug || businessId
     const publicBookingHref = `/b/${encodeURIComponent(publicBusinessSlug)}`
+    const myAppointmentsHref = `/meus-agendamentos?businessId=${encodeURIComponent(businessId)}`
     const businessDisplayName = businessName || 'Agendamento online'
     const hasBusinessHours = Boolean(businessOpenTime && businessCloseTime)
     const businessHoursLabel = hasBusinessHours ? `${businessOpenTime} às ${businessCloseTime}` : 'Consulte os horários ao selecionar uma data'
+
+    useEffect(() => {
+        try {
+            window.localStorage.setItem('marcacerta:lastPublicBusinessId', businessId)
+        } catch {
+            // O link com businessId continua funcionando mesmo sem localStorage.
+        }
+    }, [businessId])
 
     useEffect(() => {
         if (!selectedServiceId) {
@@ -373,7 +394,7 @@ export function PublicBookingPage({
 
                         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                             <Link
-                                href="/meus-agendamentos"
+                                href={myAppointmentsHref}
                                 className="text-sm font-medium text-purple-700 transition hover:text-purple-800 focus:outline-none focus:ring-2 focus:ring-purple-200"
                             >
                                 Ir para Meus agendamentos
@@ -760,7 +781,7 @@ export function PublicBookingPage({
                                 </p>
 
                                 <div className="grid gap-2">
-                                    <Link href="/meus-agendamentos" className="w-full">
+                                    <Link href={myAppointmentsHref} className="w-full">
                                         <Button type="button" variant="secondary" className="w-full">
                                             Meus agendamentos
                                         </Button>

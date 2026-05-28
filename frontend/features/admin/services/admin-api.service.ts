@@ -10,6 +10,7 @@ import {
     type AdminMembershipRole,
     type AdminFinancialReport,
     type AdminMonthlySummary,
+    type AdminPaginatedResponse,
     type AdminServiceItem,
 } from '../types'
 
@@ -19,6 +20,26 @@ type PaginatedResponse<T> = {
 
 function normalizeAdminServices(payload: AdminServiceItem[] | PaginatedResponse<AdminServiceItem>) {
     return Array.isArray(payload) ? payload : payload.data
+}
+
+function normalizePaginatedResponse<T>(
+    payload: T[] | AdminPaginatedResponse<T>,
+    page: number,
+    perPage: number,
+): AdminPaginatedResponse<T> {
+    if (!Array.isArray(payload)) {
+        return payload
+    }
+
+    return {
+        data: payload,
+        meta: {
+            page,
+            perPage,
+            total: payload.length,
+            totalPages: Math.max(1, Math.ceil(payload.length / perPage)),
+        },
+    }
 }
 
 function formatMoney(value: string | number) {
@@ -91,25 +112,25 @@ export async function fetchAdminServices(businessId: string) {
     }
 }
 
-export async function fetchAdminMemberships(businessId: string) {
+export async function fetchAdminMemberships(businessId: string, page = 1, perPage = 20) {
     try {
-        const response = await api.get<AdminMembershipItem[]>('/admin/memberships', {
-            params: { businessId },
+        const response = await api.get<AdminMembershipItem[] | AdminPaginatedResponse<AdminMembershipItem>>('/admin/memberships', {
+            params: { businessId, page, perPage },
         })
 
-        return response.data
+        return normalizePaginatedResponse(response.data, page, perPage)
     } catch (error) {
         throw new Error(getApiErrorMessage(error, 'Não foi possível carregar os membros'))
     }
 }
 
-export async function fetchAdminInvitations(businessId: string) {
+export async function fetchAdminInvitations(businessId: string, page = 1, perPage = 20) {
     try {
-        const response = await api.get<AdminInvitationItem[]>('/admin/invitations', {
-            params: { businessId },
+        const response = await api.get<AdminInvitationItem[] | AdminPaginatedResponse<AdminInvitationItem>>('/admin/invitations', {
+            params: { businessId, page, perPage },
         })
 
-        return response.data
+        return normalizePaginatedResponse(response.data, page, perPage)
     } catch (error) {
         throw new Error(getApiErrorMessage(error, 'Não foi possível carregar os convites'))
     }

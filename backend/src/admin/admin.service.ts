@@ -2,7 +2,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { randomBytes } from 'crypto'
 import { hash } from 'bcryptjs'
 import { AdminRepository } from './admin.repository'
-import { PaginationParams } from '../common/pagination'
+import { PaginationParams, PaginatedResult } from '../common/pagination'
 import { BusinessesRepository } from '../businesses/businesses.repository'
 import { AppointmentsService } from '../appointments/appointments.service'
 import { UpdateAppointmentStatusDto } from '../appointments/appointment.schema'
@@ -20,7 +20,16 @@ import { AvailabilityCacheService } from '../scheduling/availability-cache.servi
 import { AppointmentStatusFilter } from '../appointments/appointment-status-filter'
 import { SubscriptionService } from '../subscriptions/subscription.service'
 
-type AdminServiceRecord = Awaited<ReturnType<AdminRepository['listServicesByBusinessId']>>[number]
+type AdminServiceRecord = {
+  id: string
+  name: string
+  price: { toString(): string } | string | number
+  durationMinutes: number
+  createdAt: Date
+  _count: {
+    appointments: number
+  }
+}
 
 type AdminMembershipRecord = {
   id: string
@@ -260,16 +269,29 @@ export class AdminService {
     return business
   }
 
-  async listMemberships(businessId: string) {
-    const memberships = await this.adminRepository.listMembershipsByBusinessId(businessId)
-
-    return memberships.map((membership: AdminMembershipRecord) => ({
+  private mapMembership(membership: AdminMembershipRecord) {
+    return {
       id: membership.id,
       role: membership.role,
       createdAt: membership.createdAt.toISOString(),
       updatedAt: membership.updatedAt.toISOString(),
       user: membership.user,
-    }))
+    }
+  }
+
+  async listMemberships(businessId: string, pagination: PaginationParams | null = null) {
+    const memberships = await this.adminRepository.listMembershipsByBusinessId(businessId, pagination)
+
+    if (pagination) {
+      const paginatedMemberships = memberships as PaginatedResult<AdminMembershipRecord>
+
+      return {
+        data: paginatedMemberships.data.map((membership) => this.mapMembership(membership)),
+        meta: paginatedMemberships.meta,
+      }
+    }
+
+    return (memberships as AdminMembershipRecord[]).map((membership) => this.mapMembership(membership))
   }
 
   async createMembership(businessId: string, dto: AdminCreateMembershipDto) {
@@ -345,10 +367,19 @@ export class AdminService {
     return { success: true }
   }
 
-  async listInvitations(businessId: string) {
-    const invitations = await this.adminRepository.listInvitationsByBusinessId(businessId)
+  async listInvitations(businessId: string, pagination: PaginationParams | null = null) {
+    const invitations = await this.adminRepository.listInvitationsByBusinessId(businessId, pagination)
 
-    return invitations.map((invitation: AdminInvitationRecord) => this.mapInvitation(invitation))
+    if (pagination) {
+      const paginatedInvitations = invitations as PaginatedResult<AdminInvitationRecord>
+
+      return {
+        data: paginatedInvitations.data.map((invitation) => this.mapInvitation(invitation)),
+        meta: paginatedInvitations.meta,
+      }
+    }
+
+    return (invitations as AdminInvitationRecord[]).map((invitation) => this.mapInvitation(invitation))
   }
 
   async createInvitation(businessId: string, dto: AdminCreateInvitationDto) {
