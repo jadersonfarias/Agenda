@@ -19,6 +19,10 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         redirect('/login')
     }
 
+    if (session.user.isPlatformAdmin === true) {
+        redirect('/admin-master')
+    }
+
     const resolvedSearchParams = searchParams ? await searchParams : undefined
     const businessId =
         resolvedSearchParams?.businessId ??

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { signIn } from 'next-auth/react'
+import { getSession, signIn } from 'next-auth/react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -52,7 +52,11 @@ export default function LoginPage() {
             setError(result?.error || 'Não foi possível fazer login')
             return
         }
-        router.push('/admin')
+
+        const session = await getSession()
+        const redirectPath = session?.user?.isPlatformAdmin ? '/admin-master' : '/admin'
+
+        router.push(redirectPath)
     }
 
     return (
