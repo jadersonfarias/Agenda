@@ -28,6 +28,7 @@ Entidades principais:
 frontend/
   app/
     page.tsx
+    demo/page.tsx
     login/page.tsx
     signup/page.tsx
     admin/page.tsx
@@ -44,6 +45,7 @@ frontend/
     ui/*
   features/
     admin/*
+    demo/*
     invitations/*
     platform/*
   lib/*
@@ -68,6 +70,10 @@ backend/
 ## Arquitetura
 - Backend segue `Controller -> Service -> Repository -> Prisma`.
 - Frontend nao usa Prisma diretamente.
+- Landing `/` usa preview de demonstracao 100% frontend e nao depende de `Business` real para exibir a demo.
+- `/demo` usa dados ficticios locais no frontend, pode ter interacao via estado local e nao possui persistencia.
+- `/signup` e o unico fluxo publico para criacao real de dono + business.
+- `/b/[slug]` e o fluxo real de reserva publica por slug.
 - Admin normal usa `/admin` com server page + `AdminPanel`.
 - Admin master usa `/admin-master` e exige `session.user.isPlatformAdmin === true`.
 - Auth backend usa JWT via `@nestjs/jwt` e `JWT_SECRET`.
@@ -77,12 +83,13 @@ backend/
 - `PlatformAdminGuard` valida `isPlatformAdmin`.
 
 ## Rotas Frontend
-- `/`: landing publica MarcaCerta
-- `/signup`: cadastro publico de dono + primeiro business
+- `/`: landing publica MarcaCerta com preview simples da demonstracao; nao depende de `Business` real
+- `/demo`: demonstracao ficticia 100% frontend, apenas visual/interativa e nao persistente
+- `/signup`: cadastro publico real de dono + primeiro business
 - `/login`: login com NextAuth
 - `/admin`: painel admin do business
 - `/admin-master`: painel master da plataforma
-- `/b/[slug]`: pagina publica de reserva por slug
+- `/b/[slug]`: fluxo real de reserva publica por slug
 - `/appointments/[token]`: detalhe/cancelamento publico da reserva
 - `/meus-agendamentos`: consulta publica de agendamentos por dados do cliente
 - `/invite/[token]`: aceite de convite de equipe
@@ -178,6 +185,13 @@ Regras estruturais:
 
 ## Regras de Negocio Implementadas
 - Cadastro publico cria dono, business, membership `OWNER`, plano `BASIC`, status `TRIALING` e trial de 7 dias.
+- Demonstracao publica:
+  - `/demo` usa dados ficticios locais no frontend.
+  - `/demo` pode simular selecao de servico, horario e confirmacao usando estado local.
+  - nao cria `User`, `Business`, `Customer` ou `Appointment`.
+  - nao chama endpoints de escrita.
+  - `/signup` permanece como fluxo real de cadastro.
+  - `/b/[slug]` permanece como fluxo real de reserva publica.
 - Disponibilidade considera horario do business, appointments nao cancelados, manual blocks e timezone.
 - Agendamento publico nao aceita horario passado.
 - Consulta publica `GET /appointments/customer` exige `businessId` para busca efetiva, usa candidatos exatos de telefone (`phone IN (...)`) dentro do business e nao faz varredura ampla normalizando todos os clientes em memoria.

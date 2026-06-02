@@ -1,12 +1,7 @@
 import Link from 'next/link'
+import { PublicDemoPreviewCard } from './PublicDemoPreviewCard'
 import { Button } from '../ui/button'
 import { Card } from '../ui/card'
-
-type PublicLandingPageProps = {
-    demoBookingHref: string
-    demoBusinessName: string
-    demoBusinessHoursLabel?: string
-}
 
 const benefits = [
     {
@@ -68,161 +63,92 @@ const idealFor = [
     },
 ] as const
 
-const quickHighlights = [
+const heroBadges = [
+    'Reservas online',
+    'Gestão simples',
+    'Mobile first',
+] as const
+
+const heroFeatureCards = [
     {
-        title: 'Link de agendamento',
-        description: 'Divulgue online sua agenda com uma página pronta para receber reservas.',
+        eyebrow: 'Reserva',
+        text: 'Seu link de agendamento pronto para receber clientes',
     },
     {
-        title: 'Painel simples',
-        description: 'Organize agenda, equipe e serviços sem complicar a rotina do negócio.',
+        eyebrow: 'Equipe',
+        text: 'Mais controle da operação sem complicar o dia a dia',
     },
     {
-        title: 'Resumo do movimento',
-        description: 'Acompanhe o que acontece no negócio em um só lugar, com mais clareza.',
+        eyebrow: 'Financeiro',
+        text: 'Visão rápida do movimento do negócio',
     },
 ] as const
 
-export function PublicLandingPage({
-    demoBookingHref,
-    demoBusinessName,
-    demoBusinessHoursLabel,
-}: PublicLandingPageProps) {
+export function PublicLandingPage() {
     return (
         <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-5 overflow-x-hidden px-3 py-4 sm:gap-8 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
-            <section className="grid gap-4 lg:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)] lg:gap-6">
-                <Card className="relative overflow-hidden border-purple-200 bg-gradient-to-br from-white via-purple-50/60 to-purple-100/70 shadow-xl shadow-purple-100/70">
+            <section className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-stretch lg:gap-5">
+                <Card className="relative min-w-0 h-full w-full overflow-hidden border-purple-200 bg-gradient-to-br from-white via-purple-50/60 to-purple-100/70 shadow-xl shadow-purple-100/70">
                     <div className="absolute -right-14 top-6 h-32 w-32 rounded-full bg-purple-200/40 blur-3xl" />
                     <div className="absolute -left-10 bottom-6 h-24 w-24 rounded-full bg-fuchsia-200/40 blur-3xl" />
 
-                    <div className="relative space-y-7 sm:space-y-8">
-                        <div className="space-y-4 sm:space-y-5">
-                            <p className="text-xs uppercase tracking-[.3em] text-purple-700 sm:text-sm">MarcaCerta</p>
-                            <div className="inline-flex rounded-full border border-purple-200 bg-white/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[.18em] text-purple-700 sm:text-xs">
-                                Agenda online para negócios de atendimento
+                    <div className="relative flex h-full min-w-0 flex-col gap-6 sm:gap-7">
+                        <div className="space-y-5 sm:space-y-6">
+                            <div className="space-y-4 sm:space-y-5">
+                                <p className="text-xs uppercase tracking-[.3em] text-purple-700 sm:text-sm">MarcaCerta</p>
+                                <div className="inline-flex rounded-full border border-purple-200 bg-white/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[.18em] text-purple-700 sm:text-xs">
+                                    Agenda online para negócios de atendimento
+                                </div>
+                                <h1 className="max-w-[12ch] text-[2.05rem] font-semibold tracking-tight leading-tight text-slate-950 sm:max-w-[13ch] sm:text-[2.7rem] lg:max-w-[11.5ch] lg:text-[3.7rem]">
+                                    Receba <span className="text-purple-700">agendamentos online</span> sem depender do WhatsApp
+                                </h1>
+                                <p className="max-w-xl text-sm leading-6 text-slate-600 sm:text-base sm:leading-7 lg:max-w-2xl lg:text-lg lg:leading-8">
+                                    Receba reservas online, organize sua agenda e acompanhe seus atendimentos em um só painel.
+                                </p>
                             </div>
-                            <h1 className="max-w-[12ch] text-[1.85rem] font-semibold tracking-tight leading-[1.08] text-slate-950 sm:max-w-[13ch] sm:text-[2.5rem] sm:leading-[1.04] lg:max-w-[12ch] lg:text-[3.85rem] lg:leading-[0.98]">
-                                Receba <span className="text-purple-700">agendamentos online</span> sem depender do WhatsApp o dia todo
-                            </h1>
-                            <p className="max-w-xl text-sm leading-6 text-slate-600 sm:text-base sm:leading-7 lg:max-w-2xl lg:text-lg lg:leading-8">
-                                Organize serviços, equipe, agenda e faturamento em um painel simples para o dia a dia do seu negócio.
-                            </p>
-                        </div>
 
-                        <div className="flex flex-col gap-3.5 sm:flex-row sm:flex-wrap sm:gap-4">
-                            <Link href="/signup" className="w-full sm:w-auto">
-                                <Button className="w-full bg-purple-700 px-6 py-3 text-base shadow-lg shadow-purple-300/60 hover:bg-purple-800 sm:min-w-[190px]">
-                                    Começar grátis
-                                </Button>
-                            </Link>
-                            <Link href={demoBookingHref} className="w-full sm:w-auto">
-                                <Button variant="secondary" className="w-full border border-purple-200 bg-white/90 px-6 py-3 text-base text-purple-700 hover:bg-purple-50 sm:min-w-[180px]">
-                                    Ver demonstração
-                                </Button>
-                            </Link>
-                        </div>
+                            <div className="flex flex-wrap gap-2.5 text-sm text-slate-600">
+                                {heroBadges.map((badge) => (
+                                    <span
+                                        key={badge}
+                                        className="rounded-full border border-white/80 bg-white/90 px-3 py-2 font-medium shadow-sm shadow-purple-100/60"
+                                    >
+                                        {badge}
+                                    </span>
+                                ))}
+                            </div>
 
-                        <div className="grid gap-3 sm:grid-cols-3">
-                            <div className="rounded-[1.75rem] border border-white/80 bg-white/90 px-4 py-4 shadow-sm shadow-purple-100/80">
-                                <p className="text-[11px] uppercase tracking-[.2em] text-slate-500">Atendimento</p>
-                                <p className="mt-2 text-sm font-semibold text-slate-950 sm:text-base">
-                                    Clientes reservam mesmo fora do horário comercial
-                                </p>
-                            </div>
-                            <div className="rounded-[1.75rem] border border-white/80 bg-white/90 px-4 py-4 shadow-sm shadow-purple-100/80">
-                                <p className="text-[11px] uppercase tracking-[.2em] text-slate-500">Operação</p>
-                                <p className="mt-2 text-sm font-semibold text-slate-950 sm:text-base">
-                                    Serviços, equipe e agenda organizados em um só painel
-                                </p>
-                            </div>
-                            <div className="rounded-[1.75rem] border border-white/80 bg-white/90 px-4 py-4 shadow-sm shadow-purple-100/80">
-                                <p className="text-[11px] uppercase tracking-[.2em] text-slate-500">Visão</p>
-                                <p className="mt-2 text-sm font-semibold text-slate-950 sm:text-base">
-                                    Acompanhe atendimentos concluídos e movimento mensal
-                                </p>
+                            <div className="flex flex-col gap-3.5 sm:flex-row sm:flex-wrap sm:gap-4">
+                                <Link href="/signup" className="w-full sm:w-auto">
+                                    <Button className="w-full bg-purple-700 px-6 py-3 text-base shadow-lg shadow-purple-300/60 hover:bg-purple-800 sm:min-w-[190px]">
+                                        Começar grátis
+                                    </Button>
+                                </Link>
+                                <Link href="/demo" className="w-full sm:w-auto">
+                                    <Button variant="secondary" className="w-full border border-purple-200 bg-white/90 px-6 py-3 text-base text-purple-700 hover:bg-purple-50 sm:min-w-[180px]">
+                                        Ver demonstração
+                                    </Button>
+                                </Link>
                             </div>
                         </div>
 
-                        <div className="grid gap-3 rounded-[1.75rem] border border-purple-200/70 bg-white/75 p-4 sm:grid-cols-3">
-                            {quickHighlights.map((item) => (
+                        <div className="grid gap-3 sm:grid-cols-3 lg:mt-auto">
+                            {heroFeatureCards.map((item) => (
                                 <div
-                                    key={item.title}
-                                    className="rounded-[1.5rem] border border-purple-100 bg-gradient-to-br from-white to-purple-50/60 px-4 py-4 shadow-sm shadow-purple-100/60"
+                                    key={item.eyebrow}
+                                    className="flex h-full flex-col rounded-[1.75rem] border border-white/80 bg-white/90 px-4 py-4 shadow-sm shadow-purple-100/80"
                                 >
-                                    <div className="flex items-start gap-3">
-                                        <span className="mt-1 inline-flex h-4 w-4 shrink-0 rounded-full bg-gradient-to-br from-purple-500 to-fuchsia-500 shadow-sm shadow-purple-300/70" />
-                                        <div className="min-w-0">
-                                            <p className="text-sm font-semibold text-slate-950 sm:text-base">{item.title}</p>
-                                            <p className="mt-2 text-sm leading-6 text-slate-600">{item.description}</p>
-                                        </div>
-                                    </div>
+                                    <p className="text-[11px] uppercase tracking-[.2em] text-slate-500">{item.eyebrow}</p>
+                                    <p className="mt-2 text-sm font-semibold leading-6 text-slate-950 sm:text-base">
+                                        {item.text}
+                                    </p>
                                 </div>
                             ))}
                         </div>
                     </div>
                 </Card>
 
-                <Card className="border-slate-200 bg-white shadow-xl shadow-slate-200/60">
-                    <div className="space-y-5">
-                        <div className="space-y-2">
-                            <p className="text-xs uppercase tracking-[.25em] text-purple-700 sm:text-sm">Demonstração ao vivo</p>
-                            <h2 className="text-xl font-semibold text-slate-950 sm:text-2xl">Veja um preview real da experiência do cliente</h2>
-                            <p className="text-sm leading-6 text-slate-600">
-                                Abra a agenda demo e veja como seu negócio pode receber reservas online com uma página simples, rápida e pronta para divulgar.
-                            </p>
-                        </div>
-
-                        <div className="rounded-[2rem] border border-slate-200 bg-slate-50 p-3 shadow-inner shadow-slate-200/70">
-                            <div className="rounded-[1.7rem] border border-purple-200 bg-white p-4 shadow-lg shadow-purple-100/60">
-                                <div className="flex items-center gap-2 pb-4">
-                                    <span className="h-2.5 w-2.5 rounded-full bg-rose-300" />
-                                    <span className="h-2.5 w-2.5 rounded-full bg-amber-300" />
-                                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-300" />
-                                    <div className="ml-2 rounded-full bg-slate-100 px-3 py-1 text-[11px] text-slate-500">
-                                        Preview da agenda pública
-                                    </div>
-                                </div>
-
-                                <div className="space-y-4">
-                                    <div className="rounded-[1.5rem] bg-gradient-to-br from-purple-700 to-violet-700 px-4 py-4 text-white shadow-lg shadow-purple-200/70">
-                                        <p className="text-[11px] uppercase tracking-[.18em] text-purple-100">Negócio demo</p>
-                                        <p className="mt-2 text-lg font-semibold">{demoBusinessName}</p>
-                                        <p className="mt-2 text-sm leading-6 text-purple-50">
-                                            Página de agendamento pronta para clientes escolherem serviço, horário e confirmarem a reserva.
-                                        </p>
-                                    </div>
-
-                                    <div className="grid gap-3">
-                                        <div className="rounded-[1.4rem] border border-slate-200 bg-slate-50 px-4 py-4">
-                                            <p className="text-[11px] uppercase tracking-[.2em] text-slate-500">Link demo</p>
-                                            <p className="mt-2 break-all text-sm font-semibold text-slate-950">{demoBookingHref}</p>
-                                        </div>
-
-                                        <div className="rounded-[1.4rem] border border-slate-200 bg-slate-50 px-4 py-4">
-                                            <p className="text-[11px] uppercase tracking-[.2em] text-slate-500">Horário de funcionamento</p>
-                                            <p className="mt-2 text-sm font-semibold text-slate-950 sm:text-base">
-                                                {demoBusinessHoursLabel ?? 'Horários configurados no painel admin'}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div className="rounded-[1.4rem] border border-dashed border-purple-200 bg-purple-50 px-4 py-4">
-                                        <p className="text-[11px] uppercase tracking-[.2em] text-purple-700">O que você vai ver</p>
-                                        <p className="mt-2 text-sm leading-6 text-slate-700">
-                                            Um fluxo real de reserva online para sentir como seus clientes agendam sem precisar ficar chamando no WhatsApp.
-                                        </p>
-                                    </div>
-
-                                    <Link href={demoBookingHref} className="mt-5 block w-full">
-                                        <Button className="w-full bg-purple-700 py-3 text-base hover:bg-purple-800">
-                                            Abrir demonstração
-                                        </Button>
-                                    </Link>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </Card>
+                <PublicDemoPreviewCard />
             </section>
 
             <section className="grid gap-4 lg:grid-cols-3">
@@ -323,7 +249,7 @@ export function PublicLandingPage({
                                     Começar grátis
                                 </Button>
                             </Link>
-                            <Link href={demoBookingHref} className="w-full sm:w-auto">
+                            <Link href="/demo" className="w-full sm:w-auto">
                                 <Button
                                     className="w-full border border-white/25 bg-transparent px-6 text-white hover:bg-white/10 sm:min-w-[180px]"
                                 >
