@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -29,7 +29,22 @@ const appointmentSchema = z.object({
     date: z.date({
         required_error: 'Selecione uma data',
     }),
-    time: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Horário inválido'),
+    time: z.string().superRefine((value, context) => {
+        if (!value) {
+            context.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'Selecione um horário disponível',
+            })
+            return
+        }
+
+        if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(value)) {
+            context.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'Horário inválido',
+            })
+        }
+    }),
 })
 
 type AppointmentForm = z.infer<typeof appointmentSchema>
@@ -53,6 +68,13 @@ type AppointmentApi = {
 type CreatedAppointmentResponse = {
     publicToken?: string | null
     publicUrl?: string | null
+}
+
+type AvailabilitySlotStatus = 'AVAILABLE' | 'BOOKED' | 'UNAVAILABLE'
+
+type AvailabilitySlot = {
+    time: string
+    status: AvailabilitySlotStatus
 }
 
 type PaginatedResponse<T> = {
@@ -84,6 +106,37 @@ function normalizeListResponse<T>(payload: T[] | PaginatedResponse<T>) {
     return Array.isArray(payload) ? payload : payload.data
 }
 
+function isAvailabilitySlotStatus(value: unknown): value is AvailabilitySlotStatus {
+    return value === 'AVAILABLE' || value === 'BOOKED' || value === 'UNAVAILABLE'
+}
+
+function normalizeAvailabilityResponse(payload: unknown[]): AvailabilitySlot[] {
+    return payload.map((item) => {
+        if (typeof item === 'string') {
+            return {
+                time: item,
+                status: 'AVAILABLE',
+            }
+        }
+
+        if (
+            typeof item === 'object' &&
+            item !== null &&
+            'time' in item &&
+            'status' in item &&
+            typeof item.time === 'string' &&
+            isAvailabilitySlotStatus(item.status)
+        ) {
+            return {
+                time: item.time,
+                status: item.status,
+            }
+        }
+
+        throw new Error('Resposta inválida ao carregar disponibilidade')
+    })
+}
+
 async function readJson<T>(response: Response): Promise<T | null> {
     return (await response.json().catch(() => null)) as T | null
 }
@@ -109,6 +162,8 @@ export function PublicBookingPage({
         reset,
         control,
         setValue,
+        setError,
+        clearErrors,
         trigger,
         formState: { errors },
     } = useForm<AppointmentForm>({
@@ -152,7 +207,7 @@ export function PublicBookingPage({
         refetchOnReconnect: false,
     })
 
-    const availabilityQuery = useQuery<string[]>({
+    const availabilityQuery = useQuery<AvailabilitySlot[]>({
         queryKey: ['availability', businessId, selectedServiceId, formattedDate],
         queryFn: async () => {
             if (!selectedServiceId || !formattedDate) return []
@@ -163,13 +218,13 @@ export function PublicBookingPage({
                 const payload = await readJson<{ message?: string }>(response)
                 throw new Error(payload?.message || 'Não foi possível carregar disponibilidade')
             }
-            const payload = await readJson<string[]>(response)
+            const payload = await readJson<unknown[]>(response)
 
             if (!payload || !Array.isArray(payload)) {
                 throw new Error('Resposta inválida ao carregar disponibilidade')
             }
 
-            return payload
+            return normalizeAvailabilityResponse(payload)
         },
         enabled: Boolean(selectedServiceId && formattedDate),
         staleTime: availabilityStaleTimeMs,
@@ -216,7 +271,15 @@ export function PublicBookingPage({
     })
 
     const serviceOptions = servicesQuery.data ?? []
-    const availableTimes = availabilityQuery.data ?? []
+    const availabilitySlots = availabilityQuery.data ?? []
+    const availableSlots = useMemo(
+        () => availabilitySlots.filter((slot) => slot.status === 'AVAILABLE'),
+        [availabilitySlots]
+    )
+    const selectedAvailableSlot = useMemo(
+        () => availableSlots.find((slot) => slot.time === selectedTime) ?? null,
+        [availableSlots, selectedTime]
+    )
     const selectedService = serviceOptions.find((service) => service.id === selectedServiceId) ?? null
     const selectedDateLabel = selectedDate ? format(selectedDate, 'dd/MM/yyyy') : ''
     const publicBusinessSlug = businessSlug || businessId
@@ -244,22 +307,45 @@ export function PublicBookingPage({
         if (!selectedServiceStillExists) {
             setValue('serviceId', '')
             setValue('time', '')
+            clearErrors('time')
             toast('Os serviços foram atualizados. Selecione uma nova opção.')
         }
-    }, [selectedServiceId, serviceOptions, setValue])
+    }, [clearErrors, selectedServiceId, serviceOptions, setValue])
 
     useEffect(() => {
-        if (!selectedTime || availableTimes.length === 0) {
+        if (!selectedTime) {
             return
         }
 
-        const selectedTimeStillExists = availableTimes.includes(selectedTime)
-
-        if (!selectedTimeStillExists) {
+        if (!selectedServiceId || !selectedDate) {
             setValue('time', '')
+            clearErrors('time')
+            return
+        }
+
+        if (availabilityQuery.isLoading || availabilityQuery.isFetching) {
+            return
+        }
+
+        const selectedTimeStillAvailable = availabilitySlots.some((slot) => (
+            slot.time === selectedTime && slot.status === 'AVAILABLE'
+        ))
+
+        if (!selectedTimeStillAvailable) {
+            setValue('time', '')
+            clearErrors('time')
             toast('Os horários disponíveis foram atualizados. Escolha um novo horário.')
         }
-    }, [availableTimes, selectedTime, setValue])
+    }, [
+        availabilityQuery.isFetching,
+        availabilityQuery.isLoading,
+        availabilitySlots,
+        clearErrors,
+        selectedDate,
+        selectedServiceId,
+        selectedTime,
+        setValue,
+    ])
 
     useEffect(() => {
         bookingFormTopRef.current?.scrollIntoView({
@@ -336,7 +422,28 @@ export function PublicBookingPage({
 
         if (currentStep === 'schedule') {
             const isValid = await trigger(['date', 'time'])
-            if (isValid) setCurrentStep('review')
+            if (!isValid) {
+                return
+            }
+
+            if (availabilityQuery.isLoading || availabilityQuery.isFetching) {
+                setError('time', {
+                    type: 'validate',
+                    message: 'Aguarde carregar os horários disponíveis',
+                })
+                return
+            }
+
+            if (!selectedAvailableSlot) {
+                setError('time', {
+                    type: 'validate',
+                    message: 'Selecione um horário disponível',
+                })
+                return
+            }
+
+            clearErrors('time')
+            setCurrentStep('review')
         }
     }
 
@@ -478,7 +585,8 @@ export function PublicBookingPage({
                                                 type="button"
                                                 onClick={() => {
                                                     setValue('serviceId', service.id, { shouldValidate: true })
-                                                    setValue('time', '', { shouldValidate: true })
+                                                    setValue('time', '')
+                                                    clearErrors('time')
                                                 }}
                                                 className={[
                                                     'group w-full rounded-3xl border p-3.5 text-left transition focus:outline-none focus:ring-2 focus:ring-purple-200 sm:p-4',
@@ -596,32 +704,66 @@ export function PublicBookingPage({
                             ) : null}
 
                             {!availabilityQuery.isLoading && !availabilityQuery.isError && selectedServiceId && selectedDate ? (
-                                availableTimes.length > 0 ? (
-                                    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4">
-                                        {availableTimes.map((time) => {
-                                            const isSelected = time === selectedTime
+                                availabilitySlots.length > 0 ? (
+                                    <div className="space-y-3">
+                                        {availableSlots.length === 0 ? (
+                                            <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
+                                                Não há horários disponíveis para esta data.
+                                            </p>
+                                        ) : null}
 
-                                            return (
-                                                <button
-                                                    key={time}
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setValue('time', time, { shouldValidate: true })
-                                                    }}
-                                                    className={[
-                                                        'min-h-12 rounded-2xl border px-3 py-3 text-center text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-purple-200 sm:min-h-14 sm:px-4 sm:text-base',
-                                                        isSelected
-                                                            ? 'border-purple-300 bg-purple-700 text-white'
-                                                            : 'border-slate-200 bg-white text-slate-900 hover:border-purple-200 hover:bg-slate-50',
-                                                    ].join(' ')}
-                                                >
-                                                    {time}
-                                                </button>
-                                            )
-                                        })}
+                                        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4">
+                                            {availabilitySlots.map((slot) => {
+                                                const isSelected = slot.time === selectedTime
+                                                const isAvailable = slot.status === 'AVAILABLE'
+                                                const slotLabel =
+                                                    slot.status === 'BOOKED'
+                                                        ? 'Reservado'
+                                                        : slot.status === 'UNAVAILABLE'
+                                                          ? 'Indisponível'
+                                                          : 'Disponível'
+
+                                                return (
+                                                    <button
+                                                        key={`${slot.time}-${slot.status}`}
+                                                        type="button"
+                                                        disabled={!isAvailable}
+                                                        aria-pressed={isSelected}
+                                                        aria-label={`${slot.time} - ${slotLabel}`}
+                                                        onClick={() => {
+                                                            if (!isAvailable) return
+                                                            setValue('time', slot.time, { shouldValidate: true })
+                                                            clearErrors('time')
+                                                        }}
+                                                        className={[
+                                                            'flex min-h-16 w-full flex-col items-center justify-center gap-1 rounded-2xl border px-2.5 py-3 text-center text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-purple-200 sm:min-h-[4.5rem] sm:px-4 sm:text-base',
+                                                            isSelected
+                                                                ? 'border-purple-400 bg-purple-700 text-white shadow-md shadow-purple-100 ring-2 ring-purple-200'
+                                                                : slot.status === 'BOOKED'
+                                                                  ? 'cursor-not-allowed border-red-200 bg-red-50 text-red-700'
+                                                                  : slot.status === 'UNAVAILABLE'
+                                                                    ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400'
+                                                                    : 'border-slate-200 bg-white text-slate-900 hover:border-purple-200 hover:bg-slate-50',
+                                                        ].join(' ')}
+                                                    >
+                                                        <span>{slot.time}</span>
+                                                        <span
+                                                            className={[
+                                                                'text-[11px] font-medium leading-none sm:text-xs',
+                                                                isSelected ? 'text-purple-50' : '',
+                                                            ].join(' ')}
+                                                        >
+                                                            {slotLabel}
+                                                        </span>
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
                                     </div>
                                 ) : (
-                                    <p className="text-sm text-slate-500">Sem horários livres para esta combinação.</p>
+                                    <p className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
+                                        Não há grade de horários para esta combinação. Tente outra data ou serviço.
+                                    </p>
                                 )
                             ) : null}
 
@@ -738,7 +880,8 @@ export function PublicBookingPage({
                                                             type="button"
                                                             onClick={() => {
                                                                 setValue('serviceId', service.id, { shouldValidate: true })
-                                                                setValue('time', '', { shouldValidate: true })
+                                                                setValue('time', '')
+                                                                clearErrors('time')
                                                                 setCurrentStep('service')
                                                             }}
                                                             className={[

@@ -1,12 +1,12 @@
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { z } from 'zod'
-import { type AdminInvitationItem, type AdminMembershipRole } from '../../features/admin/types'
+import { type AdminInvitationItem, type AdminMembershipItem, type AdminMembershipRole } from '../../features/admin/types'
 import { useAdminCreateInvitationMutation } from '../../features/admin/hooks/use-admin-create-invitation-mutation'
 import { useAdminCreateMembershipMutation } from '../../features/admin/hooks/use-admin-create-membership-mutation'
 import { useAdminDeleteMembershipMutation } from '../../features/admin/hooks/use-admin-delete-membership-mutation'
@@ -19,18 +19,21 @@ import { Card } from '../ui/card'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { Modal } from '../ui/modal'
-import { Select } from '../ui/select'
+
+type EditableMembershipRole = Extract<AdminMembershipRole, 'ADMIN' | 'STAFF'>
 
 type MembershipFormValues = {
     email: string
-    role: AdminMembershipRole
+    role: EditableMembershipRole
 }
 
 const membershipRoleLabels: Record<AdminMembershipRole, string> = {
-    OWNER: 'Owner',
-    ADMIN: 'Admin',
-    STAFF: 'Staff',
+    OWNER: 'Dono',
+    ADMIN: 'Administrador',
+    STAFF: 'Funcionário',
 }
+
+const editableMembershipRoleOptions: EditableMembershipRole[] = ['ADMIN', 'STAFF']
 
 const membershipRoleBadgeStyles: Record<AdminMembershipRole, string> = {
     OWNER: 'bg-purple-100 text-purple-700',
@@ -42,13 +45,25 @@ const teamListPerPage = 10
 
 const membershipFormSchema = z.object({
     email: z.string().trim().email('Informe um email válido'),
-    role: z.enum(['OWNER', 'ADMIN', 'STAFF']),
+    role: z.enum(['ADMIN', 'STAFF']),
 })
 
 const invitationFormSchema = z.object({
     email: z.string().trim().email('Informe um email válido'),
-    role: z.enum(['OWNER', 'ADMIN', 'STAFF']),
+    role: z.enum(['ADMIN', 'STAFF']),
 })
+
+type ManageableMembershipItem = AdminMembershipItem & {
+    role: EditableMembershipRole
+}
+
+function isEditableMembershipRole(role: AdminMembershipRole): role is EditableMembershipRole {
+    return role === 'ADMIN' || role === 'STAFF'
+}
+
+function isManageableMembership(membership: AdminMembershipItem): membership is ManageableMembershipItem {
+    return isEditableMembershipRole(membership.role)
+}
 
 async function copyInvitationLink(invitationLink: string) {
     if (typeof navigator === 'undefined' || !navigator.clipboard) {
@@ -119,6 +134,129 @@ function PaginationControls({
     )
 }
 
+function OwnerMembershipCard({ membership }: { membership: AdminMembershipItem }) {
+    return (
+        <div className="rounded-3xl border border-purple-100 bg-purple-50/60 p-4 sm:p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0 space-y-1">
+                    <h4 className="text-base font-semibold text-slate-900 sm:text-lg">{membership.user.name}</h4>
+                    <p className="break-all text-sm text-slate-600">{membership.user.email}</p>
+                </div>
+                <span
+                    className={`w-fit rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[.2em] ${membershipRoleBadgeStyles[membership.role]}`}
+                >
+                    {membershipRoleLabels[membership.role]}
+                </span>
+            </div>
+        </div>
+    )
+}
+
+function RoleSelect({
+    value,
+    onChange,
+    disabled = false,
+}: {
+    value: EditableMembershipRole
+    onChange: (role: EditableMembershipRole) => void
+    disabled?: boolean
+}) {
+    const [isOpen, setIsOpen] = useState(false)
+    const containerRef = useRef<HTMLDivElement | null>(null)
+
+    useEffect(() => {
+        if (!isOpen) {
+            return
+        }
+
+        const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+            if (!containerRef.current?.contains(event.target as Node)) {
+                setIsOpen(false)
+            }
+        }
+
+        document.addEventListener('mousedown', handlePointerDown)
+        document.addEventListener('touchstart', handlePointerDown)
+
+        return () => {
+            document.removeEventListener('mousedown', handlePointerDown)
+            document.removeEventListener('touchstart', handlePointerDown)
+        }
+    }, [isOpen])
+
+    return (
+        <div ref={containerRef} className="relative">
+            <button
+                type="button"
+                disabled={disabled}
+                aria-haspopup="listbox"
+                aria-expanded={isOpen}
+                onClick={() => setIsOpen((current) => !current)}
+                onKeyDown={(event) => {
+                    if (event.key === 'Escape') {
+                        setIsOpen(false)
+                    }
+                }}
+                className={[
+                    'flex min-h-12 w-full items-center justify-between gap-3 rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-left text-base text-slate-900 outline-none transition focus:border-purple-500 focus:ring-2 focus:ring-purple-100',
+                    disabled ? 'cursor-not-allowed opacity-60' : 'hover:border-purple-200 hover:bg-white',
+                ].join(' ')}
+            >
+                <span>{membershipRoleLabels[value]}</span>
+                <svg
+                    aria-hidden="true"
+                    viewBox="0 0 20 20"
+                    className={[
+                        'h-4 w-4 shrink-0 text-slate-500 transition-transform',
+                        isOpen ? 'rotate-180' : 'rotate-0',
+                    ].join(' ')}
+                    fill="none"
+                >
+                    <path
+                        d="M5 7.5L10 12.5L15 7.5"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    />
+                </svg>
+            </button>
+
+            {isOpen && !disabled ? (
+                <div
+                    role="listbox"
+                    className="absolute left-0 right-0 z-30 mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1 shadow-xl shadow-slate-200/70"
+                >
+                    {editableMembershipRoleOptions.map((role) => {
+                        const isSelected = role === value
+
+                        return (
+                            <button
+                                key={role}
+                                type="button"
+                                role="option"
+                                aria-selected={isSelected}
+                                onClick={() => {
+                                    onChange(role)
+                                    setIsOpen(false)
+                                }}
+                                className={[
+                                    'flex min-h-11 w-full items-center rounded-xl px-3 py-2 text-left text-sm font-medium transition',
+                                    isSelected
+                                        ? 'bg-purple-50 text-purple-700'
+                                        : 'text-slate-700 hover:bg-slate-50 hover:text-slate-950',
+                                ].join(' ')}
+                            >
+                                {membershipRoleLabels[role]}
+                            </button>
+                        )
+                    })}
+                </div>
+            ) : null}
+        </div>
+    )
+}
+
 function MembershipForm({
     businessId,
     onCancel,
@@ -133,6 +271,8 @@ function MembershipForm({
         register,
         handleSubmit,
         reset,
+        watch,
+        setValue,
         formState: { errors },
     } = useForm<MembershipFormValues>({
         resolver: zodResolver(membershipFormSchema),
@@ -141,6 +281,7 @@ function MembershipForm({
             role: 'STAFF',
         },
     })
+    const selectedRole = watch('role')
 
     const onSubmit = handleSubmit(async (values) => {
         try {
@@ -167,11 +308,12 @@ function MembershipForm({
 
             <Label className="space-y-2">
                 <span className="text-sm font-medium sm:text-base">Permissão</span>
-                <Select {...register('role')} defaultValue="STAFF">
-                    <option value="OWNER">Owner</option>
-                    <option value="ADMIN">Admin</option>
-                    <option value="STAFF">Staff</option>
-                </Select>
+                <input type="hidden" {...register('role')} />
+                <RoleSelect
+                    value={selectedRole}
+                    onChange={(role) => setValue('role', role, { shouldDirty: true, shouldValidate: true })}
+                    disabled={createMembershipMutation.isPending}
+                />
                 {errors.role ? <p className="text-xs text-red-600 sm:text-sm">{errors.role.message}</p> : null}
             </Label>
 
@@ -202,6 +344,8 @@ function InvitationForm({
         register,
         handleSubmit,
         reset,
+        watch,
+        setValue,
         formState: { errors },
     } = useForm<MembershipFormValues>({
         resolver: zodResolver(invitationFormSchema),
@@ -210,6 +354,7 @@ function InvitationForm({
             role: 'STAFF',
         },
     })
+    const selectedRole = watch('role')
 
     const onSubmit = handleSubmit(async (values) => {
         try {
@@ -237,11 +382,12 @@ function InvitationForm({
 
             <Label className="space-y-2">
                 <span className="text-sm font-medium sm:text-base">Permissão</span>
-                <Select {...register('role')} defaultValue="STAFF">
-                    <option value="OWNER">Owner</option>
-                    <option value="ADMIN">Admin</option>
-                    <option value="STAFF">Staff</option>
-                </Select>
+                <input type="hidden" {...register('role')} />
+                <RoleSelect
+                    value={selectedRole}
+                    onChange={(role) => setValue('role', role, { shouldDirty: true, shouldValidate: true })}
+                    disabled={createInvitationMutation.isPending}
+                />
                 {errors.role ? <p className="text-xs text-red-600 sm:text-sm">{errors.role.message}</p> : null}
             </Label>
 
@@ -304,7 +450,7 @@ export function TeamSection({
     const [isCreateMembershipOpen, setIsCreateMembershipOpen] = useState(false)
     const [isCreateInvitationOpen, setIsCreateInvitationOpen] = useState(false)
     const [deletingMembershipId, setDeletingMembershipId] = useState<string | null>(null)
-    const [membershipRoleDrafts, setMembershipRoleDrafts] = useState<Record<string, AdminMembershipRole>>({})
+    const [membershipRoleDrafts, setMembershipRoleDrafts] = useState<Record<string, EditableMembershipRole>>({})
     const [membershipsPage, setMembershipsPage] = useState(1)
     const [invitationsPage, setInvitationsPage] = useState(1)
     const membershipsQuery = useAdminMembershipsQuery(businessId, enabled, membershipsPage, teamListPerPage)
@@ -312,6 +458,8 @@ export function TeamSection({
     const updateMembershipRoleMutation = useAdminUpdateMembershipRoleMutation()
     const deleteMembershipMutation = useAdminDeleteMembershipMutation()
     const memberships = membershipsQuery.data?.data ?? []
+    const ownerMemberships = memberships.filter((membership) => membership.role === 'OWNER')
+    const manageableMemberships = memberships.filter(isManageableMembership)
     const membershipsMeta = membershipsQuery.data?.meta
     const membershipsTotal = membershipsMeta?.total ?? 0
     const membershipsTotalPages = membershipsMeta?.totalPages ?? 1
@@ -344,14 +492,14 @@ export function TeamSection({
         setInvitationsPage(invitationsMeta.totalPages)
     }, [invitationsMeta, invitationsPage])
 
-    const handleMembershipRoleChange = (membershipId: string, role: AdminMembershipRole) => {
+    const handleMembershipRoleChange = (membershipId: string, role: EditableMembershipRole) => {
         setMembershipRoleDrafts((current) => ({
             ...current,
             [membershipId]: role,
         }))
     }
 
-    const handleMembershipRoleSave = async (membershipId: string, role: AdminMembershipRole) => {
+    const handleMembershipRoleSave = async (membershipId: string, role: EditableMembershipRole) => {
         try {
             await updateMembershipRoleMutation.mutateAsync({
                 businessId,
@@ -526,8 +674,36 @@ export function TeamSection({
                         </div>
                     ) : null}
 
+                    {!membershipsQuery.isLoading && !membershipsQuery.isError && ownerMemberships.length > 0 ? (
+                        <div className="space-y-3 rounded-3xl border border-purple-100 bg-white p-4 shadow-sm shadow-purple-100/40 sm:p-5">
+                            <div>
+                                <h3 className="text-base font-semibold text-slate-900 sm:text-lg">
+                                    {ownerMemberships.length > 1 ? 'Donos do negócio' : 'Dono do negócio'}
+                                </h3>
+                                <p className="mt-1 text-xs text-slate-600 sm:text-sm">
+                                    Responsável principal exibido apenas como informação nesta tela.
+                                </p>
+                            </div>
+
+                            <div className="space-y-3">
+                                {ownerMemberships.map((membership) => (
+                                    <OwnerMembershipCard key={membership.id} membership={membership} />
+                                ))}
+                            </div>
+                        </div>
+                    ) : null}
+
+                    {!membershipsQuery.isLoading &&
+                    !membershipsQuery.isError &&
+                    memberships.length > 0 &&
+                    manageableMemberships.length === 0 ? (
+                        <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center text-xs text-slate-500 sm:text-sm">
+                            Nenhum membro gerenciável nesta página.
+                        </div>
+                    ) : null}
+
                     {!membershipsQuery.isLoading && !membershipsQuery.isError
-                        ? memberships.map((membership) => {
+                        ? manageableMemberships.map((membership) => {
                               const selectedRole = membershipRoleDrafts[membership.id] ?? membership.role
                               const isSavingRole =
                                   updateMembershipRoleMutation.isPending &&
@@ -556,20 +732,16 @@ export function TeamSection({
                                           <div className="flex w-full flex-col gap-3 lg:w-full">
                                               <Label className="w-full space-y-2">
                                                   <span>Permissão</span>
-                                                  <Select
+                                                  <RoleSelect
                                                       value={selectedRole}
-                                                      onChange={(event) =>
+                                                      onChange={(role) =>
                                                           handleMembershipRoleChange(
                                                               membership.id,
-                                                              event.target.value as AdminMembershipRole
+                                                              role
                                                           )
                                                       }
                                                       disabled={isSavingRole || isRemovingMember}
-                                                  >
-                                                      <option value="OWNER">Owner</option>
-                                                      <option value="ADMIN">Admin</option>
-                                                      <option value="STAFF">Staff</option>
-                                                  </Select>
+                                                  />
                                               </Label>
 
                                               <div className="grid w-full grid-cols-2 gap-2">
@@ -580,7 +752,7 @@ export function TeamSection({
                                                       disabled={isSavingRole || isRemovingMember || !hasRoleChanged}
                                                       className="min-h-12 lg:min-h-0"
                                                   >
-                                                      {isSavingRole ? 'Salvando...' : 'Salvar role'}
+                                                      {isSavingRole ? 'Salvando...' : 'Salvar permissão'}
                                                   </Button>
                                                   <Button
                                                       type="button"

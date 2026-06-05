@@ -291,6 +291,12 @@ export class AppointmentsService {
       throw new BadRequestException('Já existe um agendamento nesse horário para este negócio')
     }
 
+    const manualBlockConflict = await this.businessesRepository.findManualBlockConflict(business.id, scheduledAt, endsAt)
+
+    if (manualBlockConflict) {
+      throw new BadRequestException('Este horário está indisponível para agendamento')
+    }
+
     const phone = data.phone.trim()
     const customerName = data.customerName.trim()
     const existingCustomer = await this.businessesRepository.findCustomerByPhone(business.id, phone)

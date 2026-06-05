@@ -58,7 +58,11 @@ describe('BusinessesService', () => {
 
     const availability = await service.getAvailability('business-1', 'service-1', '2026-05-12')
 
-    expect(availability).toEqual(['12:00', '14:00'])
+    expect(availability).toEqual([
+      { time: '12:00', status: 'AVAILABLE' },
+      { time: '13:00', status: 'UNAVAILABLE' },
+      { time: '14:00', status: 'AVAILABLE' },
+    ])
     expect(prisma.manualBlock.findMany).toHaveBeenCalledWith({
       where: {
         businessId: 'business-1',
@@ -73,8 +77,66 @@ describe('BusinessesService', () => {
     })
     expect(availabilityCacheService.set).toHaveBeenCalledWith(
       'availability:business-1:service-1:2026-05-12',
-      ['12:00', '14:00']
+      [
+        { time: '12:00', status: 'AVAILABLE' },
+        { time: '13:00', status: 'UNAVAILABLE' },
+        { time: '14:00', status: 'AVAILABLE' },
+      ]
     )
+  })
+
+  it('marca horários com appointments como BOOKED sem expor detalhes do agendamento', async () => {
+    const businessesRepository = {
+      findBusinessById: vi.fn().mockResolvedValue({
+        id: 'business-1',
+        openTime: '12:00',
+        closeTime: '15:00',
+        timezone: 'UTC',
+      }),
+      findServiceById: vi.fn().mockResolvedValue({
+        id: 'service-1',
+        businessId: 'business-1',
+        durationMinutes: 60,
+      }),
+      findAppointmentsInRange: vi.fn().mockResolvedValue([
+        {
+          scheduledAt: new Date('2026-05-12T13:00:00.000Z'),
+          endsAt: new Date('2026-05-12T14:00:00.000Z'),
+        },
+      ]),
+    } as any
+    const timezoneService = {
+      getBusinessHoursWindow: vi.fn().mockReturnValue({
+        openDateUtc: new Date('2026-05-12T12:00:00.000Z'),
+        closeDateUtc: new Date('2026-05-12T15:00:00.000Z'),
+      }),
+      formatUtcTimeInTimezone: vi.fn((date: Date) => `${String(date.getUTCHours()).padStart(2, '0')}:00`),
+    } as any
+    const availabilityCacheService = {
+      get: vi.fn().mockReturnValue(undefined),
+      set: vi.fn(),
+      deleteByPrefix: vi.fn(),
+    } as any
+    const prisma = {
+      manualBlock: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+    } as any
+
+    const service = new BusinessesService(
+      businessesRepository,
+      timezoneService,
+      availabilityCacheService,
+      prisma
+    )
+
+    const availability = await service.getAvailability('business-1', 'service-1', '2026-05-12')
+
+    expect(availability).toEqual([
+      { time: '12:00', status: 'AVAILABLE' },
+      { time: '13:00', status: 'BOOKED' },
+      { time: '14:00', status: 'AVAILABLE' },
+    ])
   })
 
   it('ignora ManualBlock quando a tabela ainda não existe no banco', async () => {
@@ -119,6 +181,10 @@ describe('BusinessesService', () => {
 
     const availability = await service.getAvailability('business-1', 'service-1', '2026-05-12')
 
-    expect(availability).toEqual(['12:00', '13:00', '14:00'])
+    expect(availability).toEqual([
+      { time: '12:00', status: 'AVAILABLE' },
+      { time: '13:00', status: 'AVAILABLE' },
+      { time: '14:00', status: 'AVAILABLE' },
+    ])
   })
 })

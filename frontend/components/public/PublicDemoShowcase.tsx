@@ -2,6 +2,10 @@
 
 import Link from 'next/link'
 import { FormEvent, useEffect, useRef, useState } from 'react'
+import { format } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
+import { DayPicker } from 'react-day-picker'
+import 'react-day-picker/dist/style.css'
 import {
     demoBusiness,
     demoCustomerPreset,
@@ -9,7 +13,6 @@ import {
     demoNotice,
     demoSchedule,
     demoServices,
-    demoTeam,
 } from '../../features/demo/demo-data'
 import { BookingSummary } from './BookingSummary'
 import { StepIndicator } from './StepIndicator'
@@ -30,7 +33,17 @@ const demoBookingSteps: Array<{ id: DemoBookingStep; label: string }> = [
     { id: 'review', label: 'Confirmação' },
 ]
 
-const availableDemoSlots = demoSchedule.filter((slot) => slot.status === 'available')
+const availableDemoSlots = demoSchedule.filter((slot) => slot.status === 'AVAILABLE')
+
+function buildDemoDate(dayId: string) {
+    return dayId ? new Date(`${dayId}T12:00:00`) : undefined
+}
+
+function formatDemoDateLabel(dayId: string) {
+    const date = buildDemoDate(dayId)
+
+    return date ? format(date, 'dd/MM/yyyy', { locale: ptBR }) : ''
+}
 
 export function PublicDemoShowcase() {
     const [currentStep, setCurrentStep] = useState<DemoBookingStep>('service')
@@ -38,17 +51,20 @@ export function PublicDemoShowcase() {
     const [customerName, setCustomerName] = useState(demoCustomerPreset.name)
     const [phone, setPhone] = useState(demoCustomerPreset.phone)
     const [selectedDayId, setSelectedDayId] = useState(demoDays[0]?.id ?? '')
-    const [selectedProfessionalId, setSelectedProfessionalId] = useState(demoTeam[0]?.id ?? '')
     const [selectedTime, setSelectedTime] = useState('')
+    const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
     const [stepError, setStepError] = useState<string | null>(null)
     const [isCompleted, setIsCompleted] = useState(false)
     const bookingFormTopRef = useRef<HTMLFormElement | null>(null)
 
     const selectedService = demoServices.find((service) => service.id === selectedServiceId) ?? null
     const selectedDay = demoDays.find((day) => day.id === selectedDayId) ?? null
-    const selectedProfessional = demoTeam.find((member) => member.id === selectedProfessionalId) ?? null
-    const selectedDateLabel = selectedDay?.summaryLabel ?? ''
-    const canChooseTime = Boolean(selectedDayId && selectedProfessionalId)
+    const selectedAvailableSlot = demoSchedule.find((slot) => (
+        slot.time === selectedTime && slot.status === 'AVAILABLE'
+    )) ?? null
+    const selectedDate = buildDemoDate(selectedDayId)
+    const selectedDateLabel = selectedDay?.summaryLabel ?? formatDemoDateLabel(selectedDayId)
+    const canChooseTime = Boolean(selectedDayId)
 
     useEffect(() => {
         bookingFormTopRef.current?.scrollIntoView({
@@ -59,7 +75,11 @@ export function PublicDemoShowcase() {
 
     useEffect(() => {
         setStepError(null)
-    }, [currentStep, customerName, phone, selectedDayId, selectedProfessionalId, selectedServiceId, selectedTime])
+    }, [currentStep, customerName, phone, selectedDayId, selectedServiceId, selectedTime])
+
+    useEffect(() => {
+        setIsDatePickerOpen(false)
+    }, [currentStep])
 
     const handleAdvanceStep = () => {
         if (currentStep === 'service') {
@@ -93,12 +113,7 @@ export function PublicDemoShowcase() {
                 return
             }
 
-            if (!selectedProfessionalId) {
-                setStepError('Selecione um responsável fictício para continuar.')
-                return
-            }
-
-            if (!selectedTime) {
+            if (!selectedAvailableSlot) {
                 setStepError('Selecione um horário livre para continuar.')
                 return
             }
@@ -139,7 +154,6 @@ export function PublicDemoShowcase() {
         setCustomerName(demoCustomerPreset.name)
         setPhone(demoCustomerPreset.phone)
         setSelectedDayId(demoDays[0]?.id ?? '')
-        setSelectedProfessionalId(demoTeam[0]?.id ?? '')
         setSelectedTime('')
         setStepError(null)
         setIsCompleted(false)
@@ -180,14 +194,12 @@ export function PublicDemoShowcase() {
                                 </span>
                             </div>
                             <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-                                <span className="block text-xs uppercase tracking-[.2em] text-slate-500">Profissional</span>
-                                <span className="mt-1 block font-medium text-slate-900">
-                                    {selectedProfessional?.name || 'Não selecionado'}
-                                </span>
-                            </div>
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
                                 <span className="block text-xs uppercase tracking-[.2em] text-slate-500">Negócio demo</span>
                                 <span className="mt-1 block font-medium text-slate-900">{demoBusiness.name}</span>
+                            </div>
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                                <span className="block text-xs uppercase tracking-[.2em] text-slate-500">Aviso</span>
+                                <span className="mt-1 block font-medium text-slate-900">{demoNotice}</span>
                             </div>
                         </div>
 
@@ -406,118 +418,107 @@ export function PublicDemoShowcase() {
                         <div className="space-y-4 sm:space-y-5">
                             <div>
                                 <p className="text-xs uppercase tracking-[.3em] text-purple-700 sm:text-sm">Etapa 3</p>
-                                <h2 className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">Data e horário</h2>
+                                <h2 className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">Escolha data e horário</h2>
                             </div>
 
                             <div className="space-y-3">
-                                <p className="text-sm font-medium text-slate-900 sm:text-base">Escolha uma data</p>
-                                <div className="grid gap-3 sm:grid-cols-3">
-                                    {demoDays.map((day) => {
-                                        const isSelected = day.id === selectedDayId
+                                <p className="text-sm font-medium text-slate-900 sm:text-base">Data</p>
+                                <div className="relative w-full">
+                                    <Input
+                                        readOnly
+                                        value={selectedDateLabel}
+                                        placeholder="Selecione uma data"
+                                        onClick={() => setIsDatePickerOpen((isOpen) => !isOpen)}
+                                        className="h-14 cursor-pointer rounded-2xl text-sm font-semibold sm:h-16 sm:text-base"
+                                    />
 
-                                        return (
-                                            <button
-                                                key={day.id}
-                                                type="button"
-                                                onClick={() => {
-                                                    setSelectedDayId(day.id)
+                                    {isDatePickerOpen ? (
+                                        <div className="absolute left-0 z-50 mt-2 w-full max-w-[22rem] rounded-2xl border border-slate-200 bg-white p-3 shadow-xl sm:max-w-[28rem]">
+                                            <DayPicker
+                                                mode="single"
+                                                selected={selectedDate}
+                                                onSelect={(date) => {
+                                                    if (!date) return
+                                                    setSelectedDayId(format(date, 'yyyy-MM-dd'))
                                                     setSelectedTime('')
+                                                    setIsDatePickerOpen(false)
                                                 }}
-                                                className={[
-                                                    'rounded-3xl border px-4 py-4 text-left transition focus:outline-none focus:ring-2 focus:ring-purple-200',
-                                                    isSelected
-                                                        ? 'border-purple-300 bg-purple-50 shadow-sm shadow-purple-100'
-                                                        : 'border-slate-200 bg-white hover:border-purple-200 hover:bg-slate-50',
-                                                ].join(' ')}
-                                            >
-                                                <span className="block text-xs uppercase tracking-[.2em] text-slate-500">{day.weekdayLabel}</span>
-                                                <span className="mt-2 block text-base font-semibold text-slate-900">{day.label}</span>
-                                            </button>
-                                        )
-                                    })}
+                                                locale={ptBR}
+                                                className="text-sm"
+                                                styles={{
+                                                    caption: { color: '#6b21a8' },
+                                                    day_selected: {
+                                                        backgroundColor: '#7c3aed',
+                                                        color: 'white',
+                                                    },
+                                                    day_today: {
+                                                        color: '#7c3aed',
+                                                        fontWeight: 'bold',
+                                                    },
+                                                }}
+                                            />
+                                        </div>
+                                    ) : null}
                                 </div>
                             </div>
 
                             <div className="space-y-3">
-                                <p className="text-sm font-medium text-slate-900 sm:text-base">Responsável fictício</p>
-                                <div className="grid gap-3 sm:grid-cols-2">
-                                    {demoTeam.map((member) => {
-                                        const isSelected = member.id === selectedProfessionalId
-
-                                        return (
-                                            <button
-                                                key={member.id}
-                                                type="button"
-                                                onClick={() => {
-                                                    setSelectedProfessionalId(member.id)
-                                                    setSelectedTime('')
-                                                }}
-                                                className={[
-                                                    'flex items-center justify-between rounded-3xl border px-4 py-4 text-left transition focus:outline-none focus:ring-2 focus:ring-purple-200',
-                                                    isSelected
-                                                        ? 'border-purple-300 bg-purple-50 shadow-sm shadow-purple-100'
-                                                        : 'border-slate-200 bg-white hover:border-purple-200 hover:bg-slate-50',
-                                                ].join(' ')}
-                                            >
-                                                <div>
-                                                    <p className="text-base font-semibold text-slate-900">{member.name}</p>
-                                                    <p className="mt-1 text-sm text-slate-500">Disponível na demonstração</p>
-                                                </div>
-                                                <span
-                                                    className={[
-                                                        'inline-flex h-10 w-10 items-center justify-center rounded-2xl text-sm font-semibold',
-                                                        isSelected ? 'bg-purple-700 text-white' : 'bg-slate-100 text-purple-700',
-                                                    ].join(' ')}
-                                                >
-                                                    {member.name.slice(0, 1)}
-                                                </span>
-                                            </button>
-                                        )
-                                    })}
-                                </div>
-                            </div>
-
-                            {/* Este preview de horários fica apenas na demo e pode inspirar melhorias futuras sem alterar o fluxo real de /b/[slug]. */}
-                            <div className="rounded-2xl border border-dashed border-purple-200 bg-purple-50/50 px-4 py-4">
-                                <p className="text-[11px] uppercase tracking-[.2em] text-purple-700">Preview de horários</p>
-                                <p className="mt-2 text-sm leading-6 text-slate-700">
-                                    Aqui o visitante visualiza horários fictícios livres e reservados em um formato simples, sem transformar isso em regra real da aplicação neste momento.
-                                </p>
-                            </div>
-
-                            <div className="space-y-3">
-                                <p className="text-sm font-medium text-slate-900 sm:text-base">Escolha um horário</p>
                                 {!canChooseTime ? (
                                     <p className="text-sm text-slate-500">
-                                        Selecione uma data e um responsável fictício para liberar os horários.
+                                        Selecione uma data para ver os horários.
                                     </p>
                                 ) : null}
+
+                                {availableDemoSlots.length === 0 ? (
+                                    <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
+                                        Não há horários disponíveis para esta data.
+                                    </p>
+                                ) : null}
+
                                 <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 xl:grid-cols-4">
                                     {demoSchedule.map((slot) => {
-                                        const isReserved = slot.status === 'reserved'
+                                        const isAvailable = slot.status === 'AVAILABLE'
                                         const isSelected = slot.time === selectedTime
-                                        const isDisabled = isReserved || !canChooseTime
+                                        const isDisabled = !isAvailable || !canChooseTime
+                                        const slotLabel =
+                                            slot.status === 'BOOKED'
+                                                ? 'Reservado'
+                                                : slot.status === 'UNAVAILABLE'
+                                                  ? 'Indisponível'
+                                                  : 'Disponível'
 
                                         return (
                                             <button
-                                                key={slot.time}
+                                                key={`${slot.time}-${slot.status}`}
                                                 type="button"
                                                 disabled={isDisabled}
-                                                onClick={() => setSelectedTime(slot.time)}
+                                                aria-pressed={isSelected}
+                                                aria-label={`${slot.time} - ${slotLabel}`}
+                                                onClick={() => {
+                                                    if (!isAvailable) return
+                                                    setSelectedTime(slot.time)
+                                                }}
                                                 className={[
-                                                    'min-h-12 rounded-2xl border px-3 py-3 text-center text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-purple-200 sm:min-h-14 sm:px-4 sm:text-base',
-                                                    isReserved
-                                                        ? 'cursor-not-allowed border-rose-200 bg-rose-50 text-rose-500 opacity-80'
-                                                        : !canChooseTime
-                                                            ? 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400'
-                                                        : isSelected
-                                                            ? 'border-purple-300 bg-purple-700 text-white'
-                                                            : 'border-slate-200 bg-white text-slate-900 hover:border-purple-200 hover:bg-slate-50',
+                                                    'flex min-h-16 w-full flex-col items-center justify-center gap-1 rounded-2xl border px-2.5 py-3 text-center text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-purple-200 sm:min-h-[4.5rem] sm:px-4 sm:text-base',
+                                                    isSelected
+                                                        ? 'border-purple-400 bg-purple-700 text-white shadow-md shadow-purple-100 ring-2 ring-purple-200'
+                                                        : slot.status === 'BOOKED'
+                                                          ? 'cursor-not-allowed border-red-200 bg-red-50 text-red-700'
+                                                          : slot.status === 'UNAVAILABLE'
+                                                            ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400'
+                                                            : !canChooseTime
+                                                              ? 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400'
+                                                              : 'border-slate-200 bg-white text-slate-900 hover:border-purple-200 hover:bg-slate-50',
                                                 ].join(' ')}
                                             >
-                                                <span className="block">{slot.time}</span>
-                                                <span className="mt-1 block text-[11px] font-medium uppercase tracking-[.15em]">
-                                                    {isReserved ? 'Reservado' : 'Livre'}
+                                                <span>{slot.time}</span>
+                                                <span
+                                                    className={[
+                                                        'text-[11px] font-medium leading-none sm:text-xs',
+                                                        isSelected ? 'text-purple-50' : '',
+                                                    ].join(' ')}
+                                                >
+                                                    {slotLabel}
                                                 </span>
                                             </button>
                                         )
@@ -553,14 +554,14 @@ export function PublicDemoShowcase() {
 
                             <div className="grid gap-3 sm:grid-cols-2">
                                 <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-                                    <span className="block text-xs uppercase tracking-[.2em] text-slate-500">Responsável demo</span>
-                                    <span className="mt-1 block font-medium text-slate-900">
-                                        {selectedProfessional?.name || 'Não selecionado'}
-                                    </span>
-                                </div>
-                                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
                                     <span className="block text-xs uppercase tracking-[.2em] text-slate-500">Negócio</span>
                                     <span className="mt-1 block font-medium text-slate-900">{demoBusiness.name}</span>
+                                </div>
+                                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                                    <span className="block text-xs uppercase tracking-[.2em] text-slate-500">Horário</span>
+                                    <span className="mt-1 block font-medium text-slate-900">
+                                        {selectedDateLabel && selectedTime ? `${selectedDateLabel} às ${selectedTime}` : 'Não selecionado'}
+                                    </span>
                                 </div>
                             </div>
 
@@ -608,12 +609,6 @@ export function PublicDemoShowcase() {
                                 <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 sm:px-4 sm:py-3">
                                     <span className="block text-xs uppercase tracking-[.2em] text-slate-500">Atendimento</span>
                                     <span className="mt-1 block font-medium text-slate-900">{demoBusiness.hoursLabel}</span>
-                                </div>
-                                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 sm:px-4 sm:py-3">
-                                    <span className="block text-xs uppercase tracking-[.2em] text-slate-500">Profissional demo</span>
-                                    <span className="mt-1 block font-medium text-slate-900">
-                                        {selectedProfessional?.name || 'Selecione na etapa 3'}
-                                    </span>
                                 </div>
                                 <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 sm:px-4 sm:py-3">
                                     <span className="block text-xs uppercase tracking-[.2em] text-slate-500">Aviso</span>

@@ -24,6 +24,13 @@ type TimeRange = {
   endsAt: Date
 }
 
+type AvailabilitySlotStatus = 'AVAILABLE' | 'BOOKED' | 'UNAVAILABLE'
+
+type AvailabilitySlot = {
+  time: string
+  status: AvailabilitySlotStatus
+}
+
 @Injectable()
 export class BusinessesService {
   private static readonly ACTIVE_CUSTOMER_WINDOW_DAYS = 30
@@ -68,7 +75,7 @@ export class BusinessesService {
     const business = await this.getBusinessContextOrThrow(businessId)
     const service = await this.getServiceContextOrThrow(serviceId, business.id)
     const cacheKey = this.buildAvailabilityCacheKey(business.id, service.id, date)
-    const cachedAvailability = this.availabilityCacheService.get<string[]>(cacheKey)
+    const cachedAvailability = this.availabilityCacheService.get<AvailabilitySlot[]>(cacheKey)
 
     if (cachedAvailability) {
       return cachedAvailability
@@ -191,51 +198,47 @@ export class BusinessesService {
       rangeEnd: closeDateUtc,
     })
     const manualBlocks = await this.findManualBlocksInRange(business.id, openDateUtc, closeDateUtc)
-    const blockedRanges: TimeRange[] = [
-      ...appointments.map((appointment: { scheduledAt: Date; endsAt: Date }) => ({
-        startsAt: new Date(appointment.scheduledAt),
-        endsAt: new Date(appointment.endsAt),
-      })),
-      ...manualBlocks.map((manualBlock: { startsAt: Date; endsAt: Date }) => ({
-        startsAt: new Date(manualBlock.startsAt),
-        endsAt: new Date(manualBlock.endsAt),
-      })),
-    ].sort((left, right) => left.startsAt.getTime() - right.startsAt.getTime())
-    const available: string[] = []
+    const appointmentRanges: TimeRange[] = appointments.map((appointment: { scheduledAt: Date; endsAt: Date }) => ({
+      startsAt: new Date(appointment.scheduledAt),
+      endsAt: new Date(appointment.endsAt),
+    }))
+    const manualBlockRanges: TimeRange[] = manualBlocks.map((manualBlock: { startsAt: Date; endsAt: Date }) => ({
+      startsAt: new Date(manualBlock.startsAt),
+      endsAt: new Date(manualBlock.endsAt),
+    }))
+    const slots: AvailabilitySlot[] = []
     const durationMs = service.durationMinutes * 60_000
     const slotStepMs = durationMs
     const nowInBusinessTimezone = DateTime.utc().setZone(business.timezone)
-
-    let blockedRangeIndex = 0
 
     for (let currentTime = openDateUtc.getTime(); currentTime + durationMs <= closeDateUtc.getTime(); currentTime += slotStepMs) {
       const slotStart = new Date(currentTime)
       const slotEnd = new Date(slotStart.getTime() + durationMs)
       const slotStartInBusinessTz = DateTime.fromJSDate(slotStart, { zone: 'utc' }).setZone(business.timezone)
+      const time = this.timezoneService.formatUtcTimeInTimezone(slotStart, business.timezone)
 
       if (slotStartInBusinessTz < nowInBusinessTimezone) {
+        slots.push({ time, status: 'UNAVAILABLE' })
         continue
       }
 
-      while (
-        blockedRangeIndex < blockedRanges.length &&
-        blockedRanges[blockedRangeIndex].endsAt.getTime() <= slotStart.getTime()
-      ) {
-        blockedRangeIndex += 1
-      }
+      const hasBookedConflict = this.hasRangeConflict(slotStart, slotEnd, appointmentRanges)
+      const hasUnavailableConflict = this.hasRangeConflict(slotStart, slotEnd, manualBlockRanges)
 
-      const nextBlockedRange = blockedRanges[blockedRangeIndex]
-      const hasConflict =
-        Boolean(nextBlockedRange) &&
-        slotStart.getTime() < nextBlockedRange.endsAt.getTime() &&
-        slotEnd.getTime() > nextBlockedRange.startsAt.getTime()
-
-      if (!hasConflict) {
-        available.push(this.timezoneService.formatUtcTimeInTimezone(slotStart, business.timezone))
-      }
+      slots.push({
+        time,
+        status: hasBookedConflict ? 'BOOKED' : hasUnavailableConflict ? 'UNAVAILABLE' : 'AVAILABLE',
+      })
     }
 
-    return available
+    return slots
+  }
+
+  private hasRangeConflict(slotStart: Date, slotEnd: Date, ranges: TimeRange[]) {
+    return ranges.some((range) => (
+      slotStart.getTime() < range.endsAt.getTime() &&
+      slotEnd.getTime() > range.startsAt.getTime()
+    ))
   }
 
   private buildAvailabilityCacheKey(businessId: string, serviceId: string, date: string) {

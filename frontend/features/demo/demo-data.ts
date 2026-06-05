@@ -9,13 +9,7 @@ export type DemoService = {
 
 export type DemoScheduleSlot = {
     time: string
-    status: 'available' | 'reserved'
-}
-
-export type DemoTeamMember = {
-    id: string
-    name: string
-    role: string
+    status: 'AVAILABLE' | 'BOOKED' | 'UNAVAILABLE'
 }
 
 export type DemoSummaryMetric = {
@@ -66,24 +60,12 @@ export const demoServices: DemoService[] = [
 ]
 
 export const demoSchedule: DemoScheduleSlot[] = [
-    { time: '09:00', status: 'available' },
-    { time: '10:00', status: 'reserved' },
-    { time: '11:00', status: 'available' },
-    { time: '14:00', status: 'available' },
-    { time: '15:00', status: 'reserved' },
-]
-
-export const demoTeam: DemoTeamMember[] = [
-    {
-        id: 'carlos',
-        name: 'Carlos',
-        role: 'Barbeiro',
-    },
-    {
-        id: 'pedro',
-        name: 'Pedro',
-        role: 'Barbeiro',
-    },
+    { time: '09:00', status: 'AVAILABLE' },
+    { time: '10:00', status: 'BOOKED' },
+    { time: '11:00', status: 'AVAILABLE' },
+    { time: '14:00', status: 'AVAILABLE' },
+    { time: '15:00', status: 'BOOKED' },
+    { time: '16:00', status: 'UNAVAILABLE' },
 ]
 
 export const demoSummary: DemoSummaryMetric[] = [
@@ -103,22 +85,22 @@ export const demoSummary: DemoSummaryMetric[] = [
 
 export const demoDays: DemoDayOption[] = [
     {
-        id: '2026-06-02',
-        label: '02/06',
-        weekdayLabel: 'Terça',
-        summaryLabel: '02/06/2026',
+        id: '2026-06-05',
+        label: '05/06',
+        weekdayLabel: 'Sexta',
+        summaryLabel: '05/06/2026',
     },
     {
-        id: '2026-06-03',
-        label: '03/06',
-        weekdayLabel: 'Quarta',
-        summaryLabel: '03/06/2026',
+        id: '2026-06-06',
+        label: '06/06',
+        weekdayLabel: 'Sábado',
+        summaryLabel: '06/06/2026',
     },
     {
-        id: '2026-06-04',
-        label: '04/06',
-        weekdayLabel: 'Quinta',
-        summaryLabel: '04/06/2026',
+        id: '2026-06-07',
+        label: '07/06',
+        weekdayLabel: 'Domingo',
+        summaryLabel: '07/06/2026',
     },
 ]
 

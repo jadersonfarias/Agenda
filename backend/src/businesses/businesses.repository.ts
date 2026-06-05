@@ -150,4 +150,17 @@ export class BusinessesRepository {
       },
     })
   }
+
+  async findManualBlockConflict(businessId: string, startsAt: Date, endsAt: Date) {
+    return this.prisma.manualBlock.findFirst({
+      where: {
+        businessId,
+        startsAt: { lt: endsAt },
+        endsAt: { gt: startsAt },
+      },
+      select: {
+        id: true,
+      },
+    })
+  }
 }
