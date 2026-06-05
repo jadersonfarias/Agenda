@@ -2,6 +2,7 @@
 
 import { signOut } from 'next-auth/react'
 import { useEffect, useState } from 'react'
+import { adminRoleLabels as roleLabels } from '../../features/admin/role-labels'
 import { getSubscriptionLifecycleNotice } from '../../features/admin/subscription-payment'
 import { type AdminBusinessOption, type AdminDashboardData } from '../../features/admin/types'
 import { useHydrated } from '../../hooks/use-hydrated'
@@ -19,12 +20,6 @@ type AdminHeaderProps = {
     userName?: string | null
     userRole?: AdminBusinessOption['role'] | null
     onBusinessChange: (businessId: string) => void
-}
-
-const roleLabels: Record<AdminBusinessOption['role'], string> = {
-    OWNER: 'Dono',
-    ADMIN: 'Administrador',
-    STAFF: 'Funcionário',
 }
 
 const subscriptionStatusLabels: Record<AdminDashboardData['business']['subscriptionStatus'], string> = {

@@ -11,6 +11,7 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import { PasswordInput } from '../../components/ui/password-input'
 
 const loginSchema = z.object({
     email: z.string().email('Email inválido'),
@@ -83,7 +84,7 @@ export default function LoginPage() {
 
                         <Label className="space-y-2">
                             <span>Senha</span>
-                            <Input type="password" {...register('password')} placeholder="••••••••" />
+                            <PasswordInput {...register('password')} autoComplete="current-password" placeholder="••••••••" />
                             {formState.errors.password ? <p className="text-sm text-red-600">{formState.errors.password.message}</p> : null}
                         </Label>
 

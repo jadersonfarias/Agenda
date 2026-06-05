@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import {
@@ -13,6 +13,7 @@ import {
     getAdminAppointmentsQueryBusinessKey,
     useAdminAppointmentsQuery,
 } from '../../features/admin/hooks/use-admin-appointments-query'
+import { adminRoleLabels } from '../../features/admin/role-labels'
 import {
     updateAdminAppointmentAssignee,
     updateAdminAppointmentStatus,
@@ -35,11 +36,16 @@ const appointmentStatusBadgeStyles: Record<AdminAppointmentStatus, string> = {
 }
 
 const appointmentFilterOptions: { value: AdminAppointmentStatusFilter; label: string }[] = [
+    { value: 'all', label: 'Todos' },
     { value: 'scheduled', label: 'Agendados' },
     { value: 'completed', label: 'Concluídos' },
     { value: 'canceled', label: 'Cancelados' },
-    { value: 'all', label: 'Todos' },
 ]
+
+type CompactFilterOption = {
+    value: string
+    label: string
+}
 
 type AppointmentsSectionProps = {
     businessId: string
@@ -57,6 +63,123 @@ type AppointmentsSectionProps = {
     }) => void
 }
 
+type CompactFilterDropdownProps = {
+    label: string
+    options: CompactFilterOption[]
+    value: string
+    onChange: (value: string) => void
+}
+
+function CompactFilterDropdown({ label, options, value, onChange }: CompactFilterDropdownProps) {
+    const [isOpen, setIsOpen] = useState(false)
+    const containerRef = useRef<HTMLDivElement | null>(null)
+    const selectedOption = options.find((option) => option.value === value) ?? options[0]
+
+    useEffect(() => {
+        if (!isOpen) {
+            return
+        }
+
+        const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+            if (!containerRef.current) {
+                return
+            }
+
+            const target = event.target
+
+            if (target instanceof Node && !containerRef.current.contains(target)) {
+                setIsOpen(false)
+            }
+        }
+
+        document.addEventListener('mousedown', handlePointerDown)
+        document.addEventListener('touchstart', handlePointerDown)
+
+        return () => {
+            document.removeEventListener('mousedown', handlePointerDown)
+            document.removeEventListener('touchstart', handlePointerDown)
+        }
+    }, [isOpen])
+
+    return (
+        <div ref={containerRef} className="relative">
+            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[.18em] text-slate-500">
+                {label}
+            </span>
+
+            <button
+                type="button"
+                aria-haspopup="listbox"
+                aria-expanded={isOpen}
+                onClick={() => setIsOpen((current) => !current)}
+                onKeyDown={(event) => {
+                    if (event.key === 'Escape') {
+                        setIsOpen(false)
+                    }
+                }}
+                className={[
+                    'relative flex min-h-11 w-full items-center rounded-2xl border bg-white px-4 py-2.5 pr-12 text-left text-sm font-semibold text-slate-900 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-purple-200',
+                    isOpen
+                        ? 'border-purple-300 shadow-purple-100/80'
+                        : 'border-slate-200 hover:border-purple-200 hover:bg-purple-50/40',
+                ].join(' ')}
+            >
+                <span className="min-w-0 truncate">{selectedOption?.label ?? ''}</span>
+                <svg
+                    aria-hidden="true"
+                    viewBox="0 0 20 20"
+                    className={[
+                        'pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 transition-transform duration-200',
+                        isOpen ? 'rotate-180' : 'rotate-0',
+                    ].join(' ')}
+                    fill="none"
+                >
+                    <path
+                        d="M5 7.5L10 12.5L15 7.5"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    />
+                </svg>
+            </button>
+
+            {isOpen ? (
+                <div
+                    role="listbox"
+                    aria-label={label}
+                    className="absolute left-0 right-0 z-30 mt-2 overflow-hidden rounded-2xl border border-purple-100 bg-white p-1.5 shadow-xl shadow-slate-200/80"
+                >
+                    {options.map((option) => {
+                        const isSelected = option.value === value
+
+                        return (
+                            <button
+                                key={`${label}-${option.value}`}
+                                type="button"
+                                role="option"
+                                aria-selected={isSelected}
+                                onClick={() => {
+                                    onChange(option.value)
+                                    setIsOpen(false)
+                                }}
+                                className={[
+                                    'flex min-h-11 w-full items-center rounded-xl px-3 py-2 text-left text-sm font-medium transition',
+                                    isSelected
+                                        ? 'bg-purple-50 text-purple-700'
+                                        : 'text-slate-700 hover:bg-slate-50 hover:text-slate-950',
+                                ].join(' ')}
+                            >
+                                {option.label}
+                            </button>
+                        )
+                    })}
+                </div>
+            ) : null}
+        </div>
+    )
+}
+
 export function AppointmentsSection({
     businessId,
     enabled,
@@ -72,6 +195,14 @@ export function AppointmentsSection({
     const queryClient = useQueryClient()
     const [appointmentStatusDrafts, setAppointmentStatusDrafts] = useState<Record<string, AdminAppointmentStatus>>({})
     const [appointmentAssigneeDrafts, setAppointmentAssigneeDrafts] = useState<Record<string, string>>({})
+    const appointmentStatusFilterOptions = appointmentFilterOptions as CompactFilterOption[]
+    const assigneeFilterOptions: CompactFilterOption[] = [
+        { value: 'all', label: 'Todos os responsáveis' },
+        ...assignableMembers.map((membership) => ({
+            value: membership.user.id,
+            label: `${membership.user.name} (${adminRoleLabels[membership.role]})`,
+        })),
+    ]
     const normalizedAssignedToUserIdFilter =
         canManageAppointmentAssignee && assignedToUserIdFilter !== 'all' ? assignedToUserIdFilter : undefined
     const appointmentsQuery = useAdminAppointmentsQuery(
@@ -197,39 +328,54 @@ export function AppointmentsSection({
                         Atualize o status de cada agendamento sem alterar as demais funcionalidades do sistema.
                     </p>
                 </div>
-                <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3 lg:w-auto">
+                <div className="hidden w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
                     {appointmentFilterOptions.map((option) => (
-                        <Button
+                        <button
                             key={option.value}
-                            variant={appointmentFilter === option.value ? 'default' : 'secondary'}
                             type="button"
                             onClick={() => onAppointmentFilterChange(option.value)}
-                            className="min-h-12 rounded-full px-4 py-2 text-sm font-semibold lg:min-h-0"
+                            className={
+                                appointmentFilter === option.value
+                                    ? 'inline-flex min-h-10 items-center justify-center rounded-2xl border border-purple-700 bg-purple-700 px-3 py-2 text-sm font-semibold text-white shadow-sm shadow-purple-200 transition focus:outline-none focus:ring-2 focus:ring-purple-200 sm:min-w-[120px]'
+                                    : 'inline-flex min-h-10 items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-purple-200 hover:bg-purple-50 hover:text-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-200 sm:min-w-[120px]'
+                            }
                         >
                             {option.label}
-                        </Button>
+                        </button>
                     ))}
                 </div>
             </div>
 
-            {canManageAppointmentAssignee && onAssignedToUserIdFilterChange ? (
-                <div className="mb-4 rounded-3xl border border-slate-200 bg-slate-50 p-3 sm:mb-6 sm:p-4">
-                    <Label className="space-y-2">
-                        <span className="text-xs font-semibold uppercase tracking-[.2em] text-slate-500">
-                            Filtrar por responsável
-                        </span>
-                        <Select
+            <div className="mb-4 rounded-3xl border border-slate-200 bg-slate-50/90 p-3 shadow-sm shadow-slate-100 sm:hidden">
+                <div className="space-y-3">
+                    <p className="text-xs font-semibold uppercase tracking-[.22em] text-slate-500">Filtros</p>
+                    <CompactFilterDropdown
+                        label="Status"
+                        options={appointmentStatusFilterOptions}
+                        value={appointmentFilter}
+                        onChange={(value) => onAppointmentFilterChange(value as AdminAppointmentStatusFilter)}
+                    />
+                    {canManageAppointmentAssignee && onAssignedToUserIdFilterChange ? (
+                        <CompactFilterDropdown
+                            label="Responsável"
+                            options={assigneeFilterOptions}
                             value={assignedToUserIdFilter}
-                            onChange={(event) => onAssignedToUserIdFilterChange(event.target.value)}
-                        >
-                            <option value="all">Todos os responsáveis</option>
-                            {assignableMembers.map((membership) => (
-                                <option key={membership.user.id} value={membership.user.id}>
-                                    {membership.user.name} ({membership.role})
-                                </option>
-                            ))}
-                        </Select>
-                    </Label>
+                            onChange={onAssignedToUserIdFilterChange}
+                        />
+                    ) : null}
+                </div>
+            </div>
+
+            {canManageAppointmentAssignee && onAssignedToUserIdFilterChange ? (
+                <div className="mb-4 hidden rounded-3xl border border-slate-200 bg-slate-50 p-3 sm:mb-6 sm:block sm:p-4">
+                    <div className="max-w-sm">
+                        <CompactFilterDropdown
+                            label="Filtrar por responsável"
+                            options={assigneeFilterOptions}
+                            value={assignedToUserIdFilter}
+                            onChange={onAssignedToUserIdFilterChange}
+                        />
+                    </div>
                 </div>
             ) : null}
 
@@ -342,7 +488,7 @@ export function AppointmentsSection({
                                                       <option value="unassigned">Sem responsável</option>
                                                       {assignableMembers.map((membership) => (
                                                           <option key={membership.user.id} value={membership.user.id}>
-                                                              {membership.user.name} ({membership.role})
+                                                              {membership.user.name} ({adminRoleLabels[membership.role]})
                                                           </option>
                                                       ))}
                                                   </Select>

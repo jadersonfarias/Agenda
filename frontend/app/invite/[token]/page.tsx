@@ -12,6 +12,8 @@ import { Button } from '../../../components/ui/button'
 import { Card } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
+import { PasswordInput } from '../../../components/ui/password-input'
+import { PasswordRequirementsChecklist } from '../../../components/ui/password-requirements-checklist'
 import { isStrongPassword, strongPasswordErrorMessage } from '../../../lib/password-validation'
 
 const acceptInvitationSchema = z.object({
@@ -100,6 +102,7 @@ export default function InvitePage() {
         register,
         handleSubmit,
         setError,
+        watch,
         formState: { errors },
     } = useForm<AcceptInvitationForm>({
         resolver: zodResolver(acceptInvitationSchema),
@@ -109,6 +112,7 @@ export default function InvitePage() {
             confirmPassword: '',
         },
     })
+    const passwordValue = watch('password') ?? ''
     const invitation = invitationDetailsQuery.data
 
     const onSubmit = handleSubmit(async (values) => {
@@ -209,14 +213,22 @@ export default function InvitePage() {
 
                                     <Label className="space-y-1.5 sm:space-y-2">
                                         <span>Crie sua senha</span>
-                                        <Input type="password" {...register('password')} placeholder="••••••••" />
-                                        <p className="text-xs text-slate-500">{strongPasswordErrorMessage}</p>
+                                        <PasswordInput
+                                            {...register('password')}
+                                            autoComplete="new-password"
+                                            placeholder="••••••••"
+                                        />
+                                        <PasswordRequirementsChecklist password={passwordValue} />
                                         {errors.password ? <p className="text-sm text-red-600">{errors.password.message}</p> : null}
                                     </Label>
 
                                     <Label className="space-y-1.5 sm:space-y-2">
                                         <span>Confirmar senha</span>
-                                        <Input type="password" {...register('confirmPassword')} placeholder="••••••••" />
+                                        <PasswordInput
+                                            {...register('confirmPassword')}
+                                            autoComplete="new-password"
+                                            placeholder="••••••••"
+                                        />
                                         {errors.confirmPassword ? (
                                             <p className="text-sm text-red-600">{errors.confirmPassword.message}</p>
                                         ) : null}

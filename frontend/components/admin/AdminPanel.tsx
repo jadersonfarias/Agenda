@@ -390,7 +390,11 @@ export default function AdminPanel({
             ) : null}
 
             {activeSection === 'financial' && uiPermissions.canViewFinancial ? (
-                <FinancialSummarySection businessId={selectedBusinessId} enabled={isAuthenticated} />
+                <FinancialSummarySection
+                    businessId={selectedBusinessId}
+                    enabled={isAuthenticated}
+                    onNavigateToAppointments={() => setActiveSection('appointments')}
+                />
             ) : null}
 
             {activeSection === 'settings' && uiPermissions.canViewSettings ? (

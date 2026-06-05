@@ -14,11 +14,11 @@ export const serviceFormSchema = z.object({
 
 export const availabilityFormSchema = z
     .object({
-        openTime: z.string().regex(timePattern, 'Horário de abertura inválido'),
-        closeTime: z.string().regex(timePattern, 'Horário de encerramento inválido'),
+        openTime: z.string().regex(timePattern, 'Informe um horário válido no formato HH:mm.'),
+        closeTime: z.string().regex(timePattern, 'Informe um horário válido no formato HH:mm.'),
     })
     .refine(({ openTime, closeTime }) => openTime < closeTime, {
-        message: 'O encerramento deve ser depois da abertura',
+        message: 'O horário de abertura precisa ser menor que o horário de encerramento.',
         path: ['closeTime'],
     })
 

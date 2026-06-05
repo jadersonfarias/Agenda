@@ -13,6 +13,7 @@ import { useAdminDeleteMembershipMutation } from '../../features/admin/hooks/use
 import { useAdminInvitationsQuery } from '../../features/admin/hooks/use-admin-invitations-query'
 import { useAdminMembershipsQuery } from '../../features/admin/hooks/use-admin-memberships-query'
 import { useAdminUpdateMembershipRoleMutation } from '../../features/admin/hooks/use-admin-update-membership-role-mutation'
+import { adminRoleLabels as membershipRoleLabels } from '../../features/admin/role-labels'
 import { formatIsoCalendarDate } from '../../lib/date-format'
 import { Button } from '../ui/button'
 import { Card } from '../ui/card'
@@ -25,12 +26,6 @@ type EditableMembershipRole = Extract<AdminMembershipRole, 'ADMIN' | 'STAFF'>
 type MembershipFormValues = {
     email: string
     role: EditableMembershipRole
-}
-
-const membershipRoleLabels: Record<AdminMembershipRole, string> = {
-    OWNER: 'Dono',
-    ADMIN: 'Administrador',
-    STAFF: 'Funcionário',
 }
 
 const editableMembershipRoleOptions: EditableMembershipRole[] = ['ADMIN', 'STAFF']

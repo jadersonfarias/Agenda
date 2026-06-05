@@ -12,7 +12,9 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
-import { strongPasswordErrorMessage, strongPasswordSchema } from '../../lib/password-validation'
+import { PasswordInput } from '../../components/ui/password-input'
+import { PasswordRequirementsChecklist } from '../../components/ui/password-requirements-checklist'
+import { strongPasswordSchema } from '../../lib/password-validation'
 
 const signupSchema = z.object({
     ownerName: z.string().trim().min(2, 'Informe o nome do dono'),
@@ -38,7 +40,7 @@ type SignupForm = z.infer<typeof signupSchema>
 export default function SignupPage() {
     const router = useRouter()
     const [error, setError] = useState('')
-    const { register, handleSubmit, formState } = useForm<SignupForm>({
+    const { register, handleSubmit, watch, formState } = useForm<SignupForm>({
         resolver: zodResolver(signupSchema),
         defaultValues: {
             ownerName: '',
@@ -49,6 +51,7 @@ export default function SignupPage() {
             phone: '',
         },
     })
+    const passwordValue = watch('password') ?? ''
 
     const onSubmit = handleSubmit(async (data) => {
         setError('')
@@ -100,8 +103,12 @@ export default function SignupPage() {
 
                         <Label className="space-y-2">
                             <span>Senha</span>
-                            <Input type="password" {...register('password')} placeholder="••••••••" />
-                            <p className="text-xs text-slate-500">{strongPasswordErrorMessage}</p>
+                            <PasswordInput
+                                {...register('password')}
+                                autoComplete="new-password"
+                                placeholder="••••••••"
+                            />
+                            <PasswordRequirementsChecklist password={passwordValue} />
                             {formState.errors.password ? <p className="text-sm text-red-600">{formState.errors.password.message}</p> : null}
                         </Label>
 
