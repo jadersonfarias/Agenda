@@ -286,6 +286,8 @@ export default function AdminPanel({
                 currentBusinessId={selectedBusinessId}
                 isSwitchingBusiness={isSwitchingBusiness}
                 userEmail={session?.user?.email}
+                userName={session?.user?.name}
+                userRole={currentBusinessRole}
                 onBusinessChange={handleBusinessChange}
             />
 

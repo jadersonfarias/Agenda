@@ -11,6 +11,12 @@ type BusinessSwitcherProps = {
     onChange: (businessId: string) => void
 }
 
+const businessRoleLabels: Record<AdminBusinessOption['role'], string> = {
+    OWNER: 'Dono',
+    ADMIN: 'Administrador',
+    STAFF: 'Atendente',
+}
+
 export function BusinessSwitcher({ businesses, currentBusinessId, disabled = false, onChange }: BusinessSwitcherProps) {
     if (businesses.length <= 1) {
         return null
@@ -22,7 +28,7 @@ export function BusinessSwitcher({ businesses, currentBusinessId, disabled = fal
             <Select value={currentBusinessId} disabled={disabled} onChange={(event) => onChange(event.target.value)}>
                 {businesses.map((business) => (
                     <option key={business.id} value={business.id}>
-                        {business.name} ({business.role})
+                        {business.name} ({businessRoleLabels[business.role]})
                     </option>
                 ))}
             </Select>
