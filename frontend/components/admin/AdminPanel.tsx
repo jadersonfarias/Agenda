@@ -54,6 +54,103 @@ type AppointmentsSummary = {
     canceled: number
 }
 
+function CalendarIcon({ className }: { className?: string }) {
+    return (
+        <svg
+            aria-hidden="true"
+            className={className}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth="2"
+        >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8 2.75v3.5M16 2.75v3.5M4.75 9h14.5" />
+            <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M6.75 5.25h10.5a2 2 0 0 1 2 2v10.5a2 2 0 0 1-2 2H6.75a2 2 0 0 1-2-2V7.25a2 2 0 0 1 2-2Z"
+            />
+        </svg>
+    )
+}
+
+function ArrowRightIcon({ className }: { className?: string }) {
+    return (
+        <svg
+            aria-hidden="true"
+            className={className}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth="2.2"
+        >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 12h15M13 6l6 6-6 6" />
+        </svg>
+    )
+}
+
+function ClockIcon({ className }: { className?: string }) {
+    return (
+        <svg
+            aria-hidden="true"
+            className={className}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth="2.2"
+        >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 7v5l3.5 2.25" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+        </svg>
+    )
+}
+
+function CheckIcon({ className }: { className?: string }) {
+    return (
+        <svg
+            aria-hidden="true"
+            className={className}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth="2.6"
+        >
+            <path strokeLinecap="round" strokeLinejoin="round" d="m5 12.5 4.25 4.25L19 7" />
+        </svg>
+    )
+}
+
+function XIcon({ className }: { className?: string }) {
+    return (
+        <svg
+            aria-hidden="true"
+            className={className}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth="2.5"
+        >
+            <path strokeLinecap="round" strokeLinejoin="round" d="m7 7 10 10M17 7 7 17" />
+        </svg>
+    )
+}
+
+function TrendIcon({ className }: { className?: string }) {
+    return (
+        <svg
+            aria-hidden="true"
+            className={className}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth="2.4"
+        >
+            <path strokeLinecap="round" strokeLinejoin="round" d="m4 16 5-5 4 4 7-8" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 7h5v5" />
+        </svg>
+    )
+}
+
 function resolveAppointmentsSummary(
     data: Pick<AdminDashboardData, 'appointmentsSummary' | 'appointmentsCount' | 'services'>
 ): AppointmentsSummary {
@@ -333,56 +430,109 @@ export default function AdminPanel({
                             </p>
                         </Card>
                         <PublicBookingLinkCard business={business} />
-                        <Card className="border-slate-200 shadow-lg shadow-slate-200/60">
-                            <div className="flex h-full min-w-0 flex-col gap-5">
-                                <div className="min-w-0">
-                                    <p className="text-xs uppercase tracking-[.25em] text-slate-500 sm:text-sm">Agendamentos</p>
-                                    <div className="mt-3 flex min-w-0 flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                                        <div className="min-w-0 flex-1">
-                                            <p className="text-2xl font-semibold text-slate-900 sm:text-3xl">
+                        <Card className="border-slate-200 bg-white p-5 shadow-lg shadow-purple-100/60 sm:p-6">
+                            <div className="flex h-full min-w-0 flex-col gap-4">
+                                <div className="flex min-w-0 items-center gap-3">
+                                    <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-purple-50 text-purple-700 shadow-inner shadow-purple-100">
+                                        <CalendarIcon className="size-6" />
+                                    </span>
+                                    <p className="min-w-0 text-xs font-semibold uppercase tracking-[.28em] text-purple-700">
+                                        Agendamentos
+                                    </p>
+                                </div>
+
+                                <div className="flex min-w-0 flex-col gap-4">
+                                    <div className="min-w-0">
+                                        <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+                                            <p className="text-5xl font-black leading-none text-slate-950">
                                                 {appointmentsSummary.total}
                                             </p>
-                                            <p className="mt-1 text-xs text-slate-600 sm:text-sm">
-                                                Total de agendamentos registrados.
+                                            <p className="text-xl font-bold leading-tight text-slate-950">
+                                                {appointmentsSummary.total === 1 ? 'agendamento' : 'agendamentos'}
                                             </p>
                                         </div>
-                                        <Button
-                                            type="button"
-                                            variant="secondary"
-                                            className="min-h-11 w-full min-w-0 px-4 py-2 text-sm sm:w-auto sm:shrink-0"
-                                            onClick={() => setActiveSection('appointments')}
-                                        >
-                                            Ver agenda
-                                        </Button>
+                                        <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                                            {appointmentsSummary.scheduled}{' '}
+                                            {appointmentsSummary.scheduled === 1
+                                                ? 'ainda aguarda atendimento.'
+                                                : 'ainda aguardam atendimento.'}
+                                        </p>
+                                    </div>
+
+                                    <Button
+                                        type="button"
+                                        variant="secondary"
+                                        className="!min-h-11 !w-full min-w-0 gap-2 rounded-2xl border border-purple-200 !bg-white px-4 py-2 text-sm font-bold !text-purple-700 shadow-sm shadow-purple-100/60 hover:!bg-purple-50 focus:ring-purple-200"
+                                        onClick={() => setActiveSection('appointments')}
+                                    >
+                                        <CalendarIcon className="size-5 shrink-0" />
+                                        <span>Ver agenda</span>
+                                        <ArrowRightIcon className="size-5 shrink-0" />
+                                    </Button>
+                                </div>
+
+                                <div className="h-px w-full bg-slate-200" />
+
+                                <div className="grid min-w-0 grid-cols-3 gap-2">
+                                    <div className="min-w-0 rounded-2xl border border-amber-200 bg-amber-50/80 p-2.5 shadow-sm shadow-amber-100/50">
+                                        <div className="flex min-w-0 flex-col gap-2">
+                                            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+                                                <ClockIcon className="size-5" />
+                                            </span>
+                                            <div className="min-w-0">
+                                                <p className="text-xl font-bold leading-none text-slate-950">
+                                                    {appointmentsSummary.scheduled}
+                                                </p>
+                                                <p className="mt-1 text-[11px] font-medium leading-tight text-slate-700">
+                                                    Agendados
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="min-w-0 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-2.5 shadow-sm shadow-emerald-100/50">
+                                        <div className="flex min-w-0 flex-col gap-2">
+                                            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                                                <CheckIcon className="size-5" />
+                                            </span>
+                                            <div className="min-w-0">
+                                                <p className="text-xl font-bold leading-none text-slate-950">
+                                                    {appointmentsSummary.completed}
+                                                </p>
+                                                <p className="mt-1 text-[11px] font-medium leading-tight text-slate-700">
+                                                    Concluídos
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="min-w-0 rounded-2xl border border-rose-200 bg-rose-50/80 p-2.5 shadow-sm shadow-rose-100/50">
+                                        <div className="flex min-w-0 flex-col gap-2">
+                                            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-700">
+                                                <XIcon className="size-5" />
+                                            </span>
+                                            <div className="min-w-0">
+                                                <p className="text-xl font-bold leading-none text-slate-950">
+                                                    {appointmentsSummary.canceled}
+                                                </p>
+                                                <p className="mt-1 text-[11px] font-medium leading-tight text-slate-700">
+                                                    Cancelados
+                                                </p>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-3">
-                                    <div className="min-w-0 rounded-2xl border border-amber-100 bg-amber-50 px-3 py-3">
-                                        <p className="text-[11px] font-semibold uppercase tracking-[.18em] text-amber-700">
-                                            Agendados
-                                        </p>
-                                        <p className="mt-1 text-lg font-semibold text-slate-900">
-                                            {appointmentsSummary.scheduled}
-                                        </p>
-                                    </div>
-                                    <div className="min-w-0 rounded-2xl border border-emerald-100 bg-emerald-50 px-3 py-3">
-                                        <p className="text-[11px] font-semibold uppercase tracking-[.18em] text-emerald-700">
-                                            Concluídos
-                                        </p>
-                                        <p className="mt-1 text-lg font-semibold text-slate-900">
-                                            {appointmentsSummary.completed}
-                                        </p>
-                                    </div>
-                                    <div className="min-w-0 rounded-2xl border border-rose-100 bg-rose-50 px-3 py-3">
-                                        <p className="text-[11px] font-semibold uppercase tracking-[.18em] text-rose-700">
-                                            Cancelados
-                                        </p>
-                                        <p className="mt-1 text-lg font-semibold text-slate-900">
-                                            {appointmentsSummary.canceled}
-                                        </p>
-                                    </div>
-                                </div>
+                                <p className="flex min-w-0 items-start gap-2 text-xs font-medium leading-relaxed text-slate-600 sm:text-sm">
+                                    <TrendIcon className="mt-0.5 size-4 shrink-0 text-purple-700" />
+                                    <span>
+                                        {appointmentsSummary.completed > 0
+                                            ? `${appointmentsSummary.completed} atendimento${
+                                                appointmentsSummary.completed === 1 ? '' : 's'
+                                            } concluído${
+                                                appointmentsSummary.completed === 1 ? '' : 's'
+                                            } este mês`
+                                            : 'Nenhum atendimento concluído este mês'}
+                                    </span>
+                                </p>
                             </div>
                         </Card>
                     </div>

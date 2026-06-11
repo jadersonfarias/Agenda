@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSession, signIn } from 'next-auth/react'
 import { useForm } from 'react-hook-form'
+import toast from 'react-hot-toast'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '../../components/ui/button'
@@ -48,9 +49,25 @@ export default function LoginPage() {
 
     const onSubmit = async (data: LoginForm) => {
         setError('')
-        const result = await signIn('credentials', { ...data, redirect: false })
-        if (!result?.ok) {
-            setError(result?.error || 'Não foi possível fazer login')
+
+        try {
+            const result = await signIn('credentials', { ...data, redirect: false })
+
+            if (!result?.ok) {
+                const message =
+                    result?.error === 'CredentialsSignin' || result?.status === 401
+                        ? 'Email ou senha inválidos.'
+                        : 'Não foi possível entrar agora. Tente novamente.'
+
+                setError(message)
+                toast.error(message)
+                return
+            }
+        } catch {
+            const message = 'Não foi possível entrar agora. Tente novamente.'
+
+            setError(message)
+            toast.error(message)
             return
         }
 
@@ -90,7 +107,9 @@ export default function LoginPage() {
 
                         {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
-                        <Button type="submit" className="w-full">Entrar</Button>
+                        <Button type="submit" className="w-full" disabled={formState.isSubmitting}>
+                            {formState.isSubmitting ? 'Entrando...' : 'Entrar'}
+                        </Button>
                     </form>
 
                     <p className="text-sm text-slate-600">
