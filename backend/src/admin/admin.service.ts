@@ -23,6 +23,7 @@ import { SubscriptionService } from '../subscriptions/subscription.service'
 type AdminServiceRecord = {
   id: string
   name: string
+  description: string | null
   price: { toString(): string } | string | number
   durationMinutes: number
   createdAt: Date
@@ -91,6 +92,18 @@ export class AdminService {
     return value
   }
 
+  private mapService(service: AdminServiceRecord) {
+    return {
+      id: service.id,
+      name: service.name,
+      description: service.description,
+      price: service.price.toString(),
+      durationMinutes: service.durationMinutes,
+      appointmentCount: service._count.appointments,
+      createdAt: service.createdAt.toISOString(),
+    }
+  }
+
   async getDashboard(businessId: string) {
     const [business, services, appointmentsCount, appointmentsByStatus] = await Promise.all([
       this.businessesRepository.findBusinessById(businessId),
@@ -141,14 +154,7 @@ export class AdminService {
         lastPaymentAt: business.lastPaymentAt?.toISOString() ?? null,
         paymentMethod: business.paymentMethod ?? null,
       },
-      services: services.map((service: AdminServiceRecord) => ({
-        id: service.id,
-        name: service.name,
-        price: service.price.toString(),
-        durationMinutes: service.durationMinutes,
-        appointmentCount: service._count.appointments,
-        createdAt: service.createdAt.toISOString(),
-      })),
+      services: services.map((service: AdminServiceRecord) => this.mapService(service)),
       appointmentsCount,
       appointmentsSummary,
     }
@@ -159,24 +165,10 @@ export class AdminService {
 
     return pagination
       ? {
-          data: services.data.map((service: AdminServiceRecord) => ({
-            id: service.id,
-            name: service.name,
-            price: service.price.toString(),
-            durationMinutes: service.durationMinutes,
-            appointmentCount: service._count.appointments,
-            createdAt: service.createdAt.toISOString(),
-          })),
+          data: services.data.map((service: AdminServiceRecord) => this.mapService(service)),
           meta: services.meta,
         }
-      : services.map((service: AdminServiceRecord) => ({
-          id: service.id,
-          name: service.name,
-          price: service.price.toString(),
-          durationMinutes: service.durationMinutes,
-          appointmentCount: service._count.appointments,
-          createdAt: service.createdAt.toISOString(),
-        }))
+      : services.map((service: AdminServiceRecord) => this.mapService(service))
   }
 
   async createService(businessId: string, dto: AdminServiceDto) {
@@ -191,18 +183,12 @@ export class AdminService {
     const service = await this.adminRepository.createService({
       businessId,
       name: dto.name,
+      description: dto.description,
       price: dto.price,
       durationMinutes: dto.durationMinutes,
     })
 
-    return {
-      id: service.id,
-      name: service.name,
-      price: service.price.toString(),
-      durationMinutes: service.durationMinutes,
-      appointmentCount: service._count.appointments,
-      createdAt: service.createdAt.toISOString(),
-    }
+    return this.mapService(service)
   }
 
   async updateService(id: string, businessId: string, dto: AdminServiceDto) {
@@ -216,6 +202,7 @@ export class AdminService {
 
     const updatedService = await this.adminRepository.updateService(id, businessId, {
       name: dto.name,
+      description: dto.description,
       price: dto.price,
       durationMinutes: dto.durationMinutes,
     })
@@ -224,14 +211,7 @@ export class AdminService {
       throw new NotFoundException('Serviço não encontrado')
     }
 
-    return {
-      id: updatedService.id,
-      name: updatedService.name,
-      price: updatedService.price.toString(),
-      durationMinutes: updatedService.durationMinutes,
-      appointmentCount: updatedService._count.appointments,
-      createdAt: updatedService.createdAt.toISOString(),
-    }
+    return this.mapService(updatedService)
   }
 
   async deleteService(id: string, businessId: string) {

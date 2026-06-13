@@ -21,6 +21,45 @@ import { Modal } from '../ui/modal'
 
 type ServiceFormMode = 'create' | 'edit'
 
+function formatPriceInput(value: number) {
+    return Number.isFinite(value)
+        ? value.toLocaleString('pt-BR', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+          })
+        : ''
+}
+
+function parsePriceInput(value: string) {
+    const trimmedValue = value.trim()
+    const normalizedValue = trimmedValue.includes(',')
+        ? trimmedValue.replace(/\./g, '').replace(',', '.')
+        : trimmedValue
+    const parsedValue = Number(normalizedValue)
+
+    return Number.isFinite(parsedValue) ? parsedValue : Number.NaN
+}
+
+function ServiceModalIcon() {
+    return (
+        <svg aria-hidden="true" viewBox="0 0 24 24" className="h-7 w-7 sm:h-8 sm:w-8" fill="none">
+            <path
+                d="M7 3V6M17 3V6M4.75 9.25H19.25M6.5 5H17.5C18.8807 5 20 6.11929 20 7.5V18C20 19.3807 18.8807 20.5 17.5 20.5H6.5C5.11929 20.5 4 19.3807 4 18V7.5C4 6.11929 5.11929 5 6.5 5Z"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+            <path
+                d="M8 13H9.5M11.25 13H12.75M14.5 13H16M8 16H9.5M11.25 16H12.75M14.5 16H16"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+            />
+        </svg>
+    )
+}
+
 function ServiceForm({
     businessId,
     mode,
@@ -35,27 +74,36 @@ function ServiceForm({
     onSaved: (value: AdminServiceItem, mode: ServiceFormMode) => void
 }) {
     const [isSaving, setIsSaving] = useState(false)
+    const [priceInput, setPriceInput] = useState(
+        formatPriceInput(initialValues ? Number(initialValues.price) : 0)
+    )
     const {
         register,
         handleSubmit,
+        watch,
+        setValue,
         formState: { errors },
     } = useForm<ServiceFormValues>({
         resolver: zodResolver(serviceFormSchema),
         defaultValues: initialValues
             ? {
                 name: initialValues.name,
+                description: initialValues.description ?? '',
                 price: Number(initialValues.price),
                 durationMinutes: initialValues.durationMinutes,
             }
             : {
                 name: '',
+                description: '',
                 price: 0,
                 durationMinutes: 30,
             },
     })
+    const descriptionValue = watch('description') ?? ''
 
     const onSubmit = handleSubmit(async (values) => {
         setIsSaving(true)
+        const description = values.description?.trim() ? values.description.trim() : null
 
         try {
             const data =
@@ -63,11 +111,13 @@ function ServiceForm({
                     ? await createAdminService({
                           businessId,
                           ...values,
+                          description,
                       })
                     : await updateAdminService({
                           businessId,
                           serviceId: initialValues!.id,
                           ...values,
+                          description,
                       })
             onSaved(data, mode)
             toast.success(mode === 'create' ? 'Serviço criado com sucesso' : 'Serviço atualizado com sucesso')
@@ -79,32 +129,105 @@ function ServiceForm({
     })
 
     return (
-        <form className="grid gap-4" onSubmit={onSubmit}>
-            <Label className="space-y-2">
-                <span className="text-sm font-medium sm:text-base">Nome do serviço</span>
-                <Input placeholder="Ex: Corte feminino" {...register('name')} />
+        <form className="grid gap-5 sm:gap-6" onSubmit={onSubmit}>
+            <Label className="space-y-2.5">
+                <span className="text-sm font-semibold text-slate-800 sm:text-base">Nome do serviço</span>
+                <Input
+                    placeholder="Ex: Corte feminino"
+                    className="min-h-14 rounded-2xl border-slate-200 bg-white px-5 shadow-sm focus:border-purple-500 focus:ring-purple-100"
+                    {...register('name')}
+                />
                 {errors.name ? <p className="text-xs text-red-600 sm:text-sm">{errors.name.message}</p> : null}
             </Label>
 
             <div className="grid gap-4 sm:grid-cols-2">
-                <Label className="space-y-2">
-                    <span className="text-sm font-medium sm:text-base">Preço</span>
-                    <Input type="number" step="0.01" min="0" {...register('price', { valueAsNumber: true })} />
+                <Label className="space-y-2.5">
+                    <span className="text-sm font-semibold text-slate-800 sm:text-base">Preço</span>
+                    <div className="flex min-h-14 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition focus-within:border-purple-500 focus-within:ring-2 focus-within:ring-purple-100">
+                        <span className="flex w-16 shrink-0 items-center justify-center border-r border-slate-200 bg-slate-50 text-base font-semibold text-slate-700">
+                            R$
+                        </span>
+                        <input
+                            type="text"
+                            inputMode="decimal"
+                            value={priceInput}
+                            onChange={(event) => {
+                                const nextValue = event.target.value
+
+                                setPriceInput(nextValue)
+                                setValue('price', parsePriceInput(nextValue), {
+                                    shouldDirty: true,
+                                    shouldValidate: true,
+                                })
+                            }}
+                            onBlur={() => {
+                                const parsedValue = parsePriceInput(priceInput)
+
+                                if (Number.isFinite(parsedValue)) {
+                                    setPriceInput(formatPriceInput(parsedValue))
+                                }
+                            }}
+                            className="min-w-0 flex-1 bg-white px-5 py-3 text-base text-slate-900 outline-none"
+                            placeholder="30,00"
+                        />
+                    </div>
                     {errors.price ? <p className="text-xs text-red-600 sm:text-sm">{errors.price.message}</p> : null}
                 </Label>
 
-                <Label className="space-y-2">
-                    <span className="text-sm font-medium sm:text-base">Duração (min)</span>
-                    <Input type="number" min="5" step="5" {...register('durationMinutes', { valueAsNumber: true })} />
+                <Label className="space-y-2.5">
+                    <span className="text-sm font-semibold text-slate-800 sm:text-base">Duração (min)</span>
+                    <Input
+                        type="number"
+                        min="5"
+                        step="5"
+                        className="min-h-14 rounded-2xl border-slate-200 bg-white px-5 shadow-sm focus:border-purple-500 focus:ring-purple-100"
+                        {...register('durationMinutes', { valueAsNumber: true })}
+                    />
                     {errors.durationMinutes ? <p className="text-xs text-red-600 sm:text-sm">{errors.durationMinutes.message}</p> : null}
                 </Label>
             </div>
 
-            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                <Button type="button" variant="secondary" onClick={onCancel}>
+            <Label className="space-y-2.5">
+                <span className="text-sm font-semibold text-slate-800 sm:text-base">Descrição do serviço (opcional)</span>
+                <textarea
+                    rows={4}
+                    maxLength={300}
+                    placeholder="Ex.: acabamento de barba com toalha quente e finalização."
+                    className="w-full min-h-28 resize-y rounded-2xl border border-slate-200 bg-white px-5 py-4 text-base text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-100"
+                    {...register('description')}
+                />
+                <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+                    <span className="inline-flex min-w-0 items-start gap-2 text-xs leading-5 text-slate-500 sm:text-sm">
+                        <svg aria-hidden="true" viewBox="0 0 20 20" className="mt-0.5 h-4 w-4 shrink-0 text-purple-500" fill="none">
+                            <path
+                                d="M10 18C14.4183 18 18 14.4183 18 10C18 5.58172 14.4183 2 10 2C5.58172 2 2 5.58172 2 10C2 14.4183 5.58172 18 10 18Z"
+                                stroke="currentColor"
+                                strokeWidth="1.6"
+                            />
+                            <path d="M10 9.5V14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                            <path d="M10 6.25H10.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                        </svg>
+                        <span>A descrição ajuda o cliente a entender melhor o que está incluso no serviço.</span>
+                    </span>
+                    <span className="shrink-0 text-right text-xs text-slate-400">{descriptionValue.length}/300</span>
+                </div>
+                {errors.description ? <p className="text-xs text-red-600 sm:text-sm">{errors.description.message}</p> : null}
+            </Label>
+
+            <div className="flex flex-col-reverse gap-3 pt-1 sm:flex-row sm:justify-end">
+                <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={onCancel}
+                    className="min-h-12 border border-slate-200 bg-white text-slate-800 shadow-sm hover:bg-slate-50 sm:min-w-44"
+                >
                     Cancelar
                 </Button>
-                <Button type="submit" disabled={isSaving} className="min-h-12 lg:min-h-0 sm:w-auto">
+                <Button
+                    type="submit"
+                    disabled={isSaving}
+                    className="min-h-12 bg-purple-700 shadow-lg shadow-purple-200/70 hover:bg-purple-800 sm:min-w-56"
+                >
                     {isSaving ? 'Salvando...' : mode === 'create' ? 'Criar serviço' : 'Salvar alterações'}
                 </Button>
             </div>
@@ -199,6 +322,18 @@ export function ServicesSection({ businessId, enabled, initialServices }: Servic
                                           </span>
                                       </div>
                                       <p className="text-xs text-slate-600 sm:text-sm">R$ {Number(service.price).toFixed(2)}</p>
+                                      {service.description ? (
+                                          <p
+                                              className="overflow-hidden text-xs leading-5 text-slate-500 sm:text-sm"
+                                              style={{
+                                                  display: '-webkit-box',
+                                                  WebkitBoxOrient: 'vertical',
+                                                  WebkitLineClamp: 2,
+                                              }}
+                                          >
+                                              {service.description}
+                                          </p>
+                                      ) : null}
                                       <p className="text-xs text-slate-500 sm:text-sm">
                                           {service.appointmentCount === 0
                                               ? 'Sem agendamentos vinculados'
@@ -233,18 +368,24 @@ export function ServicesSection({ businessId, enabled, initialServices }: Servic
 
             <Modal
                 title="Novo serviço"
-                description="Adicione um novo serviço ao catálogo do salão."
+                description="Cadastre nome, preço, duração e os detalhes do serviço para apresentar aos clientes."
                 open={isCreateOpen}
                 onClose={() => setIsCreateOpen(false)}
+                headerIcon={<ServiceModalIcon />}
+                overlayClassName="items-start py-4 backdrop-blur-sm sm:items-center sm:py-6"
+                panelClassName="my-auto max-w-3xl overflow-visible p-5 sm:p-8"
             >
                 <ServiceForm businessId={businessId} mode="create" onCancel={() => setIsCreateOpen(false)} onSaved={handleServiceSaved} />
             </Modal>
 
             <Modal
                 title="Editar serviço"
-                description="Atualize nome, preço e duração do serviço selecionado."
+                description="Atualize nome, preço, duração e os detalhes do serviço selecionado."
                 open={Boolean(editingService)}
                 onClose={() => setEditingService(null)}
+                headerIcon={<ServiceModalIcon />}
+                overlayClassName="items-start py-4 backdrop-blur-sm sm:items-center sm:py-6"
+                panelClassName="my-auto max-w-3xl overflow-visible p-5 sm:p-8"
             >
                 <ServiceForm businessId={businessId} mode="edit" initialValues={editingService} onCancel={() => setEditingService(null)} onSaved={handleServiceSaved} />
             </Modal>

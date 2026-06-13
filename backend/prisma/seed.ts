@@ -76,7 +76,7 @@ async function main(): Promise<void> {
 
   const platformAdmin = await upsertDemoUser({
     name: 'Jaderson Admin',
-    email: 'master@marcacerta.com',
+    email: 'git push',
     passwordHash,
     isPlatformAdmin: true,
   });

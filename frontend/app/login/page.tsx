@@ -25,6 +25,7 @@ export default function LoginPage() {
     const router = useRouter()
     const [error, setError] = useState('')
     const [welcomeMode, setWelcomeMode] = useState(false)
+    const [sessionExpiredMode, setSessionExpiredMode] = useState(false)
     const { register, handleSubmit, formState, setValue } = useForm<LoginForm>({
         resolver: zodResolver(loginSchema),
         defaultValues: { email: '', password: '' },
@@ -39,6 +40,7 @@ export default function LoginPage() {
         const email = params.get('email') ?? ''
 
         setWelcomeMode(params.get('welcome') === '1')
+        setSessionExpiredMode(params.get('reason') === 'session-expired')
 
         if (!email) {
             return
@@ -88,6 +90,11 @@ export default function LoginPage() {
                         {welcomeMode ? (
                             <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-3.5 py-3 text-sm text-emerald-900 sm:px-4">
                                 Conta criada com sucesso. Entre agora para cadastrar serviços, ajustar horários e compartilhar seu link público.
+                            </div>
+                        ) : null}
+                        {sessionExpiredMode ? (
+                            <div className="rounded-2xl border border-amber-100 bg-amber-50 px-3.5 py-3 text-sm text-amber-900 sm:px-4">
+                                Sua sessão expirou. Faça login novamente.
                             </div>
                         ) : null}
                     </div>

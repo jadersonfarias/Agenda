@@ -53,6 +53,7 @@ type BookingStep = 'service' | 'details' | 'schedule' | 'review'
 type Service = {
     id: string
     name: string
+    description: string | null
     price: string
     durationMinutes: number
 }
@@ -599,7 +600,18 @@ export function PublicBookingPage({
                                                     <div className="flex items-start justify-between gap-3">
                                                         <div className="min-w-0 space-y-1.5">
                                                             <p className="text-base font-semibold leading-6 text-slate-900">{service.name}</p>
-                                                            <p className="text-sm text-slate-500">Atendimento com duracao definida.</p>
+                                                            {service.description ? (
+                                                                <p
+                                                                    className="overflow-hidden text-sm leading-6 text-slate-500"
+                                                                    style={{
+                                                                        display: '-webkit-box',
+                                                                        WebkitBoxOrient: 'vertical',
+                                                                        WebkitLineClamp: 2,
+                                                                    }}
+                                                                >
+                                                                    {service.description}
+                                                                </p>
+                                                            ) : null}
                                                         </div>
                                                         <span
                                                             className={[
@@ -894,6 +906,18 @@ export function PublicBookingPage({
                                                             <div className="flex items-start justify-between gap-3">
                                                                 <div className="min-w-0">
                                                                     <p className="text-sm font-semibold text-slate-900">{service.name}</p>
+                                                                    {service.description ? (
+                                                                        <p
+                                                                            className="mt-1 overflow-hidden text-xs leading-5 text-slate-500"
+                                                                            style={{
+                                                                                display: '-webkit-box',
+                                                                                WebkitBoxOrient: 'vertical',
+                                                                                WebkitLineClamp: 2,
+                                                                            }}
+                                                                        >
+                                                                            {service.description}
+                                                                        </p>
+                                                                    ) : null}
                                                                     <p className="mt-1 text-xs text-slate-500">
                                                                         {service.durationMinutes} min
                                                                     </p>

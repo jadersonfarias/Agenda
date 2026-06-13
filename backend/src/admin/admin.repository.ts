@@ -37,6 +37,7 @@ export class AdminRepository {
         select: {
           id: true,
           name: true,
+          description: true,
           price: true,
           durationMinutes: true,
           createdAt: true,
@@ -56,6 +57,7 @@ export class AdminRepository {
         select: {
           id: true,
           name: true,
+          description: true,
           price: true,
           durationMinutes: true,
           createdAt: true,
@@ -78,6 +80,7 @@ export class AdminRepository {
     } as PaginatedResult<{
       id: string
       name: string
+      description: string | null
       price: string
       durationMinutes: number
       createdAt: Date
@@ -109,6 +112,7 @@ export class AdminRepository {
       select: {
         id: true,
         name: true,
+        description: true,
         price: true,
         durationMinutes: true,
         createdAt: true,
@@ -124,6 +128,7 @@ export class AdminRepository {
   async createService(input: {
     businessId: string
     name: string
+    description: string | null
     price: number
     durationMinutes: number
   }) {
@@ -132,6 +137,7 @@ export class AdminRepository {
       select: {
         id: true,
         name: true,
+        description: true,
         price: true,
         durationMinutes: true,
         createdAt: true,
@@ -149,6 +155,7 @@ export class AdminRepository {
     businessId: string,
     input: {
       name: string
+      description: string | null
       price: number
       durationMinutes: number
     }

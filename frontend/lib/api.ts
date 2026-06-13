@@ -13,6 +13,38 @@ export const api = axios.create({
     baseURL: apiBaseUrl,
 })
 
+let isRedirectingToSessionExpiredLogin = false
+
+function getApiErrorPayloadMessage(error: unknown) {
+    if (!axios.isAxiosError(error)) {
+        return undefined
+    }
+
+    const data = error.response?.data
+
+    if (data && typeof data === 'object' && 'message' in data && typeof data.message === 'string') {
+        return data.message
+    }
+
+    return undefined
+}
+
+function isAdminRequest(url?: string) {
+    return typeof url === 'string' && (url === '/admin' || url.startsWith('/admin/'))
+}
+
+function isApiSessionExpiredError(error: unknown) {
+    if (axios.isAxiosError(error)) {
+        if (error.response?.status === 401) {
+            return true
+        }
+
+        return getApiErrorPayloadMessage(error)?.includes('Token inválido ou expirado') === true
+    }
+
+    return error instanceof Error && error.message.includes('Token inválido ou expirado')
+}
+
 api.interceptors.request.use(async (config) => {
     if (typeof window === 'undefined') {
         return config
@@ -28,6 +60,23 @@ api.interceptors.request.use(async (config) => {
     return config
 })
 
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (
+            typeof window !== 'undefined' &&
+            isAdminRequest(error.config?.url) &&
+            isApiSessionExpiredError(error) &&
+            !isRedirectingToSessionExpiredLogin
+        ) {
+            isRedirectingToSessionExpiredLogin = true
+            window.location.assign('/login?reason=session-expired')
+        }
+
+        return Promise.reject(error)
+    }
+)
+
 export function createServerApi(accessToken?: string) {
     return axios.create({
         baseURL: serverApiBaseUrl,
@@ -41,10 +90,10 @@ export function createServerApi(accessToken?: string) {
 
 export function getApiErrorMessage(error: unknown, fallbackMessage: string) {
     if (axios.isAxiosError(error)) {
-        const data = error.response?.data
+        const message = getApiErrorPayloadMessage(error)
 
-        if (data && typeof data === 'object' && 'message' in data && typeof data.message === 'string') {
-            return data.message
+        if (message) {
+            return message
         }
     }
 

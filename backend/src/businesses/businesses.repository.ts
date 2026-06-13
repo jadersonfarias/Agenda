@@ -30,6 +30,7 @@ export class BusinessesRepository {
         select: {
           id: true,
           name: true,
+          description: true,
           price: true,
           durationMinutes: true,
         },
@@ -43,6 +44,7 @@ export class BusinessesRepository {
         select: {
           id: true,
           name: true,
+          description: true,
           price: true,
           durationMinutes: true,
         },
@@ -59,6 +61,7 @@ export class BusinessesRepository {
     } as PaginatedResult<{
       id: string
       name: string
+      description: string | null
       price: string
       durationMinutes: number
     }>

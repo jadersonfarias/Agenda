@@ -4,6 +4,11 @@ const timePattern = /^([01]\d|2[0-3]):([0-5]\d)$/
 
 export const serviceFormSchema = z.object({
     name: z.string().trim().min(2, 'Informe o nome do serviço'),
+    description: z
+        .string()
+        .trim()
+        .max(300, 'A descrição deve ter no máximo 300 caracteres')
+        .optional(),
     price: z.coerce.number().positive('Informe um preço maior que zero'),
     durationMinutes: z.coerce
         .number()

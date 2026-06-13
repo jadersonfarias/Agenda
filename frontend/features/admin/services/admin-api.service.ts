@@ -199,6 +199,7 @@ export async function deleteAdminMembership(input: {
 export async function createAdminService(input: {
     businessId: string
     name: string
+    description?: string | null
     price: number
     durationMinutes: number
 }) {
@@ -214,6 +215,7 @@ export async function updateAdminService(input: {
     businessId: string
     serviceId: string
     name: string
+    description?: string | null
     price: number
     durationMinutes: number
 }) {
@@ -221,6 +223,7 @@ export async function updateAdminService(input: {
         const response = await api.patch<AdminServiceItem>(`/admin/services/${input.serviceId}`, {
             businessId: input.businessId,
             name: input.name,
+            description: input.description,
             price: input.price,
             durationMinutes: input.durationMinutes,
         })

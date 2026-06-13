@@ -20,8 +20,6 @@ import {
 } from '../../features/admin/services/admin-api.service'
 import { Button } from '../ui/button'
 import { Card } from '../ui/card'
-import { Label } from '../ui/label'
-import { Select } from '../ui/select'
 
 const appointmentStatusLabels: Record<AdminAppointmentStatus, string> = {
     SCHEDULED: 'Agendado',
@@ -37,9 +35,9 @@ const appointmentStatusBadgeStyles: Record<AdminAppointmentStatus, string> = {
 
 const appointmentFilterOptions: { value: AdminAppointmentStatusFilter; label: string }[] = [
     { value: 'all', label: 'Todos' },
-    { value: 'scheduled', label: 'Agendados' },
-    { value: 'completed', label: 'Concluídos' },
-    { value: 'canceled', label: 'Cancelados' },
+    { value: 'scheduled', label: 'Agendado' },
+    { value: 'completed', label: 'Concluído' },
+    { value: 'canceled', label: 'Cancelado' },
 ]
 
 type CompactFilterOption = {
@@ -68,15 +66,16 @@ type CompactFilterDropdownProps = {
     options: CompactFilterOption[]
     value: string
     onChange: (value: string) => void
+    disabled?: boolean
 }
 
-function CompactFilterDropdown({ label, options, value, onChange }: CompactFilterDropdownProps) {
+function CompactFilterDropdown({ label, options, value, onChange, disabled = false }: CompactFilterDropdownProps) {
     const [isOpen, setIsOpen] = useState(false)
     const containerRef = useRef<HTMLDivElement | null>(null)
     const selectedOption = options.find((option) => option.value === value) ?? options[0]
 
     useEffect(() => {
-        if (!isOpen) {
+        if (!isOpen || disabled) {
             return
         }
 
@@ -99,7 +98,13 @@ function CompactFilterDropdown({ label, options, value, onChange }: CompactFilte
             document.removeEventListener('mousedown', handlePointerDown)
             document.removeEventListener('touchstart', handlePointerDown)
         }
-    }, [isOpen])
+    }, [disabled, isOpen])
+
+    useEffect(() => {
+        if (disabled) {
+            setIsOpen(false)
+        }
+    }, [disabled])
 
     return (
         <div ref={containerRef} className="relative">
@@ -111,6 +116,7 @@ function CompactFilterDropdown({ label, options, value, onChange }: CompactFilte
                 type="button"
                 aria-haspopup="listbox"
                 aria-expanded={isOpen}
+                disabled={disabled}
                 onClick={() => setIsOpen((current) => !current)}
                 onKeyDown={(event) => {
                     if (event.key === 'Escape') {
@@ -119,7 +125,9 @@ function CompactFilterDropdown({ label, options, value, onChange }: CompactFilte
                 }}
                 className={[
                     'relative flex min-h-11 w-full items-center rounded-2xl border bg-white px-4 py-2.5 pr-12 text-left text-sm font-semibold text-slate-900 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-purple-200',
-                    isOpen
+                    disabled
+                        ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400'
+                        : isOpen
                         ? 'border-purple-300 shadow-purple-100/80'
                         : 'border-slate-200 hover:border-purple-200 hover:bg-purple-50/40',
                 ].join(' ')}
@@ -196,8 +204,20 @@ export function AppointmentsSection({
     const [appointmentStatusDrafts, setAppointmentStatusDrafts] = useState<Record<string, AdminAppointmentStatus>>({})
     const [appointmentAssigneeDrafts, setAppointmentAssigneeDrafts] = useState<Record<string, string>>({})
     const appointmentStatusFilterOptions = appointmentFilterOptions as CompactFilterOption[]
+    const appointmentStatusOptions: CompactFilterOption[] = [
+        { value: 'SCHEDULED', label: appointmentStatusLabels.SCHEDULED },
+        { value: 'COMPLETED', label: appointmentStatusLabels.COMPLETED },
+        { value: 'CANCELED', label: appointmentStatusLabels.CANCELED },
+    ]
     const assigneeFilterOptions: CompactFilterOption[] = [
         { value: 'all', label: 'Todos os responsáveis' },
+        ...assignableMembers.map((membership) => ({
+            value: membership.user.id,
+            label: `${membership.user.name} (${adminRoleLabels[membership.role]})`,
+        })),
+    ]
+    const appointmentAssigneeOptions: CompactFilterOption[] = [
+        { value: 'unassigned', label: 'Sem responsável' },
         ...assignableMembers.map((membership) => ({
             value: membership.user.id,
             label: `${membership.user.name} (${adminRoleLabels[membership.role]})`,
@@ -328,22 +348,6 @@ export function AppointmentsSection({
                         Atualize o status de cada agendamento sem alterar as demais funcionalidades do sistema.
                     </p>
                 </div>
-                <div className="hidden w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
-                    {appointmentFilterOptions.map((option) => (
-                        <button
-                            key={option.value}
-                            type="button"
-                            onClick={() => onAppointmentFilterChange(option.value)}
-                            className={
-                                appointmentFilter === option.value
-                                    ? 'inline-flex min-h-10 items-center justify-center rounded-2xl border border-purple-700 bg-purple-700 px-3 py-2 text-sm font-semibold text-white shadow-sm shadow-purple-200 transition focus:outline-none focus:ring-2 focus:ring-purple-200 sm:min-w-[120px]'
-                                    : 'inline-flex min-h-10 items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-purple-200 hover:bg-purple-50 hover:text-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-200 sm:min-w-[120px]'
-                            }
-                        >
-                            {option.label}
-                        </button>
-                    ))}
-                </div>
             </div>
 
             <div className="mb-4 rounded-3xl border border-slate-200 bg-slate-50/90 p-3 shadow-sm shadow-slate-100 sm:hidden">
@@ -366,18 +370,24 @@ export function AppointmentsSection({
                 </div>
             </div>
 
-            {canManageAppointmentAssignee && onAssignedToUserIdFilterChange ? (
-                <div className="mb-4 hidden rounded-3xl border border-slate-200 bg-slate-50 p-3 sm:mb-6 sm:block sm:p-4">
-                    <div className="max-w-sm">
+            <div className="mb-4 hidden rounded-3xl border border-slate-200 bg-slate-50 p-3 sm:mb-6 sm:block sm:p-4">
+                <div className="grid gap-3 md:grid-cols-2">
+                    <CompactFilterDropdown
+                        label="Status"
+                        options={appointmentStatusFilterOptions}
+                        value={appointmentFilter}
+                        onChange={(value) => onAppointmentFilterChange(value as AdminAppointmentStatusFilter)}
+                    />
+                    {canManageAppointmentAssignee && onAssignedToUserIdFilterChange ? (
                         <CompactFilterDropdown
                             label="Filtrar por responsável"
                             options={assigneeFilterOptions}
                             value={assignedToUserIdFilter}
                             onChange={onAssignedToUserIdFilterChange}
                         />
-                    </div>
+                    ) : null}
                 </div>
-            ) : null}
+            </div>
 
             <div className="space-y-3 sm:space-y-4">
                 {appointmentsQuery.isLoading ? (
@@ -444,23 +454,18 @@ export function AppointmentsSection({
                                   </div>
 
                                   <div className="flex w-full flex-col gap-3 lg:w-full">
-                                      <Label className="w-full space-y-2">
-                                          <span>Status</span>
-                                          <Select
-                                              value={selectedStatus}
-                                              onChange={(event) =>
-                                                  handleAppointmentStatusChange(
-                                                      appointment.id,
-                                                      event.target.value as AdminAppointmentStatus
-                                                  )
-                                              }
-                                              disabled={isSaving}
-                                          >
-                                              <option value="SCHEDULED">Agendado</option>
-                                              <option value="COMPLETED">Concluído</option>
-                                              <option value="CANCELED">Cancelado</option>
-                                          </Select>
-                                      </Label>
+                                      <CompactFilterDropdown
+                                          label="Status"
+                                          options={appointmentStatusOptions}
+                                          value={selectedStatus}
+                                          onChange={(value) =>
+                                              handleAppointmentStatusChange(
+                                                  appointment.id,
+                                                  value as AdminAppointmentStatus
+                                              )
+                                          }
+                                          disabled={isSaving}
+                                      />
 
                                       <Button
                                           type="button"
@@ -473,26 +478,18 @@ export function AppointmentsSection({
 
                                       {canManageAppointmentAssignee ? (
                                           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                                              <Label className="w-full space-y-2">
-                                                  <span>Responsável pelo atendimento</span>
-                                                  <Select
-                                                      value={selectedAssignee}
-                                                      onChange={(event) =>
-                                                          handleAppointmentAssigneeChange(
-                                                              appointment.id,
-                                                              event.target.value
-                                                          )
-                                                      }
-                                                      disabled={isSavingAssignee}
-                                                  >
-                                                      <option value="unassigned">Sem responsável</option>
-                                                      {assignableMembers.map((membership) => (
-                                                          <option key={membership.user.id} value={membership.user.id}>
-                                                              {membership.user.name} ({adminRoleLabels[membership.role]})
-                                                          </option>
-                                                      ))}
-                                                  </Select>
-                                              </Label>
+                                              <CompactFilterDropdown
+                                                  label="Responsável pelo atendimento"
+                                                  options={appointmentAssigneeOptions}
+                                                  value={selectedAssignee}
+                                                  onChange={(value) =>
+                                                      handleAppointmentAssigneeChange(
+                                                          appointment.id,
+                                                          value
+                                                      )
+                                                  }
+                                                  disabled={isSavingAssignee}
+                                              />
 
                                               <Button
                                                   type="button"

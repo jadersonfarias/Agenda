@@ -1,4 +1,5 @@
-import { createServerApi, getServerApiErrorMessage } from '../../../lib/server-api'
+import { redirect } from 'next/navigation'
+import { createServerApi, getServerApiErrorMessage, isServerApiSessionExpiredError } from '../../../lib/server-api'
 import { type AdminAppointmentItem, type AdminDashboardData } from '../types'
 
 export async function fetchAdminDashboard(accessToken: string, businessId: string): Promise<AdminDashboardData> {
@@ -10,6 +11,10 @@ export async function fetchAdminDashboard(accessToken: string, businessId: strin
 
         return response.data
     } catch (error) {
+        if (isServerApiSessionExpiredError(error)) {
+            redirect('/login?reason=session-expired')
+        }
+
         throw new Error(getServerApiErrorMessage(error, 'Não foi possível carregar o painel administrativo'))
     }
 }
@@ -27,6 +32,10 @@ export async function fetchAdminAppointmentsServer(
 
         return response.data
     } catch (error) {
+        if (isServerApiSessionExpiredError(error)) {
+            redirect('/login?reason=session-expired')
+        }
+
         throw new Error(getServerApiErrorMessage(error, 'Não foi possível carregar os agendamentos'))
     }
 }

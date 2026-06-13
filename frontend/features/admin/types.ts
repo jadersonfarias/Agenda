@@ -1,6 +1,7 @@
 export type AdminServiceItem = {
     id: string
     name: string
+    description: string | null
     price: string
     durationMinutes: number
     appointmentCount: number

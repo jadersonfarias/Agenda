@@ -2,6 +2,12 @@ import { z } from 'zod'
 import { isStrongPassword, strongPasswordErrorMessage } from '../common/password-validation'
 
 const timePattern = /^([01]\d|2[0-3]):([0-5]\d)$/
+const serviceDescriptionSchema = z
+  .preprocess(
+    (value) => (value === null ? undefined : value),
+    z.string().trim().max(300, 'A descrição deve ter no máximo 300 caracteres').optional()
+  )
+  .transform((value) => (value && value.length > 0 ? value : null))
 
 export const adminBusinessIdSchema = z.object({
   businessId: z.string().trim().min(1, 'businessId é obrigatório'),
@@ -20,6 +26,7 @@ export const adminMonthlySummaryQuerySchema = adminBusinessIdSchema.extend({
 
 export const adminServiceSchema = adminBusinessIdSchema.extend({
   name: z.string().trim().min(2, 'Informe o nome do serviço'),
+  description: serviceDescriptionSchema,
   price: z.coerce.number().positive('Informe um preço maior que zero'),
   durationMinutes: z.coerce
     .number()

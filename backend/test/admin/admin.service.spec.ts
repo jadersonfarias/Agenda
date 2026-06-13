@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { AdminService } from '../../src/admin/admin.service'
+import { adminServiceSchema } from '../../src/admin/admin.schema'
 
 function createAdminService({
   adminRepository = {} as any,
@@ -20,6 +21,199 @@ function createAdminService({
 }
 
 describe('AdminService financial data', () => {
+  it('cria serviço com description opcional', async () => {
+    const createdAt = new Date('2026-05-20T12:00:00.000Z')
+    const adminRepository = {
+      createService: vi.fn().mockResolvedValue({
+        id: 'service-1',
+        name: 'Barba completa',
+        description: 'Acabamento com toalha quente e finalização.',
+        price: { toString: () => '95' },
+        durationMinutes: 45,
+        createdAt,
+        _count: { appointments: 0 },
+      }),
+    } as any
+    const businessesRepository = {
+      findBusinessById: vi.fn().mockResolvedValue({ id: 'business-1' }),
+    } as any
+    const service = createAdminService({
+      adminRepository,
+      businessesRepository,
+    })
+    const dto = adminServiceSchema.parse({
+      businessId: 'business-1',
+      name: 'Barba completa',
+      description: 'Acabamento com toalha quente e finalização.',
+      price: 95,
+      durationMinutes: 45,
+    })
+
+    await expect(service.createService('business-1', dto)).resolves.toEqual({
+      id: 'service-1',
+      name: 'Barba completa',
+      description: 'Acabamento com toalha quente e finalização.',
+      price: '95',
+      durationMinutes: 45,
+      appointmentCount: 0,
+      createdAt: createdAt.toISOString(),
+    })
+
+    expect(adminRepository.createService).toHaveBeenCalledWith({
+      businessId: 'business-1',
+      name: 'Barba completa',
+      description: 'Acabamento com toalha quente e finalização.',
+      price: 95,
+      durationMinutes: 45,
+    })
+  })
+
+  it('cria serviço sem description salvando null', async () => {
+    const createdAt = new Date('2026-05-20T12:00:00.000Z')
+    const adminRepository = {
+      createService: vi.fn().mockResolvedValue({
+        id: 'service-1',
+        name: 'Corte',
+        description: null,
+        price: { toString: () => '80' },
+        durationMinutes: 60,
+        createdAt,
+        _count: { appointments: 0 },
+      }),
+    } as any
+    const businessesRepository = {
+      findBusinessById: vi.fn().mockResolvedValue({ id: 'business-1' }),
+    } as any
+    const service = createAdminService({
+      adminRepository,
+      businessesRepository,
+    })
+    const dto = adminServiceSchema.parse({
+      businessId: 'business-1',
+      name: 'Corte',
+      price: 80,
+      durationMinutes: 60,
+    })
+
+    await expect(service.createService('business-1', dto)).resolves.toEqual({
+      id: 'service-1',
+      name: 'Corte',
+      description: null,
+      price: '80',
+      durationMinutes: 60,
+      appointmentCount: 0,
+      createdAt: createdAt.toISOString(),
+    })
+
+    expect(adminRepository.createService).toHaveBeenCalledWith({
+      businessId: 'business-1',
+      name: 'Corte',
+      description: null,
+      price: 80,
+      durationMinutes: 60,
+    })
+  })
+
+  it('edita description do serviço', async () => {
+    const createdAt = new Date('2026-05-20T12:00:00.000Z')
+    const adminRepository = {
+      findServiceByIdAndBusinessId: vi.fn().mockResolvedValue({
+        id: 'service-1',
+        _count: { appointments: 0 },
+      }),
+      updateService: vi.fn().mockResolvedValue({
+        id: 'service-1',
+        name: 'Corte premium',
+        description: 'Corte com lavagem e finalização.',
+        price: { toString: () => '120' },
+        durationMinutes: 75,
+        createdAt,
+        _count: { appointments: 2 },
+      }),
+    } as any
+    const service = createAdminService({ adminRepository })
+    const dto = adminServiceSchema.parse({
+      businessId: 'business-1',
+      name: 'Corte premium',
+      description: 'Corte com lavagem e finalização.',
+      price: 120,
+      durationMinutes: 75,
+    })
+
+    await expect(service.updateService('service-1', 'business-1', dto)).resolves.toEqual({
+      id: 'service-1',
+      name: 'Corte premium',
+      description: 'Corte com lavagem e finalização.',
+      price: '120',
+      durationMinutes: 75,
+      appointmentCount: 2,
+      createdAt: createdAt.toISOString(),
+    })
+
+    expect(adminRepository.updateService).toHaveBeenCalledWith('service-1', 'business-1', {
+      name: 'Corte premium',
+      description: 'Corte com lavagem e finalização.',
+      price: 120,
+      durationMinutes: 75,
+    })
+  })
+
+  it('limpa description do serviço salvando null', async () => {
+    const createdAt = new Date('2026-05-20T12:00:00.000Z')
+    const adminRepository = {
+      findServiceByIdAndBusinessId: vi.fn().mockResolvedValue({
+        id: 'service-1',
+        _count: { appointments: 0 },
+      }),
+      updateService: vi.fn().mockResolvedValue({
+        id: 'service-1',
+        name: 'Corte',
+        description: null,
+        price: { toString: () => '80' },
+        durationMinutes: 60,
+        createdAt,
+        _count: { appointments: 0 },
+      }),
+    } as any
+    const service = createAdminService({ adminRepository })
+    const dto = adminServiceSchema.parse({
+      businessId: 'business-1',
+      name: 'Corte',
+      description: '   ',
+      price: 80,
+      durationMinutes: 60,
+    })
+
+    await expect(service.updateService('service-1', 'business-1', dto)).resolves.toEqual({
+      id: 'service-1',
+      name: 'Corte',
+      description: null,
+      price: '80',
+      durationMinutes: 60,
+      appointmentCount: 0,
+      createdAt: createdAt.toISOString(),
+    })
+
+    expect(adminRepository.updateService).toHaveBeenCalledWith('service-1', 'business-1', {
+      name: 'Corte',
+      description: null,
+      price: 80,
+      durationMinutes: 60,
+    })
+  })
+
+  it('não aceita description acima de 300 caracteres', () => {
+    const parseResult = adminServiceSchema.safeParse({
+      businessId: 'business-1',
+      name: 'Corte',
+      description: 'a'.repeat(301),
+      price: 80,
+      durationMinutes: 60,
+    })
+
+    expect(parseResult.success).toBe(false)
+  })
+
   it('monta o resumo financeiro mensal com clientes ativos e inativos', async () => {
     const adminRepository = {
       countCustomersByBusinessId: vi.fn().mockResolvedValue(10),
@@ -186,6 +380,7 @@ describe('AdminService financial data', () => {
         {
           id: 'service-1',
           name: 'Corte',
+          description: 'Corte com acabamento.',
           price: { toString: () => '80' },
           durationMinutes: 60,
           createdAt: new Date('2026-05-20T12:00:00.000Z'),
@@ -202,6 +397,7 @@ describe('AdminService financial data', () => {
       {
         id: 'service-1',
         name: 'Corte',
+        description: 'Corte com acabamento.',
         price: '80',
         durationMinutes: 60,
         appointmentCount: 0,

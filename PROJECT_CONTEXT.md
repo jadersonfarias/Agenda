@@ -180,6 +180,7 @@ Regras estruturais:
 - `Business.plan`: `FREE | BASIC | PRO`.
 - `Business.subscriptionStatus`: `TRIALING | ACTIVE | PAST_DUE | CANCELED`.
 - `Business.paymentMethod`: `PIX | MANUAL | null`.
+- `Service.description` e opcional (`String?`/nullable), limitado a 300 caracteres; string vazia e normalizada para `null`.
 - `Appointment.publicToken` e usado para detalhe publico da reserva.
 - `Appointment.assignedToUserId` e opcional e aponta para o `User` responsavel pelo atendimento.
 
@@ -197,6 +198,12 @@ Regras estruturais:
 - Consulta publica `GET /appointments/customer` exige `businessId` para busca efetiva, usa candidatos exatos de telefone (`phone IN (...)`) dentro do business e nao faz varredura ampla normalizando todos os clientes em memoria.
 - `Customer.lastVisitAt` acompanha ultimo appointment concluido.
 - Faturamento mensal considera apenas appointments `COMPLETED`.
+- Servicos:
+  - admin pode criar e editar `description` opcional.
+  - backend retorna `description` nas listagens admin e publicas de servicos.
+  - cards de servico no admin exibem a descricao truncada quando existir.
+  - `/b/[slug]` mostra a descricao abaixo do nome do servico quando existir; se for `null`, nao mostra nada.
+  - servicos antigos continuam funcionando sem descricao.
 - Agenda por responsavel no admin:
   - `Appointment.assignedToUserId` indica o responsavel pelo atendimento.
   - `OWNER` e `ADMIN` listam todos os agendamentos do business.
