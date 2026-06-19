@@ -13,7 +13,16 @@ export const api = axios.create({
     baseURL: apiBaseUrl,
 })
 
+const sessionExpiredLoginPath = '/login?reason=session-expired'
+
 let isRedirectingToSessionExpiredLogin = false
+
+export class ApiSessionExpiredError extends Error {
+    constructor() {
+        super('Sua sessão expirou. Faça login novamente.')
+        this.name = 'ApiSessionExpiredError'
+    }
+}
 
 function getApiErrorPayloadMessage(error: unknown) {
     if (!axios.isAxiosError(error)) {
@@ -29,11 +38,21 @@ function getApiErrorPayloadMessage(error: unknown) {
     return undefined
 }
 
-function isAdminRequest(url?: string) {
-    return typeof url === 'string' && (url === '/admin' || url.startsWith('/admin/'))
+function isAuthenticatedPanelRequest(url?: string) {
+    return (
+        typeof url === 'string' &&
+        (url === '/admin' ||
+            url.startsWith('/admin/') ||
+            url === '/platform' ||
+            url.startsWith('/platform/'))
+    )
 }
 
-function isApiSessionExpiredError(error: unknown) {
+export function isApiSessionExpiredError(error: unknown) {
+    if (error instanceof ApiSessionExpiredError) {
+        return true
+    }
+
     if (axios.isAxiosError(error)) {
         if (error.response?.status === 401) {
             return true
@@ -65,12 +84,12 @@ api.interceptors.response.use(
     (error) => {
         if (
             typeof window !== 'undefined' &&
-            isAdminRequest(error.config?.url) &&
+            isAuthenticatedPanelRequest(error.config?.url) &&
             isApiSessionExpiredError(error) &&
             !isRedirectingToSessionExpiredLogin
         ) {
             isRedirectingToSessionExpiredLogin = true
-            window.location.assign('/login?reason=session-expired')
+            window.location.assign(sessionExpiredLoginPath)
         }
 
         return Promise.reject(error)

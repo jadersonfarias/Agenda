@@ -1,4 +1,4 @@
-import { api, getApiErrorMessage } from '../../../lib/api'
+import { ApiSessionExpiredError, api, getApiErrorMessage, isApiSessionExpiredError } from '../../../lib/api'
 import {
   type PlatformBusinessesResponse,
   type PlatformBusinessItem,
@@ -25,6 +25,10 @@ export async function fetchPlatformBusinesses(page = 1, perPage = 20) {
 
     return response.data
   } catch (error) {
+    if (isApiSessionExpiredError(error)) {
+      throw new ApiSessionExpiredError()
+    }
+
     throw new Error(getApiErrorMessage(error, 'Não foi possível carregar os clientes da plataforma'))
   }
 }
@@ -44,6 +48,10 @@ export async function updatePlatformBusinessSubscription({
 
     return response.data
   } catch (error) {
+    if (isApiSessionExpiredError(error)) {
+      throw new ApiSessionExpiredError()
+    }
+
     throw new Error(getApiErrorMessage(error, 'Não foi possível ativar ou renovar o plano deste cliente'))
   }
 }
@@ -58,6 +66,10 @@ export async function updatePlatformBusinessSubscriptionStatus({
 
     return response.data
   } catch (error) {
+    if (isApiSessionExpiredError(error)) {
+      throw new ApiSessionExpiredError()
+    }
+
     throw new Error(
       getApiErrorMessage(error, platformSubscriptionStatusActionMessages[action]),
     )

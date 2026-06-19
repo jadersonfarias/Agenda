@@ -16,6 +16,7 @@ import {
   type PlatformSubscriptionMonths,
   type PlatformSubscriptionPlan,
 } from '../../features/platform/types'
+import { isApiSessionExpiredError } from '../../lib/api'
 import { formatIsoCalendarDate } from '../../lib/date-format'
 import { Button } from '../ui/button'
 import { Card } from '../ui/card'
@@ -160,6 +161,10 @@ export function PlatformBusinessSubscriptionManager({
       toast.success('Plano atualizado com sucesso')
       setIsModalOpen(false)
     } catch (error) {
+      if (isApiSessionExpiredError(error)) {
+        return
+      }
+
       toast.error(error instanceof Error ? error.message : 'Não foi possível atualizar o plano')
     }
   })
@@ -175,6 +180,10 @@ export function PlatformBusinessSubscriptionManager({
       toast.success(subscriptionStatusActionContent[action].successMessage)
       setConfirmationAction(null)
     } catch (error) {
+      if (isApiSessionExpiredError(error)) {
+        return
+      }
+
       toast.error(error instanceof Error ? error.message : 'Não foi possível atualizar a assinatura')
     }
   }

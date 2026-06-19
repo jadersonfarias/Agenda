@@ -543,27 +543,43 @@ export function PublicDemoShowcase() {
                         <div className="space-y-4 sm:space-y-5">
                             <div>
                                 <p className="text-xs uppercase tracking-[.3em] text-purple-700 sm:text-sm">Etapa 4</p>
-                                <h2 className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">Confirmação simulada</h2>
+                                <h2 className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">Confira e confirme</h2>
                             </div>
 
-                            <div className="rounded-2xl border border-dashed border-purple-200 bg-purple-50/50 px-4 py-4">
-                                <p className="text-sm leading-6 text-slate-700">
-                                    Revise os dados fictícios abaixo e conclua a demonstração. Nenhum agendamento será enviado, salvo ou misturado com dados reais.
-                                </p>
-                            </div>
-
-                            <div className="grid gap-3 sm:grid-cols-2">
-                                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-                                    <span className="block text-xs uppercase tracking-[.2em] text-slate-500">Negócio</span>
-                                    <span className="mt-1 block font-medium text-slate-900">{demoBusiness.name}</span>
+                            <div className="grid gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2 sm:gap-4">
+                                <div>
+                                    <p className="text-xs uppercase tracking-[.2em] text-slate-500">Serviço</p>
+                                    <p className="mt-1 font-medium text-slate-900">{selectedService?.name || 'Não selecionado'}</p>
                                 </div>
-                                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-                                    <span className="block text-xs uppercase tracking-[.2em] text-slate-500">Horário</span>
-                                    <span className="mt-1 block font-medium text-slate-900">
+                                <div>
+                                    <p className="text-xs uppercase tracking-[.2em] text-slate-500">Horário</p>
+                                    <p className="mt-1 font-medium text-slate-900">
                                         {selectedDateLabel && selectedTime ? `${selectedDateLabel} às ${selectedTime}` : 'Não selecionado'}
-                                    </span>
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-xs uppercase tracking-[.2em] text-slate-500">Duração</p>
+                                    <p className="mt-1 font-medium text-slate-900">
+                                        {selectedService ? selectedService.durationLabel : 'Não selecionada'}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-xs uppercase tracking-[.2em] text-slate-500">Valor</p>
+                                    <p className="mt-1 font-medium text-slate-900">
+                                        {selectedService ? selectedService.priceLabel : 'Não selecionado'}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-xs uppercase tracking-[.2em] text-slate-500">Cliente</p>
+                                    <p className="mt-1 break-words font-medium text-slate-900">{customerName || 'Não informado'}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs uppercase tracking-[.2em] text-slate-500">Telefone</p>
+                                    <p className="mt-1 break-words font-medium text-slate-900">{phone || 'Não informado'}</p>
                                 </div>
                             </div>
+
+                            <p className="text-sm leading-6 text-slate-600">{demoNotice}</p>
 
                             {stepError ? <p className="text-sm text-red-600">{stepError}</p> : null}
 
@@ -572,7 +588,7 @@ export function PublicDemoShowcase() {
                                     Voltar
                                 </Button>
                                 <Button type="submit" className="w-full sm:w-auto">
-                                    Concluir demonstração
+                                    Confirmar reserva
                                 </Button>
                             </div>
                         </div>

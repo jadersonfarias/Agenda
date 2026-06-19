@@ -10,6 +10,7 @@ import {
   platformSubscriptionStatusLabels,
 } from '../../features/platform/presentation'
 import { type PlatformBusinessItem } from '../../features/platform/types'
+import { isApiSessionExpiredError } from '../../lib/api'
 import { formatIsoCalendarDate } from '../../lib/date-format'
 import { PlatformBusinessSubscriptionManager } from './PlatformBusinessSubscriptionManager'
 import { Card } from '../ui/card'
@@ -77,6 +78,7 @@ export function PlatformBusinessesSection() {
   const [page, setPage] = useState(() => getPositiveIntegerParam(searchParams.get('page'), 1))
   const [perPage] = useState(() => getPositiveIntegerParam(searchParams.get('perPage'), 20, 100))
   const businessesQuery = usePlatformBusinessesQuery(page, perPage)
+  const hasSessionExpiredError = isApiSessionExpiredError(businessesQuery.error)
   const businesses = businessesQuery.data?.data ?? []
   const meta = businessesQuery.data?.meta
   const currentPage = meta?.page ?? page
@@ -278,7 +280,7 @@ export function PlatformBusinessesSection() {
         </Card>
       ) : null}
 
-      {businessesQuery.isError ? (
+      {businessesQuery.isError && !hasSessionExpiredError ? (
         <Card className="border-red-200 bg-red-50 shadow-lg shadow-red-100/40">
           <div className="rounded-3xl border border-red-200 px-6 py-10 text-center text-sm text-red-600">
             {businessesQuery.error instanceof Error
