@@ -13,6 +13,7 @@ import { Card } from '../ui/card'
 import { DatePicker } from '../ui/calendar'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
+import { BookingReviewCard } from './BookingReviewDetails'
 import { BookingSummary } from './BookingSummary'
 import { StepIndicator } from './StepIndicator'
 
@@ -563,7 +564,7 @@ export function PublicBookingPage({
                 onSubmit={handleSubmit(onSubmit)}
                 className="grid gap-4 md:items-start md:gap-6 md:grid-cols-[minmax(0,1fr)_280px] lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1.15fr)_360px]"
             >
-                <div className="min-w-0 space-y-4 lg:max-w-3xl lg:space-y-6">
+                <div className="grid min-w-0 gap-4 lg:max-w-3xl lg:gap-6">
                     <Card className={currentStep === 'service' ? 'block' : 'hidden'}>
                         <div className="space-y-4 sm:space-y-5">
                             <div>
@@ -792,66 +793,27 @@ export function PublicBookingPage({
                         </div>
                     </Card>
 
-                    <Card className={currentStep === 'review' ? 'block' : 'hidden'}>
-                        <div className="space-y-4 sm:space-y-5">
-                            <div>
-                                <p className="text-xs uppercase tracking-[.3em] text-purple-700 sm:text-sm">Etapa 4</p>
-                                <h2 className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">Confira e confirme</h2>
-                            </div>
-
-                            <div className="grid gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2 sm:gap-4">
-                                <div>
-                                    <p className="text-xs uppercase tracking-[.2em] text-slate-500">Serviço</p>
-                                    <p className="mt-1 font-medium text-slate-900">{selectedService?.name || 'Não selecionado'}</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs uppercase tracking-[.2em] text-slate-500">Horário</p>
-                                    <p className="mt-1 font-medium text-slate-900">
-                                        {selectedDate && selectedTime
-                                            ? `${format(selectedDate, 'dd/MM/yyyy')} às ${selectedTime}`
-                                            : 'Não selecionado'}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p className="text-xs uppercase tracking-[.2em] text-slate-500">Duração</p>
-                                    <p className="mt-1 font-medium text-slate-900">
-                                        {selectedService ? `${selectedService.durationMinutes} min` : 'Não selecionada'}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p className="text-xs uppercase tracking-[.2em] text-slate-500">Valor</p>
-                                    <p className="mt-1 font-medium text-slate-900">
-                                        {selectedService ? `R$ ${Number(selectedService.price).toFixed(2)}` : 'Não selecionado'}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p className="text-xs uppercase tracking-[.2em] text-slate-500">Cliente</p>
-                                    <p className="mt-1 font-medium text-slate-900">{customerName || 'Não informado'}</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs uppercase tracking-[.2em] text-slate-500">Telefone</p>
-                                    <p className="mt-1 font-medium text-slate-900">{phone || 'Não informado'}</p>
-                                </div>
-                            </div>
-
-                            <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
-                                <Button type="button" variant="secondary" onClick={handleStepBack} className="w-full sm:w-auto">
-                                    Voltar
-                                </Button>
-                                <Button
-                                    type="submit"
-                                    disabled={appointmentMutation.status === 'pending'}
-                                    className="min-h-12 w-full sm:w-auto"
-                                >
-                                    {appointmentMutation.status === 'pending' ? 'Agendando...' : 'Confirmar reserva'}
-                                </Button>
-                            </div>
-                        </div>
-                    </Card>
+                    <BookingReviewCard
+                        className={currentStep === 'review' ? 'block' : 'hidden'}
+                        details={{
+                            serviceName: selectedService?.name,
+                            dateTimeLabel: selectedDateLabel && selectedTime
+                                ? `${selectedDateLabel} às ${selectedTime}`
+                                : undefined,
+                            durationLabel: selectedService ? `${selectedService.durationMinutes} min` : undefined,
+                            priceLabel: selectedService ? `R$ ${Number(selectedService.price).toFixed(2)}` : undefined,
+                            customerName,
+                            phone,
+                        }}
+                        submitLabel="Confirmar reserva"
+                        submittingLabel="Agendando..."
+                        isSubmitting={appointmentMutation.status === 'pending'}
+                        onBack={handleStepBack}
+                    />
                 </div>
 
                 <div className="min-w-0 space-y-4 md:space-y-5 lg:space-y-6">
-                    <div className="xl:sticky xl:top-6">
+                    <div className={currentStep === 'review' ? '' : 'xl:sticky xl:top-6'}>
                         <div className="mb-3 md:mb-4">
                             <BookingSummary
                                 serviceName={selectedService?.name}
