@@ -13,9 +13,9 @@ import { Card } from '../ui/card'
 import { DatePicker } from '../ui/calendar'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
+import { BookingIntroCard } from './BookingIntroCard'
 import { BookingReviewCard } from './BookingReviewDetails'
 import { BookingSummary } from './BookingSummary'
-import { StepIndicator } from './StepIndicator'
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL || '/backend'
 const publicServicesStaleTimeMs = 10 * 60 * 1000
@@ -517,47 +517,16 @@ export function PublicBookingPage({
 
     return (
         <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-4 overflow-x-hidden px-3 py-4 sm:gap-6 sm:px-6 sm:py-7 lg:px-8 lg:py-10">
-            <Card className="border-purple-100 bg-white shadow-sm shadow-purple-100/40">
-                <div className="space-y-4">
-                    <div className="space-y-1.5 sm:space-y-2">
-                        <p className="text-xs uppercase tracking-[.3em] text-violet-700 sm:text-sm">{eyebrow}</p>
-                        <h1 className="text-[1.6rem] font-semibold leading-tight text-slate-900 sm:text-3xl lg:text-[2rem]">{headline}</h1>
-                        <p className="max-w-2xl text-sm leading-6 text-slate-600 sm:text-[15px]">
-                            Escolha um serviço, informe seus dados e confirme um horário livre sem sair do celular.
-                        </p>
-                    </div>
-
-                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                        <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4">
-                            <p className="text-[11px] uppercase tracking-[.2em] text-slate-500">Negócio</p>
-                            <p className="mt-2 break-words text-base font-semibold text-slate-900">{businessDisplayName}</p>
-                        </div>
-                        <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4">
-                            <p className="text-[11px] uppercase tracking-[.2em] text-slate-500">Funcionamento</p>
-                            <p className="mt-2 break-words text-base font-semibold text-slate-900">{businessHoursLabel}</p>
-                        </div>
-                        <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4">
-                            <p className="text-[11px] uppercase tracking-[.2em] text-slate-500">Serviços</p>
-                            <p className="mt-2 text-base font-semibold text-slate-900">
-                                {servicesQuery.isLoading ? 'Carregando...' : `${serviceOptions.length} opção(ões)`}
-                            </p>
-                        </div>
-                        <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4">
-                            <p className="text-[11px] uppercase tracking-[.2em] text-slate-500">Reserva</p>
-                            <p className="mt-2 text-base font-semibold text-slate-900">Escolha um serviço e avance pelo passo a passo.</p>
-                        </div>
-                    </div>
-
-                    <div className="rounded-3xl border border-dashed border-purple-200 bg-purple-50/60 px-4 py-4">
-                        <p className="text-[11px] uppercase tracking-[.2em] text-purple-700">Como funciona</p>
-                        <p className="mt-2 text-sm leading-6 text-slate-700">
-                            Escolha um serviço, preencha seus dados, selecione um horário livre e confirme a reserva.
-                        </p>
-                    </div>
-
-                    <StepIndicator currentStep={currentStep} steps={bookingSteps} />
-                </div>
-            </Card>
+            <BookingIntroCard
+                eyebrow={eyebrow}
+                title={headline}
+                description="Escolha um serviço, informe seus dados e confirme um horário livre sem sair do celular."
+                businessName={businessDisplayName}
+                hoursLabel={businessHoursLabel}
+                servicesLabel={servicesQuery.isLoading ? 'Carregando...' : `${serviceOptions.length} opção(ões)`}
+                currentStep={currentStep}
+                steps={bookingSteps}
+            />
 
             <form
                 ref={bookingFormTopRef}

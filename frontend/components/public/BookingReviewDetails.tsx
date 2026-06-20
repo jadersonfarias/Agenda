@@ -3,7 +3,7 @@
 import {
     BadgeDollarSign,
     CalendarCheck2,
-    ClipboardList,
+    ClipboardCheck,
     Clock3,
     Phone,
     UserRound,
@@ -46,9 +46,9 @@ type ReviewItem = {
 function buildReviewItems(details: BookingReviewDetails): ReviewItem[] {
     return [
         {
-            label: 'Serviço',
+            label: 'Reserva online',
             value: details.serviceName || 'Não selecionado',
-            icon: ClipboardList,
+            icon: ClipboardCheck,
         },
         {
             label: 'Data e horário',

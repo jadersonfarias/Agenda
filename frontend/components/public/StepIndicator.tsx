@@ -1,5 +1,7 @@
 'use client'
 
+import { Check } from 'lucide-react'
+
 type BookingStep = 'service' | 'details' | 'schedule' | 'review'
 
 type StepIndicatorProps = {
@@ -23,51 +25,45 @@ export function StepIndicator({ currentStep, steps }: StepIndicatorProps) {
                     <div
                         key={step.id}
                         className={[
-                            'rounded-2xl border px-3 py-3 text-left transition sm:px-4 sm:py-3.5',
+                            'flex min-h-[5.25rem] items-center rounded-2xl border px-3 py-3 text-left transition sm:px-4',
                             isActive
-                                ? 'border-purple-200 bg-purple-50 text-slate-900 shadow-sm shadow-purple-100'
+                                ? 'border-purple-200 bg-purple-50 text-purple-700 shadow-sm shadow-purple-100'
                                 : isCompleted
-                                    ? 'border-slate-200 bg-slate-50 text-slate-800'
+                                    ? 'border-slate-200 bg-white text-slate-900'
                                     : 'border-slate-200 bg-white text-slate-500',
                         ].join(' ')}
                         aria-current={isActive ? 'step' : undefined}
                     >
-                        <div className="flex items-center gap-3">
+                        <div className="flex w-full items-center gap-3">
                             <span
                                 className={[
-                                    'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold sm:h-8 sm:w-8 sm:text-xs',
+                                    'flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold sm:h-11 sm:w-11 sm:text-base',
                                     isActive
                                         ? 'bg-purple-700 text-white'
                                         : isCompleted
-                                            ? 'bg-slate-700 text-white'
+                                            ? 'bg-slate-950 text-white'
                                             : 'bg-slate-100 text-slate-500',
                                 ].join(' ')}
                             >
                                 {index + 1}
                             </span>
 
-                            <div className="min-w-0">
+                            <div className="min-w-0 flex-1">
                                 <p
                                     className={[
-                                        'truncate text-[11px] uppercase tracking-[.18em] sm:text-xs',
-                                        isActive
-                                            ? 'text-purple-700'
-                                            : isCompleted
-                                                ? 'text-slate-500'
-                                                : 'text-slate-400',
-                                    ].join(' ')}
-                                >
-                                    Etapa
-                                </p>
-                                <p
-                                    className={[
-                                        'truncate text-sm font-semibold sm:text-[15px]',
-                                        isActive ? 'text-slate-900' : isCompleted ? 'text-slate-800' : 'text-slate-600',
+                                        'text-sm font-semibold leading-snug sm:text-base',
+                                        isActive ? 'text-purple-700' : isCompleted ? 'text-slate-900' : 'text-slate-600',
                                     ].join(' ')}
                                 >
                                     {step.label}
                                 </p>
                             </div>
+
+                            {isCompleted ? (
+                                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500">
+                                    <Check className="h-4 w-4" aria-hidden="true" />
+                                </span>
+                            ) : null}
                         </div>
                     </div>
                 )

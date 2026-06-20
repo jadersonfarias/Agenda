@@ -14,9 +14,9 @@ import {
     demoSchedule,
     demoServices,
 } from '../../features/demo/demo-data'
+import { BookingIntroCard } from './BookingIntroCard'
 import { BookingReviewCard } from './BookingReviewDetails'
 import { BookingSummary } from './BookingSummary'
-import { StepIndicator } from './StepIndicator'
 import { Button } from '../ui/button'
 import { Card } from '../ui/card'
 import { Input } from '../ui/input'
@@ -229,63 +229,32 @@ export function PublicDemoShowcase() {
 
     return (
         <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-4 overflow-x-hidden px-3 py-4 sm:gap-6 sm:px-6 sm:py-7 lg:px-8 lg:py-10">
-            <Card className="border-purple-100 bg-white shadow-sm shadow-purple-100/40">
-                <div className="space-y-4">
-                    <div className="space-y-1.5 sm:space-y-2">
-                        <p className="text-xs uppercase tracking-[.3em] text-violet-700 sm:text-sm">Demonstração fictícia</p>
-                        <h1 className="text-[1.6rem] font-semibold leading-tight text-slate-900 sm:text-3xl lg:text-[2rem]">
-                            Veja como funciona a reserva pública da MarcaCerta
-                        </h1>
-                        <p className="max-w-2xl text-sm leading-6 text-slate-600 sm:text-[15px]">
-                            A demo segue o mesmo fluxo visual da página pública real: escolha do serviço, dados do cliente, data e horário, e confirmação final.
-                        </p>
-                    </div>
+            <BookingIntroCard
+                eyebrow="Reserva por negócio"
+                title={demoBusiness.name}
+                description="Escolha um serviço, informe seus dados e confirme um horário livre sem sair do celular."
+                businessName={demoBusiness.name}
+                hoursLabel={demoBusiness.hoursLabel}
+                servicesLabel={`${demoServices.length} opções`}
+                currentStep={currentStep}
+                steps={demoBookingSteps}
+            />
 
-                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                        <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4">
-                            <p className="text-[11px] uppercase tracking-[.2em] text-slate-500">Negócio demo</p>
-                            <p className="mt-2 break-words text-base font-semibold text-slate-900">{demoBusiness.name}</p>
-                        </div>
-                        <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4">
-                            <p className="text-[11px] uppercase tracking-[.2em] text-slate-500">Funcionamento</p>
-                            <p className="mt-2 break-words text-base font-semibold text-slate-900">{demoBusiness.hoursLabel}</p>
-                        </div>
-                        <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4">
-                            <p className="text-[11px] uppercase tracking-[.2em] text-slate-500">Cidade</p>
-                            <p className="mt-2 break-words text-base font-semibold text-slate-900">{demoBusiness.city}</p>
-                        </div>
-                        <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4">
-                            <p className="text-[11px] uppercase tracking-[.2em] text-slate-500">Horários demo</p>
-                            <p className="mt-2 text-base font-semibold text-slate-900">{availableDemoSlots.length} horários livres no preview</p>
-                        </div>
-                    </div>
-
-                    <div className="rounded-3xl border border-dashed border-purple-200 bg-purple-50/60 px-4 py-4">
-                        <p className="text-[11px] uppercase tracking-[.2em] text-purple-700">Importante</p>
-                        <div className="mt-2 space-y-1.5 text-sm leading-6 text-slate-700">
-                            <p>Esta é uma demonstração com dados fictícios.</p>
-                            <p>Nenhum cadastro, cliente ou agendamento real será criado.</p>
-                            <p>O cadastro real acontece apenas em /signup.</p>
-                        </div>
-                    </div>
-
-                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                        <Link href={signupLink} className="w-full sm:w-auto">
-                            <Button type="button" className="w-full sm:w-auto">
-                                Criar minha conta grátis
-                            </Button>
-                        </Link>
-
-                        <Link href={landingLink} className="w-full sm:w-auto">
-                            <Button type="button" variant="secondary" className="w-full sm:w-auto">
-                                Voltar para a landing
-                            </Button>
-                        </Link>
-                    </div>
-
-                    <StepIndicator currentStep={currentStep} steps={demoBookingSteps} />
+            <div className="flex flex-col gap-3 rounded-3xl border border-purple-100 bg-purple-50/50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm leading-6 text-slate-700">{demoNotice}</p>
+                <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+                    <Link href={signupLink} className="w-full sm:w-auto">
+                        <Button type="button" className="w-full sm:w-auto">
+                            Criar minha conta grátis
+                        </Button>
+                    </Link>
+                    <Link href={landingLink} className="w-full sm:w-auto">
+                        <Button type="button" variant="secondary" className="w-full sm:w-auto">
+                            Voltar para a landing
+                        </Button>
+                    </Link>
                 </div>
-            </Card>
+            </div>
 
             <form
                 ref={bookingFormTopRef}
