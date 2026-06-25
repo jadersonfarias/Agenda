@@ -1,12 +1,18 @@
 # Project Context
 
+> Estado auditado no codigo em 25/06/2026. O codigo atual tem prioridade sobre registros historicos deste documento.
+
 ## Visao Geral
-Monorepo fullstack da MarcaCerta para agendamento de servicos.
+Monorepo fullstack da MarcaCerta, um SaaS de agendamento online para pequenos negocios.
 
 Possui:
-- landing publica, demo visual e fluxo real de reserva publica;
+- landing publica e demo ficticia local;
+- fluxo real de reserva publica em `/b/[slug]`;
 - area admin autenticada por business;
 - admin master da plataforma;
+- cadastro de dono + primeiro business;
+- equipe com roles `OWNER`, `ADMIN` e `STAFF`;
+- agenda com responsavel, servicos com descricao, financeiro e assinatura manual/Pix;
 - suporte multi-business por `Business` e `Membership`;
 - isolamento de dados por `businessId`.
 
@@ -71,7 +77,8 @@ backend/
 ```
 
 ## Arquitetura
-- Backend segue `Controller -> Service -> Repository -> Prisma`.
+- Backend segue predominantemente `Controller -> Service -> Repository -> Prisma`.
+- Excecao atual: `BusinessesService` injeta `PrismaService` diretamente para consultar `ManualBlock`; e uma divida de arquitetura, nao um padrao a repetir.
 - Frontend nao usa Prisma diretamente.
 - Auth backend usa JWT via `@nestjs/jwt` e `JWT_SECRET`.
 - Auth frontend usa NextAuth e `NEXTAUTH_SECRET`.
@@ -98,17 +105,20 @@ backend/
 - `POST /auth/login`
 - `POST /auth/register-business-owner`
 
-### Publico
+### Publico intencional
 - `GET /businesses/:businessId`
 - `GET /businesses/slug/:slug`
 - `GET /businesses/:businessId/services`
-- `GET /businesses/:businessId/availability`
-- `GET /appointments`
+- `GET /businesses/:businessId/availability` (rate limit)
 - `GET /appointments/customer` (rate limit)
-- `GET /appointments/financial/monthly`
 - `GET /appointments/public/:token` (rate limit)
 - `POST /appointments` (rate limit)
 - `PATCH /appointments/public/:token/cancel` (rate limit)
+
+### Appointments legados sem protecao administrativa
+As rotas abaixo existem no `AppointmentsController`, nao usam `AuthMiddleware`/`RoleGuard` e confiam no `businessId` recebido. Nao devem ser consideradas seguras para producao:
+- `GET /appointments`
+- `GET /appointments/financial/monthly`
 - `PATCH /appointments/:id/status`
 - `DELETE /appointments/:id`
 
@@ -150,7 +160,8 @@ Rotas protegidas por `AuthMiddleware` + `PlatformAdminGuard`.
 - Login aceita senha legada ja cadastrada; a regra forte vale para signup e aceite de convite.
 - NextAuth guarda `accessToken`, `businesses`, `currentBusinessId` e `isPlatformAdmin`.
 - Token backend carrega `sub`, `email`, `isPlatformAdmin`, `memberships`, `businesses` e `currentBusinessId`.
-- Se o token admin expira, `frontend/lib/api.ts` e chamadas server-side redirecionam para `/login?reason=session-expired`.
+- Se o token admin expira, chamadas server-side do `/admin` e o interceptor Axios das rotas `/admin/*` redirecionam para `/login?reason=session-expired`.
+- Chamadas `/platform/*` tambem passam pelo interceptor; `platform-api.service.ts` converte `401`/token expirado em `ApiSessionExpiredError` e a UI evita mostrar o erro tecnico.
 - `/login?reason=session-expired` mostra: "Sua sessao expirou. Faca login novamente."
 - Platform admin continua indo para `/admin-master`; usuario comum continua indo para `/admin`.
 - Erro de credenciais no login mostra toast amigavel: "Email ou senha invalidos."
@@ -203,14 +214,15 @@ Regras estruturais:
 
 ## Modal de Criar/Editar Servico
 - Modal foi redesenhado visualmente no frontend.
-- Cabecalho possui icone.
+- Cabecalho possui icone neutro de calendario, sem tesoura.
 - Titulo muda entre criacao e edicao.
 - Campos: nome, preco, duracao e descricao.
 - Preco possui prefixo visual `R$`.
 - Descricao e textarea opcional.
 - Botoes: cancelar e criar/salvar.
+- Fechamento usa somente um icone `X` acessivel, posicionado no canto superior direito.
 - Mudanca e visual/frontend; backend e regra de servico nao foram alterados nessa etapa visual.
-- Ha cuidado com responsividade e rolagem do modal em desktop/mobile.
+- O overlay usa `overflow-y-auto`, permitindo rolagem da pagina do modal em telas menores; o painel permanece `overflow-visible`.
 
 ## Disponibilidade Publica
 - Disponibilidade publica retorna slots estruturados:
@@ -234,6 +246,7 @@ Regras:
 - Cliente final ainda nao escolhe funcionario/responsavel.
 - Responsavel continua sendo atribuido no admin por `OWNER`/`ADMIN`.
 - Disponibilidade usa cache por `businessId/serviceId/date` e invalida ao alterar horarios, criar/cancelar/alterar agendamentos.
+- `ManualBlock` e lido no calculo e na validacao de criacao, mas nao foi encontrado CRUD administrativo/UI para criar ou remover bloqueios manuais; atualmente o seed cria um exemplo.
 
 ## Agenda por Funcionario
 - `Appointment.assignedToUserId` e opcional.
@@ -289,7 +302,27 @@ Regras:
 - `OWNER` continua existindo no backend.
 - Valores reais continuam `OWNER`, `ADMIN` e `STAFF`.
 - Roles sao traduzidas apenas na UI: `OWNER -> Dono`, `ADMIN -> Administrador`, `STAFF -> Funcionario`.
-- Listagens de memberships e invitations sao paginadas.
+- Frontend envia apenas `ADMIN` ou `STAFF` nos formularios de membro/convite.
+- Listagens de memberships e invitations sao paginadas, com 10 itens por pagina na tela de equipe.
+- Atencao: os schemas backend de criar membro, criar convite e atualizar role ainda aceitam `OWNER`; revisar se a promocao/criacao de novos owners por API e uma regra desejada.
+
+## Fluxo Publico de Reserva `/b/[slug]`
+- Resolve o business pelo slug e usa o fluxo real de quatro etapas:
+  1. Servico
+  2. Seus dados
+  3. Data e horario
+  4. Confirmacao
+- O card superior usa o rotulo "Reserva por negocio".
+- `BookingIntroCard` e compartilhado com a demo.
+- O card superior mostra quatro cards informativos: Negocio, Funcionamento, Servicos e Reserva online.
+- A faixa "Como funciona" explica o passo a passo.
+- `StepIndicator` e compartilhado, responsivo e mostra etapas ativa/concluidas.
+- `BookingReviewDetails` e compartilhado pela confirmacao e pelo resumo lateral.
+- Na etapa 4, o primeiro item usa o rotulo "Reserva online" no lugar de "Servico".
+- Os icones sao neutros (`Store`, calendario, relogio, usuario, telefone etc.); nao ha icone de tesoura.
+- O cliente informa nome e telefone, mas ainda nao escolhe funcionario.
+- A confirmacao real executa `POST /appointments`, invalida a disponibilidade e fornece link publico do appointment criado.
+- Servicos exibem descricao quando existir.
 
 ## Landing e Demo
 - Landing `/` usa preview simples de demonstracao 100% frontend.
@@ -298,10 +331,13 @@ Regras:
 - `/demo` usa dados ficticios locais.
 - `/demo` nao salva nada no banco.
 - `/demo` nao chama endpoints de escrita.
+- A acao "Confirmar reserva" da demo apenas altera estado local e exibe a conclusao ficticia.
 - `/signup` e o fluxo real de cadastro.
 - `/b/[slug]` e o fluxo real de reserva publica.
 - Demo simula experiencia visual/interativa, sem criar `User`, `Business`, `Customer` ou `Appointment`.
 - Etapa de data/horario da demo segue visualmente o fluxo real, sem escolha de funcionario pelo cliente.
+- Demo compartilha `BookingIntroCard`, `BookingReviewDetails`, `BookingSummary` e `StepIndicator` com o fluxo real.
+- Demo mantem aviso visivel de dados ficticios antes da confirmacao, na revisao e na tela final.
 
 ## AdminHeader / Avatar
 - Card superior do admin mostra avatar circular.
@@ -332,6 +368,14 @@ Regras:
 - Visual inspirado em dashboard SaaS.
 - Mudanca e visual/frontend; calculos nao foram alterados.
 
+## Link de Agendamento
+- O overview possui o card `PublicBookingLinkCard` com titulo "Pagina publica do negocio".
+- Mostra badge "URL publica ativa".
+- Depois da hidratacao no navegador, mostra a URL completa `${window.location.origin}/b/[slug]`.
+- Possui acao de copiar pelo icone e botao "Copiar link".
+- Possui botao "Abrir pagina publica" em nova aba.
+- Mudanca e visual/frontend; o fluxo publico continua sendo `/b/[slug]`.
+
 ## Horarios Disponiveis do Negocio
 - `openTime` e `closeTime` continuam em `HH:mm`.
 - Backend continua recebendo `HH:mm`.
@@ -360,10 +404,15 @@ Acoes bloqueadas no codigo atual:
 - atribuir responsavel de appointment;
 - cancelar appointment publico, pois altera status.
 
-Observacao: `PATCH /admin/memberships/:id` e `DELETE /admin/memberships/:id` nao chamam `assertBusinessCanWrite` no codigo atual.
+Observacoes:
+- `PATCH /admin/memberships/:id` e `DELETE /admin/memberships/:id` nao chamam `assertBusinessCanWrite`.
+- `DELETE /appointments/:id` tambem nao chama `assertBusinessCanWrite` e, alem disso, esta no controller publico sem auth.
+- Leituras nao chamam o bloqueio de escrita e continuam disponiveis.
 
 ## Performance e Seguranca
 - Rotas publicas sensiveis usam rate limit simples global:
+  - login e cadastro de owner/business;
+  - disponibilidade publica;
   - consulta por telefone de appointment;
   - detalhe/cancelamento publico de appointment por token;
   - criacao publica de appointment;
@@ -372,6 +421,7 @@ Observacao: `PATCH /admin/memberships/:id` e `DELETE /admin/memberships/:id` nao
 - `appointments.repository.updateStatus` usa `updateMany` com filtro por `id` e `businessId`.
 - `findByPublicToken` seleciona apenas dados necessarios para resposta publica e cancelamento.
 - Consulta publica `GET /appointments/customer` exige `businessId`, usa candidatos exatos de telefone dentro do business e evita varredura ampla normalizando todos os clientes em memoria.
+- Risco critico atual: `GET /appointments`, `GET /appointments/financial/monthly`, `PATCH /appointments/:id/status` e `DELETE /appointments/:id` nao usam auth/role. Mesmo com filtros por `businessId`, precisam ser removidos, protegidos ou substituidos pelos endpoints `/admin/*` antes de producao.
 
 ## Frontend Admin
 - `frontend/app/admin/page.tsx` carrega sessao, dashboard inicial e appointments iniciais.
@@ -402,7 +452,6 @@ Variaveis usadas/importantes:
 - `DATABASE_URL`
 - `NEXT_PUBLIC_API_URL`
 - `API_URL`
-- `NEXT_PUBLIC_DEFAULT_BUSINESS_ID`, se ainda usado
 - `NEXTAUTH_URL`
 - `NEXTAUTH_SECRET`
 - `JWT_SECRET`
@@ -413,6 +462,9 @@ Variaveis usadas/importantes:
 - `NEXT_PUBLIC_SUPPORT_WHATSAPP`
 - `NEXT_PUBLIC_BASIC_PRICE`
 - `NEXT_PUBLIC_PRO_PRICE`
+
+Variavel legada/documental:
+- `NEXT_PUBLIC_DEFAULT_BUSINESS_ID` ainda aparece em `.env.example` e `README.md`, mas nao foi encontrada em uso no codigo runtime atual.
 
 Config atual de CORS:
 - Backend usa `buildCorsOptions`.
@@ -431,31 +483,114 @@ Comandos uteis:
 - `npm --workspace=backend run prisma:migrate`
 
 ## Validacoes Recentes Conhecidas
-Registro historico informado no projeto:
-- backend tests passando com cerca de 110 testes apos descricao de servico;
-- backend build passou;
-- frontend `tsc` passou;
-- frontend build passou fora do sandbox;
-- builds frontend no sandbox podem falhar por limitacao conhecida do Turbopack/`Operation not permitted`.
+- Nesta auditoria documental de 25/06/2026 nao foram executados testes, build ou typecheck da aplicacao, pois nenhum codigo foi alterado.
+- Na tarefa imediatamente anterior, o TypeScript do frontend passou com `tsc --noEmit`.
+- O script atual `npm --workspace=frontend run lint` falha porque usa `next lint`, comando nao suportado pelo Next.js 16.2.3; migrar o script para ESLint CLI.
+- Registros anteriores informavam backend tests/build e frontend build passando, mas devem ser tratados apenas como historico ate nova execucao.
+- Build do frontend no sandbox pode falhar por limitacao conhecida do Turbopack com `Operation not permitted`; validar build final tambem fora do sandbox/na CI.
 
-Nao trate estes itens como testes executados na tarefa atual sem rodar novamente.
+## Pendencias
 
-## Pendencias / Pode Ficar Para Depois
+### A) Criticas antes de producao / MVP real
+- [ ] Proteger ou remover `GET /appointments`, `GET /appointments/financial/monthly`, `PATCH /appointments/:id/status` e `DELETE /appointments/:id`; hoje nao usam `AuthMiddleware`/roles.
+- [ ] Revisar todos os endpoints publicos de appointments, dados retornados, rate limits e possibilidades de enumeracao/abuso.
+- [ ] Validar isolamento por `businessId` com testes de integracao entre dois ou mais negocios.
+- [ ] Confirmar se backend deve permitir criar/promover `OWNER` por API, ja que a UI limita edicao a `ADMIN`/`STAFF`.
+- [ ] Decidir e testar se update/delete de membership e delete legado de appointment devem respeitar `assertBusinessCanWrite`.
+- [ ] Configurar `NEXTAUTH_SECRET` e `JWT_SECRET` fortes, distintos e exclusivos do ambiente final.
+- [ ] Garantir que seed, usuarios demo e credenciais fixas de desenvolvimento nunca sejam executados/expostos em producao. O seed atual usa a senha fixa `Demo@12345`.
+- [ ] Revisar `FRONTEND_URL`, `ALLOWED_ORIGINS`, proxy `/backend` e CORS do dominio final.
+- [ ] Testar fluxo completo real no celular: signup, login, admin, link publico, reserva, consulta e cancelamento.
+- [ ] Testar demo e fluxo real lado a lado para garantir que somente o real grava no banco.
+- [ ] Testar trial/plano vencido, tolerancia de 1 dia, bloqueio de escrita e leituras permitidas.
+- [ ] Testar permissoes `OWNER`/`ADMIN`/`STAFF`, atribuicao de responsavel e isolamento do `STAFF`.
+- [ ] Testar Admin Master, paginacao e expiracao de token em todas as mutacoes `/platform/*`.
+- [ ] Revisar responsividade das telas principais em computador, tablet e smartphone.
+- [ ] Corrigir o script de lint e executar novamente lint, typecheck, testes e builds em ambiente final/CI.
+- [ ] Configurar ambiente final, banco, migrations, logs, backup e observabilidade basica.
+
+### B) Pode ficar para depois
 - Gateway de pagamento.
-- Upload de comprovante.
-- Conciliacao automatica de Pix.
+- Upload de comprovante e conciliacao automatica Pix.
+- Automacao de cobranca.
 - Upload manual de foto de perfil.
 - Resumo diario por email com Resend.
-- Automacao de cobranca.
-- Fluxo completo de multi-business fora do painel admin.
-- Cliente escolher profissional no fluxo publico.
-- Relatorios avancados.
 - Notificacoes automaticas por WhatsApp/e-mail.
-- Revisar se update/delete de membership tambem devem ser bloqueados por assinatura vencida.
-- Alguns endpoints em `/appointments` usam apenas `businessId` por query/body e nao passam por `AuthMiddleware`; revisar antes de producao.
-- Seed cria usuarios com senha `password123`; nao usar seed/credenciais de dev em producao.
-- Criacao direta de membro por email ainda depende de usuario existente; convite cobre criacao de usuario novo.
-- Reiniciar backend apos adicionar rotas novas; ja houve caso de processo antigo nao refletir rota nova.
+- Cliente escolher profissional no fluxo publico.
+- CRUD administrativo de `ManualBlock`.
+- Relatorios avancados e exportacao.
+- Fluxo multi-business mais completo fora do painel admin.
+- Criacao direta de membro ainda depende de usuario existente; convite ja cobre usuario novo.
+
+# RESUMO PARA REVISAO DO CHATGPT
+
+## Estado atual do projeto
+A MarcaCerta e um SaaS fullstack de agendamento para pequenos negocios. Possui landing, demo ficticia local, signup de owner/business, login, fluxo real de reserva em `/b/[slug]`, painel admin por negocio, equipe, agenda com responsavel, servicos, disponibilidade, financeiro, assinatura manual/Pix e Admin Master.
+
+Stack: Next.js App Router, React, TypeScript, Tailwind, TanStack Query, React Hook Form/Zod, Axios e NextAuth no frontend; NestJS, Prisma, PostgreSQL, Luxon e JWT no backend. A arquitetura principal e `Controller -> Service -> Repository -> Prisma`, com isolamento administrativo por `businessId`, `AuthMiddleware` e `RoleGuard`.
+
+Fluxos principais prontos:
+- reserva publica real em quatro etapas, com disponibilidade estruturada e criacao de appointment;
+- demo com dados locais, sem escrita no backend;
+- admin com overview, link publico, agenda, servicos, financeiro, equipe e horarios;
+- roles `OWNER`, `ADMIN`, `STAFF`, incluindo agenda limitada ao responsavel para `STAFF`;
+- Admin Master paginado para plano/status/assinatura manual;
+- tratamento amigavel de login invalido e sessao expirada.
+
+## Implementado recentemente
+
+Frontend/UX:
+- `BookingIntroCard`, `BookingReviewDetails`, `BookingSummary` e `StepIndicator` compartilhados entre fluxo real e demo;
+- novo card superior "Reserva por negocio", quatro informativos e faixa "Como funciona";
+- confirmacao redesenhada com rotulo "Reserva online" e icones neutros;
+- card "Pagina publica do negocio" com URL completa, copiar e abrir;
+- modal de servico com descricao, prefixo `R$`, responsividade e fechamento por icone `X`;
+- redesenho do AdminHeader, overview, financeiro, agenda, equipe e horarios;
+- filtros customizados por status/responsavel e roles traduzidas.
+
+Backend/banco:
+- `Service.description` opcional com migration e validacao de ate 300 caracteres;
+- disponibilidade publica com `AVAILABLE`, `BOOKED` e `UNAVAILABLE`;
+- conflito com appointments e `ManualBlock`;
+- atribuicao de appointment a membro e restricao de agenda para `STAFF`;
+- assinatura com `GRACE_PERIOD_DAYS = 1` e bloqueio de escritas selecionadas;
+- paginacao de equipe e Admin Master.
+
+## O que falta para MVP
+
+Critico:
+- fechar os endpoints legados de `/appointments` que hoje estao sem auth/roles;
+- testar isolamento por `businessId`, roles e assinatura vencida;
+- configurar secrets, CORS, URLs, banco e migrations de producao;
+- impedir uso do seed/credenciais demo em producao;
+- testar fluxo real, demo, Admin Master e sessao expirada no celular;
+- corrigir lint e executar a validacao completa em CI.
+
+Opcional:
+- gateway/conciliacao Pix e upload de comprovante;
+- foto de perfil manual;
+- resumo diario por email e notificacoes WhatsApp/e-mail;
+- cliente escolher profissional;
+- CRUD de bloqueios manuais;
+- relatorios avancados, exportacao e automacao de cobranca.
+
+## Riscos atuais
+- Seguranca: endpoints legados de appointments aceitam `businessId` sem auth; backend tambem aceita `OWNER` em schemas que a UI nao oferece.
+- Producao: secrets de exemplo, CORS/URLs e seed demo precisam de configuracao rigorosa.
+- Sessao: o redirecionamento de token expirado existe para admin e platform, mas precisa de teste ponta a ponta.
+- Assinatura: algumas escritas nao chamam `assertBusinessCanWrite`.
+- Permissoes: validar `OWNER`/`ADMIN`/`STAFF` e multi-business com testes de integracao.
+- UX: revisar responsividade real e acessibilidade nas telas principais.
+
+## Boas ideias para depois
+- resumo diario de agenda/faturamento por email;
+- lembretes e confirmacoes por WhatsApp;
+- lista de espera e encaixes;
+- recorrencia de clientes e lembrete de retorno;
+- no-show, sinal e politica de cancelamento;
+- cupons/fidelidade;
+- exportacao CSV/PDF e indicadores por profissional;
+- gateway de pagamento e cobranca automatizada.
 
 ## Convencoes
 - Nao acessar Prisma diretamente em controller.
