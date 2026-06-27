@@ -76,9 +76,20 @@ async function main(): Promise<void> {
 
   const platformAdmin = await upsertDemoUser({
     name: 'Jaderson Admin',
-    email: 'git push',
+    email: 'master@marcacerta.com',
     passwordHash,
     isPlatformAdmin: true,
+  });
+
+  await prisma.user.deleteMany({
+    where: {
+      email: 'git push',
+      memberships: { none: {} },
+      businesses: { none: {} },
+      assignedAppointments: { none: {} },
+      accounts: { none: {} },
+      sessions: { none: {} },
+    },
   });
 
   const owner = await upsertDemoUser({

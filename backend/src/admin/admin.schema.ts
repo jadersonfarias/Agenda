@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { isStrongPassword, strongPasswordErrorMessage } from '../common/password-validation'
 
 const timePattern = /^([01]\d|2[0-3]):([0-5]\d)$/
+const editableMembershipRoleSchema = z.enum(['ADMIN', 'STAFF'])
 const serviceDescriptionSchema = z
   .preprocess(
     (value) => (value === null ? undefined : value),
@@ -46,17 +47,17 @@ export const adminBusinessAvailabilitySchema = adminBusinessIdSchema
   })
 
 export const adminMembershipRoleSchema = adminBusinessIdSchema.extend({
-  role: z.enum(['OWNER', 'ADMIN', 'STAFF']),
+  role: editableMembershipRoleSchema,
 })
 
 export const adminCreateMembershipSchema = adminBusinessIdSchema.extend({
   email: z.string().trim().email('Informe um email válido'),
-  role: z.enum(['OWNER', 'ADMIN', 'STAFF']),
+  role: editableMembershipRoleSchema,
 })
 
 export const adminCreateInvitationSchema = adminBusinessIdSchema.extend({
   email: z.string().trim().email('Informe um email válido'),
-  role: z.enum(['OWNER', 'ADMIN', 'STAFF']),
+  role: editableMembershipRoleSchema,
 })
 
 export const adminAppointmentAssigneeSchema = adminBusinessIdSchema.extend({

@@ -306,13 +306,15 @@ export class AdminService {
   }
 
   async updateMembershipRole(id: string, businessId: string, dto: AdminMembershipRoleDto) {
+    await this.subscriptionService.assertBusinessCanWrite(businessId)
+
     const membership = await this.adminRepository.findMembershipByIdAndBusinessId(id, businessId)
 
     if (!membership) {
       throw new NotFoundException('Membro não encontrado')
     }
 
-    if (membership.role === 'OWNER' && dto.role !== 'OWNER') {
+    if (membership.role === 'OWNER') {
       await this.ensureBusinessKeepsOwner(businessId, 'Não é possível rebaixar o último OWNER')
     }
 
@@ -332,6 +334,8 @@ export class AdminService {
   }
 
   async deleteMembership(id: string, businessId: string) {
+    await this.subscriptionService.assertBusinessCanWrite(businessId)
+
     const membership = await this.adminRepository.findMembershipByIdAndBusinessId(id, businessId)
 
     if (!membership) {

@@ -352,6 +352,8 @@ export class AppointmentsService {
       throw new BadRequestException('Negócio inválido')
     }
 
+    await this.subscriptionService.assertBusinessCanWrite(business.id)
+
     const appointment = await this.appointmentsRepository.findById(id, business.id)
     if (!appointment) {
       throw new NotFoundException('Agendamento não encontrado')

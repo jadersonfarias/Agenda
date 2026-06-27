@@ -210,6 +210,70 @@ describe('AppointmentsService public routes', () => {
     expect(appointmentsRepository.findPublicByCustomerPhoneLookup).not.toHaveBeenCalled()
   })
 
+  it('mantém a criação pública de appointment com isolamento por business e serviço', async () => {
+    const createdAppointment = {
+      id: 'appointment-1',
+      publicToken: 'token-1',
+    }
+    const appointmentsRepository = {
+      findConflicts: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockResolvedValue(createdAppointment),
+    } as any
+    const businessesRepository = {
+      findBusinessById: vi.fn().mockResolvedValue({
+        id: 'business-1',
+        timezone: 'America/Sao_Paulo',
+      }),
+      findServiceById: vi.fn().mockResolvedValue({
+        id: 'service-1',
+        businessId: 'business-1',
+        durationMinutes: 30,
+        price: 80,
+      }),
+      findManualBlockConflict: vi.fn().mockResolvedValue(null),
+      findCustomerByPhone: vi.fn().mockResolvedValue(null),
+      createCustomer: vi.fn().mockResolvedValue({ id: 'customer-1' }),
+    } as any
+    const businessesService = {
+      invalidateBusinessAvailability: vi.fn(),
+    } as any
+    const timezoneService = {
+      validateAppointmentDateTime: vi.fn().mockReturnValue(
+        new Date('2026-07-10T17:00:00.000Z')
+      ),
+    } as any
+    const subscriptionService = {
+      assertBusinessCanWrite: vi.fn().mockResolvedValue(undefined),
+    } as any
+    const service = createAppointmentsService({
+      appointmentsRepository,
+      businessesRepository,
+      businessesService,
+      timezoneService,
+      subscriptionService,
+    })
+
+    await expect(service.create({
+      businessId: 'business-1',
+      serviceId: 'service-1',
+      customerName: 'Cliente Teste',
+      phone: '(48) 99999-0000',
+      date: '2026-07-10',
+      time: '14:00',
+    })).resolves.toBe(createdAppointment)
+
+    expect(subscriptionService.assertBusinessCanWrite).toHaveBeenCalledWith('business-1')
+    expect(appointmentsRepository.create).toHaveBeenCalledWith({
+      businessId: 'business-1',
+      serviceId: 'service-1',
+      customerId: 'customer-1',
+      scheduledAt: new Date('2026-07-10T17:00:00.000Z'),
+      endsAt: new Date('2026-07-10T17:30:00.000Z'),
+      price: 80,
+    })
+    expect(businessesService.invalidateBusinessAvailability).toHaveBeenCalledWith('business-1')
+  })
+
   it('retorna o detalhe público por token com canCancel verdadeiro para agendamento futuro', async () => {
     const appointmentsRepository = {
       findByPublicToken: vi.fn().mockResolvedValue({
@@ -274,6 +338,62 @@ describe('AppointmentsService public routes', () => {
     })
 
     await expect(service.cancelPublicAppointment({ token: 'token-1' })).rejects.toThrowError(BadRequestException)
+  })
+
+  it('mantém o cancelamento público por token sem aceitar businessId do cliente', async () => {
+    const scheduledAppointment = {
+      id: 'appointment-1',
+      publicToken: 'token-1',
+      scheduledAt: new Date('2026-05-12T14:00:00.000Z'),
+      status: AppointmentStatus.SCHEDULED,
+      price: { toString: () => '80' },
+      businessId: 'business-1',
+      customerId: 'customer-1',
+      service: { name: 'Corte de cabelo' },
+      customer: { name: 'Mario' },
+    }
+    const canceledAppointment = {
+      ...scheduledAppointment,
+      status: AppointmentStatus.CANCELED,
+    }
+    const appointmentsRepository = {
+      findByPublicToken: vi
+        .fn()
+        .mockResolvedValueOnce(scheduledAppointment)
+        .mockResolvedValueOnce(canceledAppointment),
+      updateStatus: vi.fn().mockResolvedValue({
+        id: 'appointment-1',
+        status: AppointmentStatus.CANCELED,
+      }),
+    } as any
+    const businessesService = {
+      invalidateBusinessAvailability: vi.fn(),
+    } as any
+    const subscriptionService = {
+      assertBusinessCanWrite: vi.fn().mockResolvedValue(undefined),
+    } as any
+    const service = createAppointmentsService({
+      appointmentsRepository,
+      businessesService,
+      subscriptionService,
+    })
+
+    await expect(service.cancelPublicAppointment({ token: 'token-1' })).resolves.toEqual({
+      token: 'token-1',
+      service: 'Corte de cabelo',
+      customerName: 'Mario',
+      scheduledAt: '2026-05-12T14:00:00.000Z',
+      price: '80',
+      status: AppointmentStatus.CANCELED,
+      canCancel: false,
+      canceled: true,
+    })
+    expect(subscriptionService.assertBusinessCanWrite).toHaveBeenCalledWith('business-1')
+    expect(appointmentsRepository.updateStatus).toHaveBeenCalledWith(
+      'appointment-1',
+      'business-1',
+      AppointmentStatus.CANCELED
+    )
   })
 
   it('lança NotFound ao consultar token público inexistente', async () => {

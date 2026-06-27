@@ -115,8 +115,8 @@ backend/
 - `POST /appointments` (rate limit)
 - `PATCH /appointments/public/:token/cancel` (rate limit)
 
-### Appointments legados sem protecao administrativa
-As rotas abaixo existem no `AppointmentsController`, nao usam `AuthMiddleware`/`RoleGuard` e confiam no `businessId` recebido. Nao devem ser consideradas seguras para producao:
+### Appointments legados removidos
+As rotas administrativas legadas abaixo foram removidas do `AppointmentsController`; agenda e financeiro usam somente as rotas protegidas em `/admin/*`:
 - `GET /appointments`
 - `GET /appointments/financial/monthly`
 - `PATCH /appointments/:id/status`
@@ -304,7 +304,8 @@ Regras:
 - Roles sao traduzidas apenas na UI: `OWNER -> Dono`, `ADMIN -> Administrador`, `STAFF -> Funcionario`.
 - Frontend envia apenas `ADMIN` ou `STAFF` nos formularios de membro/convite.
 - Listagens de memberships e invitations sao paginadas, com 10 itens por pagina na tela de equipe.
-- Atencao: os schemas backend de criar membro, criar convite e atualizar role ainda aceitam `OWNER`; revisar se a promocao/criacao de novos owners por API e uma regra desejada.
+- Schemas backend de criar membro, criar convite e atualizar role aceitam apenas `ADMIN` ou `STAFF`.
+- `OWNER` continua sendo criado exclusivamente pelo fluxo inicial de signup; a protecao do ultimo owner permanece ativa.
 
 ## Fluxo Publico de Reserva `/b/[slug]`
 - Resolve o business pelo slug e usa o fluxo real de quatro etapas:
@@ -397,7 +398,7 @@ Acoes bloqueadas no codigo atual:
 - criar, editar e excluir servico;
 - atualizar horario do business;
 - criar convite;
-- criar membership;
+- criar, alterar e excluir membership;
 - aceitar convite, pois cria membership;
 - criar agendamento publico;
 - alterar status de appointment;
@@ -405,8 +406,8 @@ Acoes bloqueadas no codigo atual:
 - cancelar appointment publico, pois altera status.
 
 Observacoes:
-- `PATCH /admin/memberships/:id` e `DELETE /admin/memberships/:id` nao chamam `assertBusinessCanWrite`.
-- `DELETE /appointments/:id` tambem nao chama `assertBusinessCanWrite` e, alem disso, esta no controller publico sem auth.
+- `PATCH /admin/memberships/:id` e `DELETE /admin/memberships/:id` chamam `assertBusinessCanWrite`.
+- O metodo residual de delete de appointment tambem chama `assertBusinessCanWrite`, embora a rota publica legada tenha sido removida.
 - Leituras nao chamam o bloqueio de escrita e continuam disponiveis.
 
 ## Performance e Seguranca
@@ -421,7 +422,7 @@ Observacoes:
 - `appointments.repository.updateStatus` usa `updateMany` com filtro por `id` e `businessId`.
 - `findByPublicToken` seleciona apenas dados necessarios para resposta publica e cancelamento.
 - Consulta publica `GET /appointments/customer` exige `businessId`, usa candidatos exatos de telefone dentro do business e evita varredura ampla normalizando todos os clientes em memoria.
-- Risco critico atual: `GET /appointments`, `GET /appointments/financial/monthly`, `PATCH /appointments/:id/status` e `DELETE /appointments/:id` nao usam auth/role. Mesmo com filtros por `businessId`, precisam ser removidos, protegidos ou substituidos pelos endpoints `/admin/*` antes de producao.
+- Rotas administrativas legadas de `/appointments` foram removidas; testes verificam que o controller publico mantem somente consulta por telefone, criacao, detalhe por token e cancelamento por token.
 
 ## Frontend Admin
 - `frontend/app/admin/page.tsx` carrega sessao, dashboard inicial e appointments iniciais.
@@ -464,7 +465,12 @@ Variaveis usadas/importantes:
 - `NEXT_PUBLIC_PRO_PRICE`
 
 Variavel legada/documental:
-- `NEXT_PUBLIC_DEFAULT_BUSINESS_ID` ainda aparece em `.env.example` e `README.md`, mas nao foi encontrada em uso no codigo runtime atual.
+- `NEXT_PUBLIC_DEFAULT_BUSINESS_ID` nao e usada no runtime atual e foi removida de `.env.example`/`README.md`.
+
+Documentacao de producao:
+- `.env.example` usa apenas placeholders, sem secrets reais, e documenta API, auth, CORS, host e Pix manual.
+- `README.md` resume todas as variaveis runtime relevantes.
+- `docs/MVP_PRODUCTION_CHECKLIST.md` contem o roteiro de validacao antes do MVP.
 
 Config atual de CORS:
 - Backend usa `buildCorsOptions`.
@@ -483,30 +489,53 @@ Comandos uteis:
 - `npm --workspace=backend run prisma:migrate`
 
 ## Validacoes Recentes Conhecidas
-- Nesta auditoria documental de 25/06/2026 nao foram executados testes, build ou typecheck da aplicacao, pois nenhum codigo foi alterado.
-- Na tarefa imediatamente anterior, o TypeScript do frontend passou com `tsc --noEmit`.
-- O script atual `npm --workspace=frontend run lint` falha porque usa `next lint`, comando nao suportado pelo Next.js 16.2.3; migrar o script para ESLint CLI.
-- Registros anteriores informavam backend tests/build e frontend build passando, mas devem ser tratados apenas como historico ate nova execucao.
+- Em 26/06/2026, backend tests passaram: 23 arquivos e 142 testes.
+- Em 26/06/2026, backend build passou.
+- A rodada inclui testes unitarios de isolamento por `businessId`, roles, agenda por responsavel, bloqueio de escrita e schemas de equipe.
+- Frontend usa ESLint CLI com `eslint-config-next` 16.2.9 e configuracao flat em `frontend/eslint.config.mjs`.
+- Em 26/06/2026, frontend lint passou com 34 avisos e nenhum erro.
+- Em 26/06/2026, frontend `tsc --noEmit` passou.
+- Em 26/06/2026, frontend build com Next.js 16.2.9 passou fora do sandbox.
+- Regras novas do React Compiler sobre efeitos/pureza permanecem como avisos para refatoracao futura.
+- Dependencias runtime vulneraveis foram atualizadas: Next.js 16.2.9, Axios 1.18.1, NextAuth 4.24.14 e NestJS 11.1.27.
+- Overrides controlados mantem `multer` 2.2.0, `postcss` 8.5.15 e `uuid` 11.1.1 ate os pacotes pais incorporarem essas versoes seguras.
+- Em 26/06/2026, `npm audit --omit=dev` passou com 0 vulnerabilidades. Nao foi usado `npm audit fix --force`.
 - Build do frontend no sandbox pode falhar por limitacao conhecida do Turbopack com `Operation not permitted`; validar build final tambem fora do sandbox/na CI.
+
+### Homologacao tecnica local de 26/06/2026
+- Ambiente: PostgreSQL 16 via Docker em `localhost:5432`, banco local `salao`, 13 migrations aplicadas e seed de desenvolvimento executado.
+- Frontend Next.js 16.2.9 em `http://localhost:3000` e backend NestJS 11.1.27 em `http://localhost:3333` iniciaram corretamente.
+- Uma suite HTTP temporaria concluiu 87 verificacoes ponta a ponta; outras 5 verificacoes cobriram cookies/roteamento NextAuth.
+- Foram validados signup, login valido/invalido, sessao NextAuth, logout, redirecionamento por sessao expirada, `/admin`, `/admin-master`, fluxo publico, token publico, consulta por telefone, agenda, financeiro, equipe, roles, isolamento entre dois businesses, assinatura vencida, CORS e rotas legadas removidas.
+- As tres mutacoes de assinatura do Admin Master, paginacao e bloqueio de usuario comum em `/platform/*` foram exercitados.
+- Escritas com plano vencido retornaram `402` para servicos, horarios, convites, memberships, appointments, responsavel, status e cancelamento publico; leituras permaneceram disponiveis.
+- O seed tinha uma credencial invalida de Platform Admin (`git push`); foi restaurado para `master@marcacerta.com` e o registro legado sem vinculos e removido pelo proprio seed.
+- Dados temporarios identificados por prefixo de homologacao foram removidos ao final e o seed demo foi reaplicado.
+- Nao havia navegador/Playwright no ambiente. Clipboard, toasts renderizados, modais, dropdowns, fluxo visual completo da demo e responsividade em smartphone real ainda exigem validacao manual.
+- Resultado: tecnicamente pronto para teste controlado com cliente real; ainda nao equivale a liberacao final de producao.
 
 ## Pendencias
 
 ### A) Criticas antes de producao / MVP real
-- [ ] Proteger ou remover `GET /appointments`, `GET /appointments/financial/monthly`, `PATCH /appointments/:id/status` e `DELETE /appointments/:id`; hoje nao usam `AuthMiddleware`/roles.
+- [x] Rotas administrativas legadas de `/appointments` removidas; agenda e financeiro usam `/admin/*`.
 - [ ] Revisar todos os endpoints publicos de appointments, dados retornados, rate limits e possibilidades de enumeracao/abuso.
-- [ ] Validar isolamento por `businessId` com testes de integracao entre dois ou mais negocios.
-- [ ] Confirmar se backend deve permitir criar/promover `OWNER` por API, ja que a UI limita edicao a `ADMIN`/`STAFF`.
-- [ ] Decidir e testar se update/delete de membership e delete legado de appointment devem respeitar `assertBusinessCanWrite`.
+- [x] Isolamento por `businessId` validado por testes automatizados e homologacao HTTP entre dois negocios.
+- [x] Backend bloqueia criacao/promocao de `OWNER` pelos fluxos de equipe; signup continua criando o owner inicial.
+- [x] Update/delete de membership e delete residual de appointment respeitam `assertBusinessCanWrite`.
 - [ ] Configurar `NEXTAUTH_SECRET` e `JWT_SECRET` fortes, distintos e exclusivos do ambiente final.
 - [ ] Garantir que seed, usuarios demo e credenciais fixas de desenvolvimento nunca sejam executados/expostos em producao. O seed atual usa a senha fixa `Demo@12345`.
 - [ ] Revisar `FRONTEND_URL`, `ALLOWED_ORIGINS`, proxy `/backend` e CORS do dominio final.
 - [ ] Testar fluxo completo real no celular: signup, login, admin, link publico, reserva, consulta e cancelamento.
 - [ ] Testar demo e fluxo real lado a lado para garantir que somente o real grava no banco.
-- [ ] Testar trial/plano vencido, tolerancia de 1 dia, bloqueio de escrita e leituras permitidas.
-- [ ] Testar permissoes `OWNER`/`ADMIN`/`STAFF`, atribuicao de responsavel e isolamento do `STAFF`.
+- [x] Cobertura unitaria para trial/plano vencido, tolerancia de 1 dia, bloqueio de escrita e leituras permitidas.
+- [x] Cobertura unitaria para `OWNER`/`ADMIN`/`STAFF`, atribuicao de responsavel e isolamento do `STAFF`.
 - [ ] Testar Admin Master, paginacao e expiracao de token em todas as mutacoes `/platform/*`.
 - [ ] Revisar responsividade das telas principais em computador, tablet e smartphone.
-- [ ] Corrigir o script de lint e executar novamente lint, typecheck, testes e builds em ambiente final/CI.
+- [x] Script de lint migrado para ESLint CLI.
+- [ ] Reduzir gradualmente os avisos do React Compiler reportados pelo ESLint, sem refatoracao apressada antes do MVP.
+- [x] Vulnerabilidades runtime corrigidas em rodada controlada; `npm audit --omit=dev` retorna 0 vulnerabilidades.
+- [ ] Executar novamente lint, typecheck, testes e builds na CI/ambiente final.
+- [ ] Concluir a parte visual/mobile do checklist de `docs/MVP_PRODUCTION_CHECKLIST.md` em navegador e smartphone real.
 - [ ] Configurar ambiente final, banco, migrations, logs, backup e observabilidade basica.
 
 ### B) Pode ficar para depois
@@ -559,8 +588,7 @@ Backend/banco:
 ## O que falta para MVP
 
 Critico:
-- fechar os endpoints legados de `/appointments` que hoje estao sem auth/roles;
-- testar isolamento por `businessId`, roles e assinatura vencida;
+- ampliar testes de integracao reais com banco para isolamento por `businessId`, alem da cobertura unitaria atual;
 - configurar secrets, CORS, URLs, banco e migrations de producao;
 - impedir uso do seed/credenciais demo em producao;
 - testar fluxo real, demo, Admin Master e sessao expirada no celular;
@@ -575,11 +603,11 @@ Opcional:
 - relatorios avancados, exportacao e automacao de cobranca.
 
 ## Riscos atuais
-- Seguranca: endpoints legados de appointments aceitam `businessId` sem auth; backend tambem aceita `OWNER` em schemas que a UI nao oferece.
+- Seguranca: manter testes de integracao com banco para complementar os testes unitarios de isolamento e permissoes.
 - Producao: secrets de exemplo, CORS/URLs e seed demo precisam de configuracao rigorosa.
 - Sessao: o redirecionamento de token expirado existe para admin e platform, mas precisa de teste ponta a ponta.
-- Assinatura: algumas escritas nao chamam `assertBusinessCanWrite`.
-- Permissoes: validar `OWNER`/`ADMIN`/`STAFF` e multi-business com testes de integracao.
+- Assinatura: escritas administrativas e publicas mapeadas passam por `assertBusinessCanWrite`; manter essa matriz coberta por testes.
+- Permissoes: schemas de equipe aceitam apenas `ADMIN`/`STAFF`; signup permanece como unico fluxo de criacao inicial de `OWNER`.
 - UX: revisar responsividade real e acessibilidade nas telas principais.
 
 ## Boas ideias para depois

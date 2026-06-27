@@ -1,10 +1,20 @@
 import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common'
 import { describe, expect, it, vi } from 'vitest'
+import {
+  adminCreateInvitationSchema,
+  adminCreateMembershipSchema,
+  adminMembershipRoleSchema,
+} from '../../src/admin/admin.schema'
 import { AdminService } from '../../src/admin/admin.service'
 import { RoleGuard } from '../../src/auth/role.guard'
 
 describe('Membership ownership rules', () => {
-  function createService(adminRepositoryOverrides: Record<string, unknown>) {
+  function createService(
+    adminRepositoryOverrides: Record<string, unknown>,
+    subscriptionService = {
+      assertBusinessCanWrite: vi.fn().mockResolvedValue(undefined),
+    },
+  ) {
     const adminRepository = {
       findMembershipByIdAndBusinessId: vi.fn(),
       countOwnersByBusinessId: vi.fn(),
@@ -23,8 +33,9 @@ describe('Membership ownership rules', () => {
         {} as any,
         {} as any,
         {} as any,
-        { assertBusinessCanWrite: vi.fn().mockResolvedValue(undefined) } as any,
+        subscriptionService as any,
       ),
+      subscriptionService,
     }
   }
 
@@ -100,6 +111,51 @@ describe('Membership ownership rules', () => {
       })
     ).rejects.toThrowError('Usuário já é membro deste negócio')
     expect(adminRepository.createMembership).not.toHaveBeenCalled()
+  })
+
+  it('bloqueia alteração e remoção de membership quando assinatura não permite escrita', async () => {
+    const planExpiredError = new Error('Plano expirado')
+    const subscriptionService = {
+      assertBusinessCanWrite: vi.fn().mockRejectedValue(planExpiredError),
+    }
+    const { adminRepository, service } = createService({}, subscriptionService)
+
+    await expect(
+      service.updateMembershipRole('membership-1', 'business-1', {
+        businessId: 'business-1',
+        role: 'STAFF',
+      })
+    ).rejects.toBe(planExpiredError)
+    await expect(service.deleteMembership('membership-1', 'business-1')).rejects.toBe(planExpiredError)
+
+    expect(subscriptionService.assertBusinessCanWrite).toHaveBeenNthCalledWith(1, 'business-1')
+    expect(subscriptionService.assertBusinessCanWrite).toHaveBeenNthCalledWith(2, 'business-1')
+    expect(adminRepository.findMembershipByIdAndBusinessId).not.toHaveBeenCalled()
+    expect(adminRepository.updateMembershipRole).not.toHaveBeenCalled()
+    expect(adminRepository.deleteMembership).not.toHaveBeenCalled()
+  })
+
+  it('backend aceita apenas ADMIN ou STAFF nos fluxos editáveis de equipe', () => {
+    const schemas = [
+      {
+        schema: adminCreateMembershipSchema,
+        base: { businessId: 'business-1', email: 'user@example.com' },
+      },
+      {
+        schema: adminCreateInvitationSchema,
+        base: { businessId: 'business-1', email: 'user@example.com' },
+      },
+      {
+        schema: adminMembershipRoleSchema,
+        base: { businessId: 'business-1' },
+      },
+    ]
+
+    for (const { schema, base } of schemas) {
+      expect(schema.safeParse({ ...base, role: 'ADMIN' }).success).toBe(true)
+      expect(schema.safeParse({ ...base, role: 'STAFF' }).success).toBe(true)
+      expect(schema.safeParse({ ...base, role: 'OWNER' }).success).toBe(false)
+    }
   })
 
   it('bloqueia ação de OWNER quando usuário não tem permissão OWNER', () => {

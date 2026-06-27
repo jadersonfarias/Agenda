@@ -4,6 +4,16 @@ import Link from 'next/link'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
 import { format } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
+import {
+    ArrowRight,
+    BadgeDollarSign,
+    CalendarCheck2,
+    CheckCircle2,
+    Clock3,
+    Scissors,
+    XCircle,
+} from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -48,14 +58,51 @@ function getStatusLabel(status: CustomerAppointmentItem['status']) {
 
 function getStatusClasses(status: CustomerAppointmentItem['status']) {
     if (status === 'SCHEDULED') {
-        return 'bg-purple-100 text-purple-700'
+        return 'border-purple-200 bg-purple-50 text-purple-700'
     }
 
     if (status === 'COMPLETED') {
-        return 'bg-emerald-100 text-emerald-700'
+        return 'border-emerald-200 bg-emerald-50 text-emerald-700'
     }
 
-    return 'bg-slate-200 text-slate-700'
+    return 'border-slate-200 bg-slate-100 text-slate-600'
+}
+
+function getStatusAccentClasses(status: CustomerAppointmentItem['status']) {
+    if (status === 'SCHEDULED') return 'from-purple-600 via-violet-500 to-fuchsia-400'
+    if (status === 'COMPLETED') return 'from-emerald-600 via-emerald-500 to-teal-400'
+    return 'from-slate-500 via-slate-400 to-slate-300'
+}
+
+function AppointmentStatusBadge({ status }: { status: CustomerAppointmentItem['status'] }) {
+    const StatusIcon =
+        status === 'SCHEDULED'
+            ? CalendarCheck2
+            : status === 'COMPLETED'
+              ? CheckCircle2
+              : XCircle
+
+    return (
+        <span
+            className={`inline-flex w-fit items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold sm:text-sm ${getStatusClasses(status)}`}
+        >
+            <StatusIcon className="h-4 w-4" aria-hidden="true" />
+            {getStatusLabel(status)}
+        </span>
+    )
+}
+
+function formatPrice(price: string) {
+    const numericPrice = Number(price)
+
+    if (!Number.isFinite(numericPrice)) {
+        return `R$ ${price}`
+    }
+
+    return numericPrice.toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+    })
 }
 
 const lastPublicBusinessIdStorageKey = 'marcacerta:lastPublicBusinessId'
@@ -199,46 +246,73 @@ export function PublicCustomerAppointmentsPage({ businessId }: PublicCustomerApp
                 {hasAppointments ? (
                     <section className="w-full self-center space-y-4 sm:max-w-2xl lg:max-w-3xl">
                         {searchMutation.data.map((appointment) => (
-                            <Card key={appointment.id} className="border-slate-200 bg-white shadow-sm shadow-slate-100 sm:p-5 lg:p-6">
-                                <div className="space-y-4">
-                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                        <div>
-                                            <p className="text-xs uppercase tracking-[.18em] text-slate-400">Serviço</p>
-                                            <h2 className="mt-1 text-xl font-semibold text-slate-900">{appointment.serviceName}</h2>
+                            <Card
+                                key={appointment.id}
+                                className="overflow-hidden border-slate-200 bg-white p-0 shadow-lg shadow-slate-200/50 sm:p-0 lg:p-0"
+                            >
+                                <div className={`h-1 w-full bg-gradient-to-r ${getStatusAccentClasses(appointment.status)}`} />
+
+                                <div className="space-y-4 p-4 sm:p-5">
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <div className="flex min-w-0 items-center gap-3">
+                                            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-purple-50 text-purple-700 ring-1 ring-purple-100">
+                                                <Scissors className="h-5 w-5" aria-hidden="true" />
+                                            </span>
+                                            <div className="min-w-0">
+                                                <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-purple-700 sm:text-[11px]">
+                                                    Serviço reservado
+                                                </p>
+                                                <h2 className="mt-1 break-words text-lg font-semibold leading-tight text-slate-950 sm:text-xl">
+                                                    {appointment.serviceName}
+                                                </h2>
+                                            </div>
                                         </div>
 
-                                        <span className={`w-fit rounded-full px-3 py-1 text-sm font-medium ${getStatusClasses(appointment.status)}`}>
-                                            {getStatusLabel(appointment.status)}
-                                        </span>
+                                        <AppointmentStatusBadge status={appointment.status} />
                                     </div>
 
-                                    <div className="grid gap-4 md:grid-cols-3">
-                                        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                                            <p className="text-xs uppercase tracking-[.18em] text-slate-400">Data</p>
-                                            <p className="mt-1 text-base font-semibold text-slate-900">
-                                                {format(new Date(appointment.scheduledAt), 'dd/MM/yyyy')}
-                                            </p>
+                                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/70 sm:grid sm:grid-cols-3">
+                                        <div className="flex min-h-[4.75rem] items-center gap-3 border-b border-slate-200 px-3.5 py-3 sm:border-b-0 sm:border-r sm:px-4">
+                                            <CalendarCheck2 className="h-5 w-5 shrink-0 text-purple-700" aria-hidden="true" />
+                                            <div>
+                                                <p className="text-[11px] font-medium text-slate-500">Data</p>
+                                                <p className="mt-0.5 text-sm font-semibold capitalize text-slate-950 sm:text-base">
+                                                    {format(new Date(appointment.scheduledAt), 'dd MMM yyyy', { locale: ptBR })}
+                                                </p>
+                                            </div>
                                         </div>
 
-                                        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                                            <p className="text-xs uppercase tracking-[.18em] text-slate-400">Horário</p>
-                                            <p className="mt-1 text-base font-semibold text-purple-700">
-                                                {format(new Date(appointment.scheduledAt), 'HH:mm')}
-                                            </p>
+                                        <div className="flex min-h-[4.75rem] items-center gap-3 border-b border-slate-200 px-3.5 py-3 sm:border-b-0 sm:border-r sm:px-4">
+                                            <Clock3 className="h-5 w-5 shrink-0 text-purple-700" aria-hidden="true" />
+                                            <div>
+                                                <p className="text-[11px] font-medium text-slate-500">Horário</p>
+                                                <p className="mt-0.5 text-base font-bold text-purple-700 sm:text-lg">
+                                                    {format(new Date(appointment.scheduledAt), 'HH:mm')}
+                                                </p>
+                                            </div>
                                         </div>
 
-                                        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                                            <p className="text-xs uppercase tracking-[.18em] text-slate-400">Valor</p>
-                                            <p className="mt-1 text-base font-semibold text-slate-900">R$ {appointment.price}</p>
+                                        <div className="flex min-h-[4.75rem] items-center gap-3 px-3.5 py-3 sm:px-4">
+                                            <BadgeDollarSign className="h-5 w-5 shrink-0 text-purple-700" aria-hidden="true" />
+                                            <div>
+                                                <p className="text-[11px] font-medium text-slate-500">Valor</p>
+                                                <p className="mt-0.5 text-sm font-semibold text-slate-950 sm:text-base">
+                                                    {formatPrice(appointment.price)}
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                                    <div className="flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                                        <p className="text-xs leading-5 text-slate-500 sm:text-sm">
+                                            Consulte os dados completos ou cancele sua reserva.
+                                        </p>
                                         <Link
                                             href={`/appointments/${appointment.publicToken}`}
-                                            className="inline-flex w-full items-center justify-center rounded-2xl bg-purple-700 px-4 py-3 text-base font-semibold text-white transition hover:bg-purple-800 focus:outline-none focus:ring-2 focus:ring-purple-200 sm:w-auto sm:px-6 sm:text-sm"
+                                            className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-purple-700 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-purple-200 transition hover:bg-purple-800 focus:outline-none focus:ring-2 focus:ring-purple-200 sm:w-auto"
                                         >
                                             Ver detalhes
+                                            <ArrowRight className="h-4 w-4" aria-hidden="true" />
                                         </Link>
                                     </div>
                                 </div>

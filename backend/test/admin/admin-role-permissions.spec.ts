@@ -59,6 +59,14 @@ describe('Admin role permissions', () => {
     }
   })
 
+  it('STAFF mantém leitura atual de dashboard e serviços, mas não configura o business', () => {
+    for (const methodName of ['getDashboard', 'listServices'] as const) {
+      expectAllowed(getEndpointRoles(methodName), 'STAFF')
+    }
+
+    expectForbidden(getEndpointRoles('updateBusinessAvailability'), 'STAFF')
+  })
+
   it('STAFF não acessa financeiro; OWNER e ADMIN podem', () => {
     for (const methodName of ['getMonthlySummary', 'getFinancialReport'] as const) {
       const roles = getEndpointRoles(methodName)
@@ -147,11 +155,12 @@ describe('Admin role permissions', () => {
     }
   })
 
-  it('valida businessId via Membership e bloqueia role em outro business', () => {
-    const roles = getEndpointRoles('createService')
+  it('impede usuário do business A de listar appointments do business B', () => {
+    const roles = getEndpointRoles('listAppointments')
     const { guard, context } = createExecutionContext(roles, 'ADMIN', 'business-2')
 
     expect(() => guard.canActivate(context)).toThrowError(ForbiddenException)
+    expect(() => guard.canActivate(context)).toThrowError('Usuário sem permissão para este negócio')
   })
 
   it('exige businessId para rotas admin protegidas', () => {
