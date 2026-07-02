@@ -1,6 +1,7 @@
 'use client'
 
 import { useQueryClient } from '@tanstack/react-query'
+import { CalendarClock, Clock3, LayoutGrid } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
@@ -212,6 +213,7 @@ export default function AdminPanel({
         selectedBusinessId,
         isAuthenticated && uiPermissions.canViewServices
     )
+    const servicesCount = servicesQuery.data?.length ?? servicesSnapshot.length
     const shouldShowPaymentCard =
         uiPermissions.canViewSubscriptionPayment &&
         isHydrated &&
@@ -401,7 +403,7 @@ export default function AdminPanel({
                     {uiPermissions.canCreateMembership ? (
                         <OnboardingChecklist
                             business={business}
-                            servicesCount={servicesQuery.data?.length ?? servicesSnapshot.length}
+                            servicesCount={servicesCount}
                             membershipsCount={onboardingMembershipsQuery.data?.meta.total ?? 1}
                             pendingInvitationsCount={
                                 onboardingInvitationsQuery.data?.meta.total ?? 0
@@ -413,21 +415,81 @@ export default function AdminPanel({
                     ) : null}
 
                     <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
-                        <Card className="border-slate-200 shadow-lg shadow-slate-200/60">
-                            <p className="text-xs uppercase tracking-[.25em] text-slate-500 sm:text-sm">Serviços</p>
-                            <p className="mt-3 text-2xl font-semibold text-slate-900 sm:text-3xl">
-                                {servicesQuery.data?.length ?? servicesSnapshot.length}
-                            </p>
-                            <p className="mt-2 text-xs text-slate-600 sm:text-sm">Itens ativos na agenda do salão.</p>
+                        <Card className="group min-w-0 overflow-hidden border-slate-200 bg-white p-5 shadow-lg shadow-slate-200/60 transition hover:-translate-y-0.5 hover:border-purple-200 hover:shadow-xl hover:shadow-purple-100/70 sm:p-6 lg:p-7">
+                            <div className="flex h-full min-w-0 flex-col gap-5">
+                                <div className="flex min-w-0 items-center gap-4">
+                                    <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl border border-purple-100 bg-purple-50 text-purple-600 shadow-inner shadow-purple-100/70 sm:size-14">
+                                        <LayoutGrid className="size-6 sm:size-7" strokeWidth={1.9} />
+                                    </span>
+                                    <p className="min-w-0 text-xs font-semibold uppercase tracking-[.25em] text-slate-500 sm:text-sm">
+                                        Serviços
+                                    </p>
+                                </div>
+
+                                <div className="min-w-0">
+                                    <p className="text-5xl font-black leading-none text-slate-950 sm:text-6xl">
+                                        {servicesCount}
+                                    </p>
+                                    <p className="mt-3 text-lg font-bold leading-tight text-slate-900 sm:text-xl">
+                                        {servicesCount === 1 ? '1 serviço ativo' : `${servicesCount} serviços ativos`}
+                                    </p>
+                                    <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                                        Itens ativos na agenda do negócio.
+                                    </p>
+                                </div>
+
+                                <div className="mt-auto flex w-fit max-w-full items-center gap-2 rounded-xl bg-purple-50 px-3 py-2 text-xs font-semibold text-slate-700 sm:text-sm">
+                                    <span className="size-2 shrink-0 rounded-full bg-purple-500" />
+                                    <span className="min-w-0">
+                                        {servicesCount > 0 ? 'Disponíveis para reserva' : 'Nenhum serviço cadastrado'}
+                                    </span>
+                                </div>
+                            </div>
                         </Card>
-                        <Card className="border-slate-200 shadow-lg shadow-slate-200/60">
-                            <p className="text-xs uppercase tracking-[.25em] text-slate-500 sm:text-sm">Funcionamento</p>
-                            <p className="mt-3 text-lg font-semibold text-slate-900 sm:text-3xl">
-                                {business.openTime} - {business.closeTime}
-                            </p>
-                            <p className="mt-2 text-xs text-slate-600 sm:text-sm">
-                                Faixa horária usada para calcular disponibilidade.
-                            </p>
+                        <Card className="group min-w-0 overflow-hidden border-slate-200 bg-white p-5 shadow-lg shadow-slate-200/60 transition hover:-translate-y-0.5 hover:border-purple-200 hover:shadow-xl hover:shadow-purple-100/70 sm:p-6 lg:p-7">
+                            <div className="flex h-full min-w-0 flex-col gap-5">
+                                <div className="flex min-w-0 items-center gap-4">
+                                    <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl border border-purple-100 bg-purple-50 text-purple-600 shadow-inner shadow-purple-100/70 sm:size-14">
+                                        <CalendarClock className="size-6 sm:size-7" strokeWidth={1.9} />
+                                    </span>
+                                    <p className="min-w-0 text-xs font-semibold uppercase tracking-[.25em] text-slate-500 sm:text-sm">
+                                        Funcionamento
+                                    </p>
+                                </div>
+
+                                <p className="break-words text-3xl font-black leading-none text-slate-950 sm:text-4xl">
+                                    {business.openTime} - {business.closeTime}
+                                </p>
+
+                                <div className="grid min-w-0 grid-cols-1 gap-3 min-[360px]:grid-cols-2">
+                                    <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-3">
+                                        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-purple-100 text-purple-600">
+                                            <Clock3 className="size-5" strokeWidth={2} />
+                                        </span>
+                                        <div className="min-w-0">
+                                            <p className="text-xs font-medium text-slate-500">Abertura</p>
+                                            <p className="mt-0.5 text-lg font-bold leading-none text-slate-900">
+                                                {business.openTime}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-3">
+                                        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-purple-100 text-purple-600">
+                                            <Clock3 className="size-5" strokeWidth={2} />
+                                        </span>
+                                        <div className="min-w-0">
+                                            <p className="text-xs font-medium text-slate-500">Encerramento</p>
+                                            <p className="mt-0.5 text-lg font-bold leading-none text-slate-900">
+                                                {business.closeTime}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <p className="mt-auto text-sm leading-relaxed text-slate-600">
+                                    Faixa horária usada para calcular disponibilidade.
+                                </p>
+                            </div>
                         </Card>
                         <PublicBookingLinkCard business={business} />
                         <Card className="border-slate-200 bg-white p-5 shadow-lg shadow-purple-100/60 sm:p-6">

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { FormEvent, useEffect, useRef, useState } from 'react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { CalendarDays } from 'lucide-react'
 import { DayPicker } from 'react-day-picker'
 import 'react-day-picker/dist/style.css'
 import {
@@ -399,11 +400,15 @@ export function PublicDemoShowcase() {
                                         value={selectedDateLabel}
                                         placeholder="Selecione uma data"
                                         onClick={() => setIsDatePickerOpen((isOpen) => !isOpen)}
-                                        className="h-14 cursor-pointer rounded-2xl text-sm font-semibold sm:h-16 sm:text-base"
+                                        className="h-14 cursor-pointer rounded-2xl pr-12 text-sm font-semibold sm:h-16 sm:text-base"
+                                    />
+                                    <CalendarDays
+                                        aria-hidden="true"
+                                        className="pointer-events-none absolute right-4 top-1/2 size-5 -translate-y-1/2 text-purple-600 sm:size-6"
                                     />
 
                                     {isDatePickerOpen ? (
-                                        <div className="absolute left-0 z-50 mt-2 w-full max-w-[22rem] rounded-2xl border border-slate-200 bg-white p-3 shadow-xl sm:max-w-[28rem]">
+                                        <div className="absolute left-0 z-50 mt-2 w-fit max-w-[calc(100vw-2rem)] rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
                                             <DayPicker
                                                 mode="single"
                                                 selected={selectedDate}
@@ -414,7 +419,7 @@ export function PublicDemoShowcase() {
                                                     setIsDatePickerOpen(false)
                                                 }}
                                                 locale={ptBR}
-                                                className="text-sm"
+                                                className="text-sm [--rdp-accent-background-color:#f3e8ff] [--rdp-accent-color:#7c3aed] [--rdp-day-height:2.25rem] [--rdp-day-width:2.25rem] [--rdp-day_button-height:2.125rem] [--rdp-day_button-width:2.125rem] [--rdp-nav-height:2.25rem] [--rdp-nav_button-height:2rem] [--rdp-nav_button-width:2rem]"
                                                 styles={{
                                                     caption: { color: '#6b21a8' },
                                                     day_selected: {

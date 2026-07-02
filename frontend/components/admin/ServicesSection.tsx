@@ -1,6 +1,7 @@
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
+import { ListChecks } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useQueryClient } from '@tanstack/react-query'
@@ -312,37 +313,52 @@ export function ServicesSection({ businessId, enabled, initialServices }: Servic
                         ? services.map((service) => (
                               <div
                                   key={service.id}
-                                  className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between"
+                                  className="flex min-w-0 flex-col gap-4 overflow-hidden rounded-3xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-100/80 sm:p-5 lg:flex-row lg:items-center lg:justify-between lg:gap-6"
                               >
-                                  <div className="min-w-0 space-y-1">
-                                      <div className="flex flex-wrap items-center gap-2">
-                                          <h3 className="text-base font-semibold text-slate-900 sm:text-lg">{service.name}</h3>
-                                          <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold uppercase tracking-[.2em] text-purple-700">
-                                              {service.durationMinutes} min
-                                          </span>
-                                      </div>
-                                      <p className="text-xs text-slate-600 sm:text-sm">R$ {Number(service.price).toFixed(2)}</p>
-                                      {service.description ? (
-                                          <p
-                                              className="overflow-hidden text-xs leading-5 text-slate-500 sm:text-sm"
-                                              style={{
-                                                  display: '-webkit-box',
-                                                  WebkitBoxOrient: 'vertical',
-                                                  WebkitLineClamp: 2,
-                                              }}
-                                          >
-                                              {service.description}
+                                  <div className="flex min-w-0 items-start gap-3.5 sm:gap-5">
+                                      <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl border border-purple-100 bg-purple-50 text-purple-600 shadow-inner shadow-purple-100/70 sm:size-16">
+                                          <ListChecks className="size-7 sm:size-8" strokeWidth={1.9} />
+                                      </span>
+
+                                      <div className="min-w-0 flex-1 space-y-1.5">
+                                          <div className="flex min-w-0 flex-wrap items-center gap-2">
+                                              <h3 className="min-w-0 break-words text-base font-bold leading-tight text-slate-900 sm:text-lg">
+                                                  {service.name}
+                                              </h3>
+                                              <span className="shrink-0 rounded-full bg-purple-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[.16em] text-purple-700 sm:text-xs">
+                                                  {service.durationMinutes} min
+                                              </span>
+                                          </div>
+                                          <p className="text-sm font-semibold text-slate-900">
+                                              R$ {Number(service.price).toFixed(2)}
                                           </p>
-                                      ) : null}
-                                      <p className="text-xs text-slate-500 sm:text-sm">
-                                          {service.appointmentCount === 0
-                                              ? 'Sem agendamentos vinculados'
-                                              : `${service.appointmentCount} agendamento(s) vinculado(s)`}
-                                      </p>
+                                          {service.description ? (
+                                              <p
+                                                  className="overflow-hidden text-xs leading-5 text-slate-500 sm:text-sm"
+                                                  style={{
+                                                      display: '-webkit-box',
+                                                      WebkitBoxOrient: 'vertical',
+                                                      WebkitLineClamp: 2,
+                                                  }}
+                                              >
+                                                  {service.description}
+                                              </p>
+                                          ) : null}
+                                          <p className="text-xs leading-5 text-slate-500 sm:text-sm">
+                                              {service.appointmentCount === 0
+                                                  ? 'Sem agendamentos vinculados'
+                                                  : `${service.appointmentCount} agendamento(s) vinculado(s)`}
+                                          </p>
+                                      </div>
                                   </div>
 
-                                  <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:w-auto">
-                                      <Button type="button" variant="secondary" onClick={() => setEditingService(service)} className="min-h-12 lg:min-h-0 sm:w-auto">
+                                  <div className="grid w-full min-w-0 grid-cols-2 gap-2 border-t border-slate-200 pt-4 lg:flex lg:w-auto lg:shrink-0 lg:border-t-0 lg:pt-0">
+                                      <Button
+                                          type="button"
+                                          variant="secondary"
+                                          onClick={() => setEditingService(service)}
+                                          className="min-h-12 min-w-0 px-3 sm:w-auto lg:min-h-0"
+                                      >
                                           Editar
                                       </Button>
                                       <Button
@@ -355,7 +371,7 @@ export function ServicesSection({ businessId, enabled, initialServices }: Servic
                                                   : 'Excluir serviço'
                                           }
                                           onClick={() => handleDeleteService(service.id)}
-                                          className="min-h-12 lg:min-h-0 sm:w-auto"
+                                          className="min-h-12 min-w-0 px-3 sm:w-auto lg:min-h-0"
                                       >
                                           {deletingServiceId === service.id ? 'Removendo...' : 'Excluir'}
                                       </Button>
